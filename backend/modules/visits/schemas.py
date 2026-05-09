@@ -18,6 +18,13 @@ class VisitCreate(BaseModel):
             raise ValueError('Phone number must be exactly 10 digits')
         return digits
 
+    @field_validator('amount')
+    @classmethod
+    def validate_amount(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        if v is not None and v < 0:
+            raise ValueError('Amount cannot be negative')
+        return v
+
 class VisitResponse(BaseModel):
     id: int
     customer_id: int
