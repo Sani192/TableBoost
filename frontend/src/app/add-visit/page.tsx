@@ -2,156 +2,145 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
 import MobileNumberInput from '@/components/MobileNumberInput';
+import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import Input from '@/components/ui/Input';
 import { addVisit } from '@/lib/api';
+import { saveStoredVisit } from '@/lib/visits-store';
+
+type Feedback = { type: 'success' | 'error'; text: string } | null;
 
 export default function AddVisitPage() {
   const router = useRouter();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
-  const [sendSms, setSendSms] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+
+  const isPhoneValid = phoneNumber.length === 10;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (phoneNumber.length < 10) {
-      setMessage({ type: 'error', text: 'Please enter a valid 10-digit phone number' });
+
+    if (isSubmitting) return;
+
+    if (!isPhoneValid) {
+      setFeedback({ type: 'error', text: 'Enter a 10-digit phone number.' });
       return;
     }
 
-    setIsLoading(true);
-    setMessage(null);
+    setIsSubmitting(true);
+    setFeedback(null);
 
     try {
+      const trimmedName = name.trim();
+      const numericAmount = amount ? Number(amount) : undefined;
       const result = await addVisit({
         phone_number: phoneNumber,
-        name: name || undefined,
-        amount: amount ? parseFloat(amount) : undefined,
-        send_sms: sendSms,
+        name: trimmedName || undefined,
+        amount: numericAmount,
+        send_sms: true,
       });
 
-      setMessage({ 
-        type: 'success', 
-        text: `Visit recorded! SMS status: ${result.sms_status}` 
+      saveStoredVisit({
+        id: String(result.id ?? `${Date.now()}-${phoneNumber}`),
+        phoneNumber,
+        name: trimmedName || undefined,
+        amount: numericAmount,
+        visitedAt: result.visited_at ?? new Date().toISOString(),
+        smsStatus: result.sms_status ?? 'queued',
       });
-      
-      // Clear form on success
+
+      setFeedback({ type: 'success', text: 'Visit saved. Review SMS queued.' });
       setPhoneNumber('');
       setName('');
       setAmount('');
-      setSendSms(true);
-      
-      // Navigate back to dashboard after a short delay
-      setTimeout(() => {
-        router.push('/');
-      }, 2000);
-
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Something went wrong' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not save the visit. Please try again.';
+      setFeedback({ type: 'error', text: message });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col p-4">
-      <header className="mb-8">
-        <button 
+    <div className="flex min-h-screen flex-col px-4 pb-5 pt-4 sm:min-h-0">
+      <header className="flex items-center gap-3 pb-4">
+        <Button
+          variant="ghost"
           onClick={() => router.push('/')}
-          className="text-blue-600 font-medium flex items-center mb-4"
+          className="min-h-[46px] rounded-2xl px-3"
+          aria-label="Back"
         >
-          ← Back to Dashboard
-        </button>
-        <h1 className="text-3xl font-bold text-gray-900">Add New Visit</h1>
-        <p className="text-gray-500">Quickly record a customer visit.</p>
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+        </Button>
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-brand-600">Add Visit</p>
+          <h1 className="text-3xl font-black tracking-tight text-slate-950">Save in seconds</h1>
+        </div>
       </header>
 
-      <main className="flex-1">
-        <form onSubmit={handleSubmit} className="space-y-6 max-w-md mx-auto bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          
-          <MobileNumberInput 
-            value={phoneNumber} 
-            onChange={setPhoneNumber} 
-            autoFocus 
+      <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
+        <Card className="space-y-5 p-5">
+          <MobileNumberInput value={phoneNumber} onChange={setPhoneNumber} autoFocus />
+
+          <Input
+            label="Name"
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Optional"
+            autoComplete="name"
+            helperText="Skip if the cashier is in a rush."
           />
 
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Customer Name (Optional)
-            </label>
-            <input
-              type="text"
-              id="name"
-              placeholder="e.g. John Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="block w-full px-4 py-3 text-gray-900 border border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
-            />
-          </div>
+          <Input
+            label="Amount"
+            id="amount"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+            leading="$"
+            helperText="Optional bill amount."
+          />
+        </Card>
 
-          <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
-              Bill Amount (Optional)
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-3 text-gray-500">$</span>
-              <input
-                type="number"
-                id="amount"
-                step="0.01"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="block w-full pl-8 pr-4 py-3 text-gray-900 border border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between py-2">
-            <label htmlFor="sendSms" className="text-sm font-medium text-gray-700">
-              Send Review SMS
-            </label>
-            <button
-              type="button"
-              id="sendSms"
-              role="switch"
-              aria-checked={sendSms}
-              onClick={() => setSendSms(!sendSms)}
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                sendSms ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                  sendSms ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-          </div>
-
-          {message && (
-            <div className={`p-4 rounded-xl text-sm font-medium ${
-              message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'
-            }`}>
-              {message.text}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading || phoneNumber.length < 10}
-            className={`w-full py-4 px-6 rounded-xl text-lg font-bold text-white shadow-lg transition-all ${
-              isLoading || phoneNumber.length < 10
-                ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+        {feedback && (
+          <div
+            role="status"
+            className={`flex items-center gap-3 rounded-3xl border px-4 py-3 text-sm font-extrabold shadow-sm ${
+              feedback.type === 'success'
+                ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                : 'border-red-100 bg-red-50 text-red-700'
             }`}
           >
-            {isLoading ? 'Processing...' : 'Save Visit'}
-          </button>
-        </form>
-      </main>
+            {feedback.type === 'success' && <CheckCircle2 className="h-5 w-5" aria-hidden="true" />}
+            {feedback.text}
+          </div>
+        )}
+
+        <div className="mt-auto space-y-3 rounded-[2rem] border border-white/80 bg-white/90 p-3 shadow-soft backdrop-blur">
+          <Button type="submit" fullWidth disabled={isSubmitting || !isPhoneValid} className="min-h-[64px] rounded-3xl text-xl">
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" /> Saving...
+              </>
+            ) : (
+              'Save Visit'
+            )}
+          </Button>
+          <Button type="button" variant="secondary" fullWidth onClick={() => router.push('/')} disabled={isSubmitting}>
+            Back
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
