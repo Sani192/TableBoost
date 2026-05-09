@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, Numeric
 from sqlalchemy.sql import func
-from backend.core.database import Base
+from core.database import Base
 
 class Visit(Base):
     __tablename__ = "visits"

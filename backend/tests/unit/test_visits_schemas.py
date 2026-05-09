@@ -11,7 +11,7 @@ import pytest
 from decimal import Decimal
 from pydantic import ValidationError
 
-from backend.modules.visits.schemas import VisitCreate, VisitResponse
+from modules.visits.schemas import VisitCreate, VisitResponse
 
 
 # ============================================================================

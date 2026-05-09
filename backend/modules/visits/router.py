@@ -1,9 +1,9 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from backend.core.database import get_db
-from backend.modules.visits.schemas import VisitCreate, VisitResponse
-from backend.modules.visits import service
+from core.database import get_db
+from modules.visits.schemas import VisitCreate, VisitResponse
+from modules.visits import service
 
 logger = logging.getLogger(__name__)
 

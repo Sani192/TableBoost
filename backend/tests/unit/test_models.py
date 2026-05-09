@@ -5,10 +5,10 @@ Validates constraints and basic model behaviour.
 
 import pytest
 from sqlalchemy.exc import IntegrityError
-from backend.modules.customers.models import Customer
-from backend.modules.visits.models import Visit
-from backend.modules.messaging.models import Message
-from backend.modules.settings.models import Setting
+from modules.customers.models import Customer
+from modules.visits.models import Visit
+from modules.messaging.models import Message
+from modules.settings.models import Setting
 
 class TestCustomerModel:
     def test_phone_number_unique_constraint(self, db):

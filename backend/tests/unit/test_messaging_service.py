@@ -11,9 +11,9 @@ Covers:
 import pytest
 from unittest.mock import patch
 
-from backend.modules.messaging.service import trigger_review_sms, DEFAULT_TEMPLATE
-from backend.modules.messaging.models import Message
-from backend.modules.customers.models import Customer
+from modules.messaging.service import trigger_review_sms, DEFAULT_TEMPLATE
+from modules.messaging.models import Message
+from modules.customers.models import Customer
 
 
 # ============================================================================
@@ -144,7 +144,7 @@ class TestStatusTracking:
         message = db.query(Message).first()
         assert message.status == "sent"
 
-    @patch("backend.modules.messaging.service.print", side_effect=Exception("Gateway timeout"))
+    @patch("modules.messaging.service.print", side_effect=Exception("Gateway timeout"))
     def test_gateway_failure_returns_failed(self, mock_print, db, create_customer):
         """
         The current implementation uses print() as the SMS gateway placeholder.
@@ -157,7 +157,7 @@ class TestStatusTracking:
 
         assert status == "failed"
 
-    @patch("backend.modules.messaging.service.print", side_effect=Exception("Gateway timeout"))
+    @patch("modules.messaging.service.print", side_effect=Exception("Gateway timeout"))
     def test_gateway_failure_still_logs_message(self, mock_print, db, create_customer):
         """Even on failure, the Message row must be persisted (spec requirement)."""
         customer = create_customer(phone_number="5551234567")

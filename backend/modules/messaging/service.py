@@ -1,7 +1,7 @@
 import logging
 from sqlalchemy.orm import Session
-from backend.modules.messaging.models import Message
-from backend.modules.settings import service as settings_service
+from modules.messaging.models import Message
+from modules.settings import service as settings_service
 
 logger = logging.getLogger(__name__)
 

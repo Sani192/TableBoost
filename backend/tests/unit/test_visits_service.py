@@ -12,11 +12,11 @@ import pytest
 from decimal import Decimal
 from unittest.mock import patch, MagicMock
 
-from backend.modules.customers.models import Customer
-from backend.modules.visits.models import Visit
-from backend.modules.visits.schemas import VisitCreate
-from backend.modules.visits.service import add_visit
-from backend.modules.messaging.models import Message
+from modules.customers.models import Customer
+from modules.visits.models import Visit
+from modules.visits.schemas import VisitCreate
+from modules.visits.service import add_visit
+from modules.messaging.models import Message
 
 
 # ============================================================================
@@ -131,7 +131,7 @@ class TestVisitCreation:
 class TestSmsDecision:
     """Tests for step 3 of add_visit: SMS send/skip logic."""
 
-    @patch("backend.modules.visits.service.messaging_service")
+    @patch("modules.visits.service.messaging_service")
     def test_send_sms_true_triggers_sms(self, mock_msg_svc, db):
         mock_msg_svc.trigger_review_sms.return_value = "sent"
 
@@ -141,7 +141,7 @@ class TestSmsDecision:
         mock_msg_svc.trigger_review_sms.assert_called_once()
         assert result.sms_status == "sent"
 
-    @patch("backend.modules.visits.service.messaging_service")
+    @patch("modules.visits.service.messaging_service")
     def test_send_sms_false_skips_sms(self, mock_msg_svc, db):
         visit_data = VisitCreate(phone_number="5551234567", send_sms=False)
         result = add_visit(db, visit_data)
@@ -149,8 +149,8 @@ class TestSmsDecision:
         mock_msg_svc.trigger_review_sms.assert_not_called()
         assert result.sms_status == "skipped"
 
-    @patch("backend.modules.visits.service.messaging_service")
-    @patch("backend.modules.visits.service.settings_service")
+    @patch("modules.visits.service.messaging_service")
+    @patch("modules.visits.service.settings_service")
     def test_send_sms_none_falls_back_to_global_true(self, mock_settings, mock_msg_svc, db):
         mock_settings.get_setting.return_value = True
         mock_msg_svc.trigger_review_sms.return_value = "sent"
@@ -162,8 +162,8 @@ class TestSmsDecision:
         mock_msg_svc.trigger_review_sms.assert_called_once()
         assert result.sms_status == "sent"
 
-    @patch("backend.modules.visits.service.messaging_service")
-    @patch("backend.modules.visits.service.settings_service")
+    @patch("modules.visits.service.messaging_service")
+    @patch("modules.visits.service.settings_service")
     def test_send_sms_none_falls_back_to_global_false(self, mock_settings, mock_msg_svc, db):
         mock_settings.get_setting.return_value = False
 
@@ -173,7 +173,7 @@ class TestSmsDecision:
         mock_msg_svc.trigger_review_sms.assert_not_called()
         assert result.sms_status == "skipped"
 
-    @patch("backend.modules.visits.service.messaging_service")
+    @patch("modules.visits.service.messaging_service")
     def test_send_sms_true_passes_correct_customer_args(self, mock_msg_svc, db):
         mock_msg_svc.trigger_review_sms.return_value = "sent"
 
@@ -192,7 +192,7 @@ class TestSmsDecision:
 class TestSmsFailureAtomicity:
     """Verify that SMS failure does NOT roll back the visit or customer."""
 
-    @patch("backend.modules.visits.service.messaging_service")
+    @patch("modules.visits.service.messaging_service")
     def test_sms_failure_returns_failed_status(self, mock_msg_svc, db):
         mock_msg_svc.trigger_review_sms.side_effect = Exception("Gateway down")
 
@@ -201,7 +201,7 @@ class TestSmsFailureAtomicity:
 
         assert result.sms_status == "failed"
 
-    @patch("backend.modules.visits.service.messaging_service")
+    @patch("modules.visits.service.messaging_service")
     def test_sms_failure_still_persists_visit(self, mock_msg_svc, db):
         mock_msg_svc.trigger_review_sms.side_effect = Exception("Gateway down")
 
@@ -211,7 +211,7 @@ class TestSmsFailureAtomicity:
         visit = db.query(Visit).filter(Visit.id == result.id).first()
         assert visit is not None
 
-    @patch("backend.modules.visits.service.messaging_service")
+    @patch("modules.visits.service.messaging_service")
     def test_sms_failure_still_persists_customer(self, mock_msg_svc, db):
         mock_msg_svc.trigger_review_sms.side_effect = Exception("Gateway down")
 

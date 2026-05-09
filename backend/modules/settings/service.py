@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from backend.modules.settings.models import Setting
+from modules.settings.models import Setting
 
 def get_setting(db: Session, key: str, default=None):
     setting = db.query(Setting).filter(Setting.key == key).first()

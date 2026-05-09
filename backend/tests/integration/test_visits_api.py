@@ -10,9 +10,9 @@ import pytest
 from decimal import Decimal
 from unittest.mock import patch
 
-from backend.modules.customers.models import Customer
-from backend.modules.visits.models import Visit
-from backend.modules.messaging.models import Message
+from modules.customers.models import Customer
+from modules.visits.models import Visit
+from modules.messaging.models import Message
 
 
 # ============================================================================
@@ -52,7 +52,7 @@ class TestCreateVisitHappyPath:
 
         assert response.json()["sms_status"] == "skipped"
 
-    @patch("backend.modules.visits.service.messaging_service")
+    @patch("modules.visits.service.messaging_service")
     def test_response_sms_status_sent_when_true(self, mock_msg_svc, client):
         mock_msg_svc.trigger_review_sms.return_value = "sent"
 
@@ -206,7 +206,7 @@ class TestValidationErrors:
 class TestServerErrors:
     """Tests for 500 responses when something goes wrong internally."""
 
-    @patch("backend.modules.visits.router.service.add_visit")
+    @patch("modules.visits.router.service.add_visit")
     def test_unexpected_error_returns_500(self, mock_add_visit, client):
         mock_add_visit.side_effect = Exception("Database crash")
         

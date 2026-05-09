@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.modules.visits.router import router as visits_router
+from modules.visits.router import router as visits_router
 
 app = FastAPI(title="TableBoost API", version="1.0.0")
 

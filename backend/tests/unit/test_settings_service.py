@@ -8,8 +8,8 @@ Covers:
 
 import pytest
 
-from backend.modules.settings.service import get_setting, set_setting
-from backend.modules.settings.models import Setting
+from modules.settings.service import get_setting, set_setting
+from modules.settings.models import Setting
 
 
 # ============================================================================

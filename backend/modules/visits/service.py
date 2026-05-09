@@ -1,10 +1,10 @@
 import logging
 from sqlalchemy.orm import Session
-from backend.modules.customers.models import Customer
-from backend.modules.visits.models import Visit
-from backend.modules.visits.schemas import VisitCreate
-from backend.modules.messaging import service as messaging_service
-from backend.modules.settings import service as settings_service
+from modules.customers.models import Customer
+from modules.visits.models import Visit
+from modules.visits.schemas import VisitCreate
+from modules.messaging import service as messaging_service
+from modules.settings import service as settings_service
 
 logger = logging.getLogger(__name__)
 
