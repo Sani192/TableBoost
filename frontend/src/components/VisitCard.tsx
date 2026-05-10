@@ -31,7 +31,7 @@ const formatTime = (isoDate: string) => {
 
 const formatAmount = (amount?: number) => {
   if (amount === undefined || amount === null) return null;
-  return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  return `$${Number(amount).toFixed(2)}`;
 };
 
 export default function VisitCard({ visit }: VisitCardProps) {

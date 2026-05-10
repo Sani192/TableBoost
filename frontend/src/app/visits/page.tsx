@@ -1,152 +1,355 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Receipt, RefreshCw, Search } from 'lucide-react';
+import { ArrowLeft, Receipt, RefreshCw, Search, SlidersHorizontal, Calendar, DollarSign, X, ChevronUp, ChevronDown } from 'lucide-react';
 import VisitCard from '@/components/VisitCard';
-import { getDashboard, DashboardResponse } from '@/lib/api';
-import { StoredVisit } from '@/lib/visits-store';
+import { getVisits, VisitDetail } from '@/lib/api';
+import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 
 const PAGE_SIZE = 20;
 
+type SortKey = 'name' | 'amount' | 'visited_at';
+type SortOrder = 'asc' | 'desc';
+
 export default function VisitsPage() {
-  const [visits, setVisits] = useState<StoredVisit[]>([]);
+  const [visits, setVisits] = useState<VisitDetail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Filter States
+  const [search, setSearch] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [minAmount, setMinAmount] = useState('');
+  const [maxAmount, setMaxAmount] = useState('');
+  
+  // Sort States
+  const [sortKey, setSortKey] = useState<SortKey>('visited_at');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  
+  const [skip, setSkip] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+
+  const fetchVisits = useCallback(async (isLoadMore = false) => {
+    if (isLoadMore) setIsLoadingMore(true);
+    else setIsLoading(true);
+
+    try {
+      const currentSkip = isLoadMore ? skip + PAGE_SIZE : 0;
+      const data = await getVisits({
+        skip: currentSkip,
+        limit: PAGE_SIZE,
+        search: search.trim() || undefined,
+        start_date: startDate ? `${startDate}T00:00:00` : undefined,
+        end_date: endDate ? `${endDate}T23:59:59` : undefined,
+        min_amount: minAmount ? Number(minAmount) : undefined,
+        max_amount: maxAmount ? Number(maxAmount) : undefined,
+        sort_by: sortKey,
+        sort_order: sortOrder,
+      });
+
+      if (isLoadMore) {
+        setVisits((prev) => [...prev, ...data]);
+        setSkip(currentSkip);
+      } else {
+        setVisits(data);
+        setSkip(0);
+      }
+      
+      setHasMore(data.length === PAGE_SIZE);
+    } catch (err) {
+      console.error('Failed to fetch visits:', err);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [search, startDate, endDate, minAmount, maxAmount, skip, sortKey, sortOrder]);
 
   useEffect(() => {
-    setIsLoading(true);
-    getDashboard()
-      .then((data: DashboardResponse) => {
-        const mapped = data.recent_visits.map((v) => ({
-          id: `${v.phone_number}-${v.visited_at}`,
-          phoneNumber: v.phone_number,
-          name: v.customer_name,
-          amount: v.amount,
-          visitedAt: v.visited_at,
-        }));
-        setVisits(mapped);
-      })
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
+    const timer = setTimeout(() => {
+      fetchVisits();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search, startDate, endDate, minAmount, maxAmount, sortKey, sortOrder]);
 
-  // Simple client-side search
-  const filtered = searchTerm.trim()
-    ? visits.filter(
-        (v) =>
-          v.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          v.phoneNumber.includes(searchTerm)
-      )
-    : visits;
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortOrder('desc');
+    }
+  };
 
-  const displayed = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
+  const clearFilters = () => {
+    setSearch('');
+    setStartDate('');
+    setEndDate('');
+    setMinAmount('');
+    setMaxAmount('');
+    setShowFilters(false);
+  };
 
-  const handleLoadMore = () => {
-    setVisibleCount((prev) => prev + PAGE_SIZE);
+  const activeFiltersCount = [startDate, endDate, minAmount, maxAmount].filter(Boolean).length;
+
+  const SortIcon = ({ k }: { k: SortKey }) => {
+    if (sortKey !== k) return null;
+    return sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />;
   };
 
   return (
     <div className="animate-fade-in space-y-5 pb-6 sm:space-y-6">
       {/* Header */}
-      <header className="flex items-center gap-3">
-        <Link
-          href="/"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 shadow-soft transition-all hover:bg-stone-50 hover:text-stone-700 active:scale-95"
-          aria-label="Back to dashboard"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </Link>
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
-            History
-          </p>
-          <h1 className="text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
-            All Visits
-          </h1>
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 shadow-soft transition-all hover:bg-stone-50 hover:text-stone-700 active:scale-95"
+            aria-label="Back to dashboard"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          </Link>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
+              History
+            </p>
+            <h1 className="text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
+              Visit Records
+            </h1>
+          </div>
         </div>
+        
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`relative flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-bold transition-all active:scale-95 ${
+            showFilters || activeFiltersCount > 0
+              ? 'border-brand-200 bg-brand-50 text-brand-700'
+              : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+          }`}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          <span className="hidden sm:inline">Filters</span>
+          {activeFiltersCount > 0 && (
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[10px] text-white">
+              {activeFiltersCount}
+            </span>
+          )}
+        </button>
       </header>
 
-      {/* Search */}
-      <div className="relative">
-        <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-stone-400">
-          <Search className="h-4 w-4" aria-hidden="true" />
+      {/* Filters Panel */}
+      {showFilters && (
+        <Card className="animate-slide-up space-y-4 bg-stone-50/50">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-stone-900">Advanced Filters</h3>
+            <button onClick={clearFilters} className="text-xs font-bold text-brand-600 hover:underline">
+              Reset All
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">From Date</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full rounded-xl border border-stone-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">To Date</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full rounded-xl border border-stone-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Min Amount</label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={minAmount}
+                  onChange={(e) => setMinAmount(e.target.value)}
+                  className="w-full rounded-xl border border-stone-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Max Amount</label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="number"
+                  placeholder="Any"
+                  value={maxAmount}
+                  onChange={(e) => setMaxAmount(e.target.value)}
+                  className="w-full rounded-xl border border-stone-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                />
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Main Search */}
+      <div className="relative group">
+        <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-stone-400 group-focus-within:text-brand-500 transition-colors">
+          <Search className="h-5 w-5" aria-hidden="true" />
         </div>
         <input
           type="text"
-          placeholder="Search by name or phone..."
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setVisibleCount(PAGE_SIZE);
-          }}
-          className="block w-full rounded-2xl border border-stone-200 bg-white py-3 pl-10 pr-4 text-sm font-medium text-stone-900 outline-none transition-all placeholder:text-stone-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+          placeholder="Search by name or phone number..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="block w-full rounded-2xl border border-stone-200 bg-white py-4 pl-12 pr-4 text-base font-semibold text-stone-900 shadow-soft outline-none transition-all placeholder:text-stone-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10"
         />
+        {search && (
+          <button 
+            onClick={() => setSearch('')}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {/* Visit List */}
-      <div className="rounded-3xl border border-stone-200/60 bg-white shadow-card">
+      <div className="rounded-3xl border border-stone-200/60 bg-white shadow-card overflow-hidden">
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <RefreshCw className="h-5 w-5 animate-spin text-stone-400" aria-hidden="true" />
-            <span className="ml-2 text-sm font-medium text-stone-500">Loading visits...</span>
+          <div className="flex flex-col items-center justify-center py-20">
+            <RefreshCw className="h-8 w-8 animate-spin text-brand-500" aria-hidden="true" />
+            <p className="mt-4 text-sm font-bold text-stone-500">Syncing with server...</p>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="px-5 py-12 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-stone-400">
-              <Receipt className="h-6 w-6" aria-hidden="true" />
+        ) : visits.length === 0 ? (
+          <div className="px-5 py-16 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-stone-100 text-stone-300">
+              <Receipt className="h-8 w-8" aria-hidden="true" />
             </div>
-            <p className="mt-3 text-sm font-semibold text-stone-700">
-              {searchTerm ? 'No matching visits' : 'No visits yet'}
+            <p className="mt-4 text-base font-bold text-stone-700">No visits found</p>
+            <p className="mt-1 text-sm text-stone-500 max-w-xs mx-auto">
+              Try adjusting your filters or search criteria.
             </p>
-            <p className="mt-1 text-xs text-stone-500">
-              {searchTerm
-                ? 'Try a different search term.'
-                : 'Visits will appear here once you start adding them.'}
-            </p>
+            <Button variant="secondary" className="mt-6" onClick={clearFilters}>
+              Clear All Filters
+            </Button>
           </div>
         ) : (
           <>
             {/* Table Header — desktop only */}
-            <div className="hidden border-b border-stone-100 px-5 py-3 sm:flex sm:items-center sm:gap-3">
+            <div className="hidden border-b border-stone-100 bg-stone-50/50 px-6 py-3 sm:flex sm:items-center sm:gap-3">
               <span className="w-10" />
-              <span className="min-w-0 flex-1 text-xs font-semibold uppercase tracking-wider text-stone-400">
-                Customer
-              </span>
-              <span className="w-28 text-right text-xs font-semibold uppercase tracking-wider text-stone-400">
-                Amount / Time
-              </span>
+              <button 
+                onClick={() => toggleSort('name')}
+                className="min-w-0 flex-1 flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-stone-500 hover:text-brand-600 transition-colors"
+              >
+                Customer Details
+                <SortIcon k="name" />
+              </button>
+              <button 
+                onClick={() => toggleSort('amount')}
+                className="w-32 flex items-center justify-end gap-1 text-xs font-bold uppercase tracking-wider text-stone-500 hover:text-brand-600 transition-colors"
+              >
+                Amount
+                <SortIcon k="amount" />
+              </button>
+              <button 
+                onClick={() => toggleSort('visited_at')}
+                className="w-40 flex items-center justify-end gap-1 text-xs font-bold uppercase tracking-wider text-stone-500 hover:text-brand-600 transition-colors"
+              >
+                Visit Time
+                <SortIcon k="visited_at" />
+              </button>
             </div>
 
             <ul className="divide-y divide-stone-100">
-              {displayed.map((visit) => (
-                <li key={visit.id}>
-                  <VisitCard visit={visit} />
+              {visits.map((visit) => (
+                <li key={visit.id} className="hover:bg-stone-50/50 transition-colors">
+                  <div className="flex items-center gap-3 px-5 py-4 sm:px-6">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-sm font-bold text-brand-700">
+                      {(visit.customer_name || visit.phone_number).slice(0, 1).toUpperCase()}
+                    </div>
+                    
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-stone-900">
+                        {visit.customer_name || 'Walk-in Customer'}
+                      </p>
+                      <p className="truncate text-xs font-medium text-stone-500">
+                        {visit.phone_number}
+                      </p>
+                    </div>
+
+                    <div className="shrink-0 text-right w-24 sm:w-32">
+                      <p className="text-sm font-bold text-stone-900">
+                        {visit.amount ? `$${Number(visit.amount).toFixed(2)}` : '—'}
+                      </p>
+                    </div>
+
+                    <div className="hidden sm:block shrink-0 text-right w-40">
+                      <p className="text-xs font-bold text-stone-500">
+                        {new Date(visit.visited_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                      <p className="text-[10px] font-medium text-stone-400">
+                        {new Date(visit.visited_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    
+                    {/* Mobile time only */}
+                    <div className="sm:hidden shrink-0 text-right">
+                       <p className="text-[10px] font-bold text-stone-400 uppercase">
+                        {new Date(visit.visited_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
                 </li>
               ))}
             </ul>
 
             {/* Load More */}
             {hasMore && (
-              <div className="border-t border-stone-100 px-4 py-3 sm:px-5">
-                <button
-                  onClick={handleLoadMore}
-                  className="w-full rounded-2xl py-2.5 text-sm font-semibold text-brand-600 transition-colors hover:bg-brand-50 hover:text-brand-700"
+              <div className="border-t border-stone-100 p-4">
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  onClick={() => fetchVisits(true)}
+                  disabled={isLoadingMore}
+                  className="bg-stone-50 border-none shadow-none hover:bg-stone-100"
                 >
-                  Show more ({filtered.length - visibleCount} remaining)
-                </button>
+                  {isLoadingMore ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Loading more...
+                    </>
+                  ) : (
+                    'Load More Records'
+                  )}
+                </Button>
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* Stats footer */}
-      {!isLoading && filtered.length > 0 && (
-        <p className="text-center text-xs font-medium text-stone-400">
-          Showing {Math.min(visibleCount, filtered.length)} of {filtered.length} visits
+      {/* Results Count */}
+      {!isLoading && visits.length > 0 && (
+        <p className="text-center text-xs font-bold text-stone-400">
+          Showing {visits.length} records • Sorted by {sortKey.replace('_', ' ')}
         </p>
       )}
     </div>

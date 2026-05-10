@@ -20,6 +20,7 @@ export default function Input({
     <div className="space-y-1.5">
       <label htmlFor={inputId} className="block text-sm font-semibold text-stone-700">
         {label}
+        {props.required && <span className="ml-1 text-brand-600" aria-hidden="true">*</span>}
       </label>
       <div className="relative">
         {leading && (

@@ -22,6 +22,8 @@ export default function AddVisitPage() {
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   const isPhoneValid = phoneNumber.length === 10;
+  const isAmountValid = amount.trim() !== '' && !isNaN(Number(amount)) && Number(amount) > 0;
+  const isFormValid = isPhoneValid && isAmountValid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,12 +35,18 @@ export default function AddVisitPage() {
       return;
     }
 
+    if (!isAmountValid) {
+      setFeedback({ type: 'error', text: 'Please enter an amount greater than $0.' });
+      return;
+    }
+
     setIsSubmitting(true);
     setFeedback(null);
 
     try {
       const trimmedName = name.trim();
-      const numericAmount = amount ? Number(amount) : undefined;
+      const numericAmount = Number(amount);
+      
       await addVisit({
         phone_number: phoneNumber,
         name: trimmedName || undefined,
@@ -50,6 +58,8 @@ export default function AddVisitPage() {
         type: 'success',
         text: sendSms ? 'Visit saved — Review SMS queued!' : 'Visit saved successfully!',
       });
+      
+      // Reset form
       setPhoneNumber('');
       setName('');
       setAmount('');
@@ -113,11 +123,12 @@ export default function AddVisitPage() {
               onChange={(e) => setAmount(e.target.value)}
               type="number"
               inputMode="decimal"
-              min="0"
+              min="0.01"
               step="0.01"
               placeholder="0.00"
-              leading="₹"
-              helperText="Optional bill amount."
+              leading="$"
+              required
+              helperText="Mandatory bill amount (must be > 0)."
             />
           </div>
 
@@ -163,7 +174,7 @@ export default function AddVisitPage() {
           <Button
             type="submit"
             fullWidth
-            disabled={isSubmitting || !isPhoneValid}
+            disabled={isSubmitting || !isFormValid}
             className="min-h-[52px] sm:w-auto sm:min-w-[180px]"
           >
             {isSubmitting ? (

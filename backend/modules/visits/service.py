@@ -1,4 +1,6 @@
 import logging
+from datetime import datetime
+from typing import Optional
 from sqlalchemy.orm import Session
 from modules.customers.models import Customer
 from modules.visits.models import Visit
@@ -53,3 +55,69 @@ def add_visit(db: Session, visit_data: VisitCreate):
     
     return new_visit
 
+def get_visits(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    search: Optional[str] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    min_amount: Optional[float] = None,
+    max_amount: Optional[float] = None,
+    sort_by: str = "visited_at",
+    sort_order: str = "desc"
+):
+    query = db.query(Visit, Customer).join(Customer)
+
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(
+            (Customer.name.ilike(search_filter)) |
+            (Customer.phone_number.like(search_filter))
+        )
+
+    if start_date:
+        query = query.filter(Visit.visited_at >= start_date)
+    if end_date:
+        # Make end_date inclusive of the full day if no time is provided
+        # or just ensure it covers up to the end of that specific datetime
+        if end_date.hour == 0 and end_date.minute == 0:
+            from datetime import timedelta
+            end_date = end_date + timedelta(days=1) - timedelta(seconds=1)
+        query = query.filter(Visit.visited_at <= end_date)
+
+    if min_amount is not None:
+        query = query.filter(Visit.amount >= min_amount)
+    if max_amount is not None:
+        query = query.filter(Visit.amount <= max_amount)
+
+    # Sorting
+    model_attr = None
+    if sort_by == "amount":
+        model_attr = Visit.amount
+    elif sort_by == "name":
+        model_attr = Customer.name
+    else:
+        model_attr = Visit.visited_at
+
+    if sort_order == "asc":
+        query = query.order_by(model_attr.asc())
+    else:
+        query = query.order_by(model_attr.desc())
+
+    results = query.offset(skip).limit(limit).all()
+    
+    # Map results to include customer info
+    visits = []
+    for visit, customer in results:
+        visits.append({
+            "id": visit.id,
+            "customer_id": visit.customer_id,
+            "customer_name": customer.name,
+            "phone_number": customer.phone_number,
+            "amount": visit.amount,
+            "visited_at": visit.visited_at,
+            "sms_status": getattr(visit, 'sms_status', None)
+        })
+        
+    return visits

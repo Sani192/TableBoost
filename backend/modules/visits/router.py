@@ -1,13 +1,41 @@
 import logging
+from typing import List, Optional
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from core.database import get_db
-from modules.visits.schemas import VisitCreate, VisitResponse
+from modules.visits.schemas import VisitCreate, VisitResponse, VisitDetail
 from modules.visits import service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/visits", tags=["Visits"])
+
+@router.get("/", response_model=List[VisitDetail])
+def list_visits(
+    skip: int = 0,
+    limit: int = 100,
+    search: Optional[str] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    min_amount: Optional[float] = None,
+    max_amount: Optional[float] = None,
+    sort_by: str = "visited_at",
+    sort_order: str = "desc",
+    db: Session = Depends(get_db)
+):
+    return service.get_visits(
+        db, 
+        skip=skip, 
+        limit=limit, 
+        search=search, 
+        start_date=start_date, 
+        end_date=end_date, 
+        min_amount=min_amount, 
+        max_amount=max_amount,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
 
 @router.post("/", response_model=VisitResponse)
 def create_visit(visit_data: VisitCreate, db: Session = Depends(get_db)):
