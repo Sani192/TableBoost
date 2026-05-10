@@ -17,25 +17,25 @@ export default function Input({
   const inputId = id ?? label.toLowerCase().replace(/\s+/g, '-');
 
   return (
-    <div className="space-y-2">
-      <label htmlFor={inputId} className="block text-sm font-bold text-slate-800">
+    <div className="space-y-1.5">
+      <label htmlFor={inputId} className="block text-sm font-semibold text-stone-700">
         {label}
       </label>
       <div className="relative">
         {leading && (
-          <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-lg font-bold text-slate-400">
+          <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-base font-semibold text-stone-400">
             {leading}
           </div>
         )}
         <input
           id={inputId}
-          className={`block min-h-[58px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-lg font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-100 ${
+          className={`block min-h-[56px] w-full rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-lg font-semibold text-stone-900 outline-none transition-all duration-150 placeholder:text-stone-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 ${
             leading ? 'pl-9' : ''
           } ${className}`}
           {...props}
         />
       </div>
-      {helperText && <p className="text-xs font-medium text-slate-500">{helperText}</p>}
+      {helperText && <p className="text-xs font-medium text-stone-500">{helperText}</p>}
     </div>
   );
 }

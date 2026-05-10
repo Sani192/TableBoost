@@ -17,7 +17,7 @@ describe('MobileNumberInput Component', () => {
 
   it('shows the correct placeholder', () => {
     render(<MobileNumberInput value="" onChange={mockOnChange} />);
-    expect(screen.getByPlaceholderText(/enter 10-digit number/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/\(555\) 123-4567/i)).toBeInTheDocument();
   });
 
   it('calls onChange with only numeric characters when typing', () => {
@@ -32,8 +32,8 @@ describe('MobileNumberInput Component', () => {
 
   it('limits input to 10 characters', () => {
     render(<MobileNumberInput value="1234567890" onChange={mockOnChange} />);
-    const input = screen.getByLabelText(/phone_number/i) as HTMLInputElement;
-    expect(input.maxLength).toBe(10);
+    const input = screen.getByLabelText(/phone number/i) as HTMLInputElement;
+    expect(input.maxLength).toBe(14); // Because of formatting `(123) 456-7890` it has max length 14
   });
 
   it('applies autoFocus when the prop is true', () => {

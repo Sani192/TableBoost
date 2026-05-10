@@ -1,12 +1,17 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Dashboard from '../../src/app/page';
 import { useRouter } from 'next/navigation';
+import { getDashboard } from '../../src/lib/api';
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
+}));
+
+jest.mock('../../src/lib/api', () => ({
+  getDashboard: jest.fn(),
 }));
 
 // Mock Link since it's used in the page
@@ -17,20 +22,30 @@ jest.mock('next/link', () => {
 });
 
 describe('Dashboard Page', () => {
-  it('renders the dashboard heading', () => {
-    render(<Dashboard />);
-    expect(screen.getByRole('heading', { name: /dashboard/i })).toBeInTheDocument();
+  beforeEach(() => {
+    (getDashboard as jest.Mock).mockResolvedValue({
+      total_customers: 10,
+      total_visits: 15,
+      repeat_customers: 5,
+      recent_visits: []
+    });
   });
 
-  it('contains a button to add a new visit that links to the correct page', () => {
+  it('renders the dashboard heading', async () => {
     render(<Dashboard />);
-    const link = screen.getByRole('link', { name: /\+ add new visit/i });
+    expect(await screen.findByRole('heading', { name: /Quick billing desk/i })).toBeInTheDocument();
+  });
+
+  it('contains a link to add a new visit that links to the correct page', async () => {
+    render(<Dashboard />);
+    const link = await screen.findByRole('link', { name: /Add Visit/i });
     expect(link).toHaveAttribute('href', '/add-visit');
   });
 
-  it('renders stats placeholders', () => {
+  it('renders stats from API', async () => {
     render(<Dashboard />);
-    // Checking if the container for stats is present
-    expect(screen.getByText(/dashboard/i).parentElement).toBeInTheDocument();
+    expect(await screen.findByText('10')).toBeInTheDocument();
+    expect(screen.getByText('15')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
   });
 });

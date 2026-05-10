@@ -10,11 +10,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-brand-600 text-white shadow-lift hover:bg-brand-700 active:scale-[0.98] disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none',
+    'bg-brand-600 text-white shadow-lift hover:bg-brand-700 hover:shadow-lg active:scale-[0.97] disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none disabled:cursor-not-allowed',
   secondary:
-    'border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 active:scale-[0.98] disabled:bg-slate-100 disabled:text-slate-400',
+    'border border-stone-200 bg-white text-stone-700 shadow-soft hover:bg-stone-50 active:scale-[0.97] disabled:bg-stone-100 disabled:text-stone-400 disabled:cursor-not-allowed',
   ghost:
-    'bg-transparent text-slate-600 hover:bg-slate-100 active:bg-slate-200 disabled:text-slate-400',
+    'bg-transparent text-stone-600 hover:bg-stone-100 active:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed',
 };
 
 export default function Button({
@@ -28,7 +28,7 @@ export default function Button({
   return (
     <button
       type={type}
-      className={`inline-flex min-h-[52px] items-center justify-center rounded-2xl px-5 py-3 text-base font-extrabold tracking-tight transition-all focus:outline-none focus:ring-4 focus:ring-brand-200 disabled:cursor-not-allowed ${
+      className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl px-5 py-3 text-[0.938rem] font-bold tracking-tight transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:ring-offset-2 ${
         fullWidth ? 'w-full' : ''
       } ${variantClasses[variant]} ${className}`}
       {...props}

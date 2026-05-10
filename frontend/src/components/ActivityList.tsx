@@ -1,59 +1,71 @@
-import { Clock3, Receipt } from 'lucide-react';
-import Card from './ui/Card';
+import Link from 'next/link';
+import { Clock3, ChevronRight, Receipt } from 'lucide-react';
+import VisitCard from './VisitCard';
 import { StoredVisit } from '@/lib/visits-store';
 
 interface ActivityListProps {
   visits: StoredVisit[];
+  /** Maximum items to display before showing "View All". Defaults to 10. */
+  limit?: number;
 }
 
-const displayName = (visit: StoredVisit) => visit.name?.trim() || visit.phoneNumber;
+export default function ActivityList({ visits, limit = 10 }: ActivityListProps) {
+  const displayed = visits.slice(0, limit);
+  const hasMore = visits.length > limit;
 
-const formatTime = (isoDate: string) => {
-  const date = new Date(isoDate);
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-
-  return `${isToday ? 'Today' : date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${date.toLocaleTimeString([], {
-    hour: 'numeric',
-    minute: '2-digit',
-  })}`;
-};
-
-export default function ActivityList({ visits }: ActivityListProps) {
   return (
-    <Card className="p-0">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+    <div className="rounded-3xl border border-stone-200/60 bg-white shadow-card">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-stone-100 px-4 py-3.5 sm:px-5 sm:py-4">
         <div>
-          <h2 className="text-lg font-black tracking-tight text-slate-950">Recent activity</h2>
-          <p className="text-sm font-medium text-slate-500">Last 5 saved visits</p>
+          <h2 className="text-base font-bold text-stone-900">Recent Activity</h2>
+          <p className="text-xs font-medium text-stone-500">
+            {visits.length === 0
+              ? 'No visits recorded yet'
+              : `${visits.length} total visit${visits.length !== 1 ? 's' : ''}`}
+          </p>
         </div>
-        <Clock3 className="h-5 w-5 text-brand-500" aria-hidden="true" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+          <Clock3 className="h-4 w-4" aria-hidden="true" />
+        </div>
       </div>
 
+      {/* Empty state */}
       {visits.length === 0 ? (
-        <div className="px-5 py-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+        <div className="px-5 py-10 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-stone-400">
             <Receipt className="h-6 w-6" aria-hidden="true" />
           </div>
-          <p className="mt-3 text-base font-extrabold text-slate-900">No visits yet</p>
-          <p className="mt-1 text-sm text-slate-500">Your next saved visit will appear here instantly.</p>
+          <p className="mt-3 text-sm font-semibold text-stone-700">No visits yet</p>
+          <p className="mt-1 text-xs text-stone-500">
+            Your next saved visit will appear here instantly.
+          </p>
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100">
-          {visits.slice(0, 5).map((visit) => (
-            <li key={visit.id} className="flex items-center gap-3 px-5 py-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-sm font-black text-slate-700">
-                {displayName(visit).slice(0, 1).toUpperCase()}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-extrabold text-slate-950">{displayName(visit)}</p>
-                <p className="truncate text-sm font-medium text-slate-500">{visit.name ? visit.phoneNumber : 'Walk-in customer'}</p>
-              </div>
-              <p className="shrink-0 text-right text-xs font-bold text-slate-400">{formatTime(visit.visitedAt)}</p>
-            </li>
-          ))}
-        </ul>
+        <>
+          {/* Visit list */}
+          <ul className="divide-y divide-stone-100">
+            {displayed.map((visit) => (
+              <li key={visit.id}>
+                <VisitCard visit={visit} />
+              </li>
+            ))}
+          </ul>
+
+          {/* View All link */}
+          {hasMore && (
+            <div className="border-t border-stone-100 px-4 py-3 sm:px-5">
+              <Link
+                href="/visits"
+                className="group flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-sm font-semibold text-brand-600 transition-colors hover:bg-brand-50 hover:text-brand-700"
+              >
+                View all {visits.length} visits
+                <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              </Link>
+            </div>
+          )}
+        </>
       )}
-    </Card>
+    </div>
   );
 }
