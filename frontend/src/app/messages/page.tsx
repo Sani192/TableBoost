@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { getMessageLogs, MessageLogResponse } from '@/lib/api';
+import { Star, Megaphone } from 'lucide-react';
 
 export default function MessagesPage() {
   const [logs, setLogs] = useState<MessageLogResponse[]>([]);
@@ -36,7 +37,18 @@ export default function MessagesPage() {
                 </span>
               </div>
               <p className="text-sm text-stone-700 bg-stone-50 p-2 rounded">{log.message_text}</p>
-              <p className="text-xs text-stone-400 mt-2 capitalize">{log.type} Message</p>
+              <div className="mt-3 flex items-center">
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold border ${
+                  log.type === 'review' 
+                    ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                    : log.type === 'campaign' 
+                      ? 'bg-purple-50 text-purple-700 border-purple-200'
+                      : 'bg-stone-50 text-stone-700 border-stone-200'
+                }`}>
+                  {log.type === 'review' ? <Star className="w-3 h-3" /> : log.type === 'campaign' ? <Megaphone className="w-3 h-3" /> : null}
+                  {log.type.toUpperCase()}
+                </span>
+              </div>
             </div>
           ))}
         </div>

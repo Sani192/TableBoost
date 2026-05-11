@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, MessageSquare, Send } from 'lucide-react';
+import { Home, Users, MessageSquare, Send, Settings } from 'lucide-react';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -11,6 +11,7 @@ export default function Navigation() {
     { name: 'Customers', href: '/customers', icon: Users },
     { name: 'Campaigns', href: '/campaigns', icon: Send },
     { name: 'Logs', href: '/messages', icon: MessageSquare },
+    { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
   return (

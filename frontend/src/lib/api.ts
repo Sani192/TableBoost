@@ -119,3 +119,23 @@ export const createCampaign = async (payload: CampaignCreateRequest): Promise<{ 
   const response = await api.post('/api/messages/campaign', payload);
   return response.data;
 };
+
+export interface SettingsResponse {
+  review_message_template: string;
+  auto_send_sms: boolean;
+}
+
+export interface SettingsUpdate {
+  review_message_template?: string;
+  auto_send_sms?: boolean;
+}
+
+export const getSettings = async (): Promise<SettingsResponse> => {
+  const response = await api.get<SettingsResponse>('/api/settings/');
+  return response.data;
+};
+
+export const updateSettings = async (payload: SettingsUpdate): Promise<SettingsResponse> => {
+  const response = await api.post<SettingsResponse>('/api/settings/', payload);
+  return response.data;
+};
