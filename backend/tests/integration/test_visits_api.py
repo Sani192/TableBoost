@@ -24,7 +24,7 @@ class TestCreateVisitHappyPath:
 
     def test_valid_payload_returns_200(self, client):
         response = client.post("/api/visits/", json={
-            "phone_number": "5551234567",
+            "phone_number": "5551234567", "amount": 10.00,
             "name": "Alice",
             "amount": 45.99,
             "send_sms": False,
@@ -34,7 +34,7 @@ class TestCreateVisitHappyPath:
 
     def test_response_contains_required_fields(self, client):
         response = client.post("/api/visits/", json={
-            "phone_number": "5551234567",
+            "phone_number": "5551234567", "amount": 10.00,
             "send_sms": False,
         })
 
@@ -46,7 +46,7 @@ class TestCreateVisitHappyPath:
 
     def test_response_sms_status_skipped_when_false(self, client):
         response = client.post("/api/visits/", json={
-            "phone_number": "5551234567",
+            "phone_number": "5551234567", "amount": 10.00,
             "send_sms": False,
         })
 
@@ -57,7 +57,7 @@ class TestCreateVisitHappyPath:
         mock_msg_svc.trigger_review_sms.return_value = "sent"
 
         response = client.post("/api/visits/", json={
-            "phone_number": "5551234567",
+            "phone_number": "5551234567", "amount": 10.00,
             "send_sms": True,
         })
 
@@ -65,7 +65,7 @@ class TestCreateVisitHappyPath:
 
     def test_amount_preserved_in_response(self, client):
         response = client.post("/api/visits/", json={
-            "phone_number": "5551234567",
+            "phone_number": "5551234567", "amount": 10.00,
             "amount": 45.99,
             "send_sms": False,
         })
@@ -86,7 +86,7 @@ class TestCreateVisitHappyPath:
 
     def test_creates_customer_and_visit_in_db(self, client, db):
         client.post("/api/visits/", json={
-            "phone_number": "5551234567",
+            "phone_number": "5551234567", "amount": 10.00,
             "name": "Alice",
             "send_sms": False,
         })
@@ -97,7 +97,7 @@ class TestCreateVisitHappyPath:
     def test_phone_with_formatting_accepted_and_normalised(self, client):
         """Dashes are stripped by the schema validator."""
         response = client.post("/api/visits/", json={
-            "phone_number": "555-123-4567",
+            "phone_number": "555-123-4567", "amount": 10.00,
             "send_sms": False,
         })
 
@@ -113,26 +113,26 @@ class TestRepeatVisit:
 
     def test_repeat_visit_returns_same_customer_id(self, client):
         r1 = client.post("/api/visits/", json={
-            "phone_number": "5551234567",
+            "phone_number": "5551234567", "amount": 10.00,
             "send_sms": False,
         })
         r2 = client.post("/api/visits/", json={
-            "phone_number": "5551234567",
+            "phone_number": "5551234567", "amount": 10.00,
             "send_sms": False,
         })
 
         assert r1.json()["customer_id"] == r2.json()["customer_id"]
 
     def test_repeat_visit_creates_second_visit_row(self, client, db):
-        client.post("/api/visits/", json={"phone_number": "5551234567", "send_sms": False})
-        client.post("/api/visits/", json={"phone_number": "5551234567", "send_sms": False})
+        client.post("/api/visits/", json={"phone_number": "5551234567", "amount": 10.00, "send_sms": False})
+        client.post("/api/visits/", json={"phone_number": "5551234567", "amount": 10.00, "send_sms": False})
 
         assert db.query(Customer).count() == 1
         assert db.query(Visit).count() == 2
 
     def test_repeat_visit_different_visit_ids(self, client):
-        r1 = client.post("/api/visits/", json={"phone_number": "5551234567", "send_sms": False})
-        r2 = client.post("/api/visits/", json={"phone_number": "5551234567", "send_sms": False})
+        r1 = client.post("/api/visits/", json={"phone_number": "5551234567", "amount": 10.00, "send_sms": False})
+        r2 = client.post("/api/visits/", json={"phone_number": "5551234567", "amount": 10.00, "send_sms": False})
 
         assert r1.json()["id"] != r2.json()["id"]
 
@@ -151,28 +151,28 @@ class TestValidationErrors:
 
     def test_phone_9_digits_returns_422(self, client):
         response = client.post("/api/visits/", json={
-            "phone_number": "555123456",
+            "phone_number": "555123456", "amount": 10.00,
         })
 
         assert response.status_code == 422
 
     def test_phone_11_digits_returns_422(self, client):
         response = client.post("/api/visits/", json={
-            "phone_number": "15551234567",
+            "phone_number": "15551234567", "amount": 10.00,
         })
 
         assert response.status_code == 422
 
     def test_phone_letters_only_returns_422(self, client):
         response = client.post("/api/visits/", json={
-            "phone_number": "abcdefghij",
+            "phone_number": "abcdefghij", "amount": 10.00,
         })
 
         assert response.status_code == 422
 
     def test_phone_empty_string_returns_422(self, client):
         response = client.post("/api/visits/", json={
-            "phone_number": "",
+            "phone_number": "", "amount": 10.00,
         })
 
         assert response.status_code == 422
@@ -188,7 +188,7 @@ class TestValidationErrors:
 
     def test_422_response_contains_detail(self, client):
         response = client.post("/api/visits/", json={
-            "phone_number": "123",
+            "phone_number": "123", "amount": 10.00,
         })
 
         data = response.json()
@@ -211,7 +211,7 @@ class TestServerErrors:
         mock_add_visit.side_effect = Exception("Database crash")
         
         response = client.post("/api/visits/", json={
-            "phone_number": "5551234567",
+            "phone_number": "5551234567", "amount": 10.00,
         })
 
         assert response.status_code == 500

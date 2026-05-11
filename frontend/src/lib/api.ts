@@ -68,3 +68,54 @@ export const getVisits = async (params: GetVisitsParams = {}): Promise<VisitDeta
   const response = await api.get<VisitDetail[]>('/api/visits/', { params });
   return response.data;
 };
+
+export interface CustomerListResponse {
+  id: number;
+  phone_number: string;
+  name: string | null;
+  created_at: string;
+  total_visits: number;
+  last_visit: string | null;
+  total_spent: number | null;
+}
+
+export interface CustomerDetailResponse extends CustomerListResponse {
+  visits: { id: number; amount: number | null; visited_at: string }[];
+}
+
+export interface MessageLogResponse {
+  id: number;
+  customer_id: number;
+  customer_name: string | null;
+  phone_number: string;
+  message_text: string;
+  type: string;
+  status: string;
+  sent_at: string;
+}
+
+export interface CampaignCreateRequest {
+  message: string;
+  audience_type: string;
+  inactive_days?: number;
+}
+
+export const getCustomers = async (params: { skip?: number; limit?: number; search?: string } = {}): Promise<CustomerListResponse[]> => {
+  const response = await api.get<CustomerListResponse[]>('/api/customers/', { params });
+  return response.data;
+};
+
+export const getCustomerDetail = async (id: number): Promise<CustomerDetailResponse> => {
+  const response = await api.get<CustomerDetailResponse>(`/api/customers/${id}`);
+  return response.data;
+};
+
+export const getMessageLogs = async (params: { skip?: number; limit?: number } = {}): Promise<MessageLogResponse[]> => {
+  const response = await api.get<MessageLogResponse[]>('/api/messages/', { params });
+  return response.data;
+};
+
+export const createCampaign = async (payload: CampaignCreateRequest): Promise<{ sent_count: number; failed_count: number; total: number }> => {
+  const response = await api.post('/api/messages/campaign', payload);
+  return response.data;
+};

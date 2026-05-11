@@ -1,6 +1,10 @@
 import logging
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from modules.messaging.models import Message
+from modules.customers.models import Customer
+from modules.visits.models import Visit
 from modules.settings import service as settings_service
 
 logger = logging.getLogger(__name__)
@@ -32,3 +36,54 @@ def trigger_review_sms(db: Session, customer_id: int, customer_name: str = None)
 
     return status
 
+def get_messages(db: Session, skip: int = 0, limit: int = 100):
+    query = db.query(Message, Customer).join(Customer).order_by(Message.sent_at.desc()).offset(skip).limit(limit).all()
+    results = []
+    for msg, cust in query:
+        results.append({
+            "id": msg.id,
+            "customer_id": msg.customer_id,
+            "customer_name": cust.name,
+            "phone_number": cust.phone_number,
+            "message_text": msg.message_text,
+            "type": msg.type,
+            "status": msg.status,
+            "sent_at": msg.sent_at
+        })
+    return results
+
+def execute_campaign(db: Session, message_template: str, audience_type: str, inactive_days: int = 30):
+    if audience_type == "all":
+        customers = db.query(Customer).all()
+    elif audience_type == "inactive":
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=inactive_days)
+        subquery = db.query(Visit.customer_id).filter(Visit.visited_at >= cutoff_date).subquery()
+        customers = db.query(Customer).outerjoin(subquery, Customer.id == subquery.c.customer_id).filter(subquery.c.customer_id == None).all()
+    else:
+        raise ValueError(f"Invalid audience_type: {audience_type}")
+
+    sent_count = 0
+    failed_count = 0
+    
+    for customer in customers:
+        message_content = message_template.replace("{name}", customer.name or "there")
+        try:
+            print(f"CAMPAIGN SMS SENT to customer {customer.id}: {message_content}")
+            status = "sent"
+            sent_count += 1
+        except Exception as e:
+            logger.error(f"Campaign SMS failed for customer {customer.id}: {e}", exc_info=True)
+            status = "failed"
+            failed_count += 1
+            
+        new_message = Message(
+            customer_id=customer.id,
+            message_text=message_content,
+            type="campaign",
+            status=status,
+        )
+        db.add(new_message)
+        
+    db.commit()
+    
+    return {"sent_count": sent_count, "failed_count": failed_count, "total": sent_count + failed_count}

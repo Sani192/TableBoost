@@ -39,7 +39,7 @@ def test_get_dashboard_empty():
 def test_get_dashboard_with_data():
     # Add a visit
     client.post("/api/visits/", json={
-        "phone_number": "1234567890",
+        "phone_number": "1234567890", "amount": 10.00,
         "name": "John Doe",
         "amount": 50.0,
         "send_sms": False
@@ -47,14 +47,14 @@ def test_get_dashboard_with_data():
     
     # Add second visit for same user (repeat)
     client.post("/api/visits/", json={
-        "phone_number": "1234567890",
+        "phone_number": "1234567890", "amount": 10.00,
         "amount": 25.0,
         "send_sms": False
     })
     
     # Add another user
     client.post("/api/visits/", json={
-        "phone_number": "0987654321",
+        "phone_number": "0987654321", "amount": 10.00,
         "name": "Jane Doe",
         "send_sms": False
     })

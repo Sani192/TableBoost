@@ -7,7 +7,7 @@ from decimal import Decimal
 class VisitCreate(BaseModel):
     phone_number: str
     name: Optional[str] = None
-    amount: Decimal
+    amount: Optional[Decimal] = None
     send_sms: Optional[bool] = None  # Per-visit override; None = use global setting
 
     @field_validator('phone_number')
@@ -20,9 +20,9 @@ class VisitCreate(BaseModel):
 
     @field_validator('amount')
     @classmethod
-    def validate_amount(cls, v: Decimal) -> Decimal:
-        if v <= 0:
-            raise ValueError('Amount must be greater than zero')
+    def validate_amount(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        if v is not None and v < 0:
+            raise ValueError('Amount cannot be negative')
         return v
 
 class VisitResponse(BaseModel):
