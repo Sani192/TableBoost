@@ -83,10 +83,13 @@ def get_messages(
         })
     return formatted_results
 
-def execute_campaign(db: Session, message_template: str, audience_type: str, inactive_days: int = 30):
+def execute_campaign(db: Session, message_template: str, audience_type: str, inactive_days: int = None):
     if audience_type == "all":
         customers = db.query(Customer).all()
     elif audience_type == "inactive":
+        if inactive_days is None:
+            inactive_days = int(settings_service.get_setting(db, "campaign_inactive_days", default=30))
+        
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=inactive_days)
         subquery = db.query(Visit.customer_id).filter(Visit.visited_at >= cutoff_date).subquery()
         customers = db.query(Customer).outerjoin(subquery, Customer.id == subquery.c.customer_id).filter(subquery.c.customer_id == None).all()

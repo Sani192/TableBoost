@@ -18,4 +18,4 @@ class MessageLogResponse(BaseModel):
 class CampaignCreateRequest(BaseModel):
     message: str = Field(..., min_length=1)
     audience_type: str = Field(..., pattern='^(all|inactive)$')
-    inactive_days: Optional[int] = 30
+    inactive_days: Optional[int] = None

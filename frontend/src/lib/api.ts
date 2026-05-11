@@ -126,11 +126,13 @@ export const createCampaign = async (payload: CampaignCreateRequest): Promise<{ 
 export interface SettingsResponse {
   review_message_template: string;
   auto_send_sms: boolean;
+  campaign_inactive_days: number;
 }
 
 export interface SettingsUpdate {
   review_message_template?: string;
   auto_send_sms?: boolean;
+  campaign_inactive_days?: number;
 }
 
 export const getSettings = async (): Promise<SettingsResponse> => {

@@ -11,9 +11,11 @@ router = APIRouter(prefix="/api/settings", tags=["Settings"])
 def get_settings(db: Session = Depends(get_db)):
     template = service.get_setting(db, "review_message_template", default=DEFAULT_TEMPLATE)
     auto_send = service.get_setting(db, "auto_send_sms", default=True)
+    inactive_days = int(service.get_setting(db, "campaign_inactive_days", default=30))
     return SettingsResponse(
         review_message_template=template,
-        auto_send_sms=auto_send
+        auto_send_sms=auto_send,
+        campaign_inactive_days=inactive_days
     )
 
 @router.post("/", response_model=SettingsResponse)
@@ -22,10 +24,14 @@ def update_settings(settings: SettingsUpdate, db: Session = Depends(get_db)):
         service.set_setting(db, "review_message_template", settings.review_message_template)
     if settings.auto_send_sms is not None:
         service.set_setting(db, "auto_send_sms", settings.auto_send_sms)
+    if settings.campaign_inactive_days is not None:
+        service.set_setting(db, "campaign_inactive_days", settings.campaign_inactive_days)
         
     template = service.get_setting(db, "review_message_template", default=DEFAULT_TEMPLATE)
     auto_send = service.get_setting(db, "auto_send_sms", default=True)
+    inactive_days = int(service.get_setting(db, "campaign_inactive_days", default=30))
     return SettingsResponse(
         review_message_template=template,
-        auto_send_sms=auto_send
+        auto_send_sms=auto_send,
+        campaign_inactive_days=inactive_days
     )
