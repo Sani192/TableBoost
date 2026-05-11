@@ -25,4 +25,4 @@ class VisitMinimal(BaseModel):
     visited_at: datetime
 
 class CustomerDetailResponse(CustomerListResponse):
-    visits: List[VisitMinimal] = []
+    pass

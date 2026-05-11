@@ -36,11 +36,42 @@ def trigger_review_sms(db: Session, customer_id: int, customer_name: str = None)
 
     return status
 
-def get_messages(db: Session, skip: int = 0, limit: int = 100):
-    query = db.query(Message, Customer).join(Customer).order_by(Message.sent_at.desc()).offset(skip).limit(limit).all()
-    results = []
-    for msg, cust in query:
-        results.append({
+def get_messages(
+    db: Session, 
+    skip: int = 0, 
+    limit: int = 100,
+    search: str = None,
+    log_type: str = None,
+    status: str = None,
+    start_date: datetime = None,
+    end_date: datetime = None
+):
+    query = db.query(Message, Customer).join(Customer)
+    
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(
+            (Customer.name.ilike(search_filter)) |
+            (Customer.phone_number.like(search_filter))
+        )
+        
+    if log_type:
+        query = query.filter(Message.type == log_type)
+        
+    if status:
+        query = query.filter(Message.status == status)
+        
+    if start_date:
+        query = query.filter(Message.sent_at >= start_date)
+        
+    if end_date:
+        query = query.filter(Message.sent_at <= end_date)
+        
+    results = query.order_by(Message.sent_at.desc()).offset(skip).limit(limit).all()
+    
+    formatted_results = []
+    for msg, cust in results:
+        formatted_results.append({
             "id": msg.id,
             "customer_id": msg.customer_id,
             "customer_name": cust.name,
@@ -50,7 +81,7 @@ def get_messages(db: Session, skip: int = 0, limit: int = 100):
             "status": msg.status,
             "sent_at": msg.sent_at
         })
-    return results
+    return formatted_results
 
 def execute_campaign(db: Session, message_template: str, audience_type: str, inactive_days: int = 30):
     if audience_type == "all":

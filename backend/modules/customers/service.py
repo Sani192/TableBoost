@@ -8,7 +8,11 @@ def get_customers(
     db: Session,
     skip: int = 0,
     limit: int = 100,
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    min_visits: Optional[int] = None,
+    max_visits: Optional[int] = None,
+    min_spent: Optional[float] = None,
+    max_spent: Optional[float] = None
 ):
     query = db.query(
         Customer,
@@ -24,7 +28,18 @@ def get_customers(
             (Customer.phone_number.like(search_filter))
         )
         
+
+    if min_visits is not None:
+        query = query.having(func.count(Visit.id) >= min_visits)
+    if max_visits is not None:
+        query = query.having(func.count(Visit.id) <= max_visits)
+    if min_spent is not None:
+        query = query.having(func.sum(Visit.amount) >= min_spent)
+    if max_spent is not None:
+        query = query.having(func.sum(Visit.amount) <= max_spent)
+        
     query = query.order_by(func.max(Visit.visited_at).desc().nulls_last())
+
     results = query.offset(skip).limit(limit).all()
     
     response = []
@@ -54,14 +69,6 @@ def get_customer_detail(db: Session, customer_id: int):
         
     customer, total_visits, last_visit, total_spent = customer_info
     
-    visits = db.query(Visit).filter(Visit.customer_id == customer_id).order_by(Visit.visited_at.desc()).all()
-    
-    visit_list = [{
-        "id": v.id,
-        "amount": v.amount,
-        "visited_at": v.visited_at
-    } for v in visits]
-    
     return {
         "id": customer.id,
         "phone_number": customer.phone_number,
@@ -69,6 +76,13 @@ def get_customer_detail(db: Session, customer_id: int):
         "created_at": customer.created_at,
         "total_visits": total_visits or 0,
         "last_visit": last_visit,
-        "total_spent": total_spent or 0.0,
-        "visits": visit_list
+        "total_spent": total_spent or 0.0
     }
+
+def get_customer_visits(db: Session, customer_id: int, skip: int = 0, limit: int = 20):
+    visits = db.query(Visit).filter(Visit.customer_id == customer_id).order_by(Visit.visited_at.desc()).offset(skip).limit(limit).all()
+    return [{
+        "id": v.id,
+        "amount": v.amount,
+        "visited_at": v.visited_at
+    } for v in visits]

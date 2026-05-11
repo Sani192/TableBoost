@@ -79,9 +79,12 @@ export interface CustomerListResponse {
   total_spent: number | null;
 }
 
-export interface CustomerDetailResponse extends CustomerListResponse {
-  visits: { id: number; amount: number | null; visited_at: string }[];
-}
+export interface CustomerDetailResponse extends CustomerListResponse {}
+
+export const getCustomerVisits = async (id: number, params: { skip?: number; limit?: number } = {}): Promise<VisitDetail[]> => {
+  const response = await api.get<VisitDetail[]>(`/api/customers/${id}/visits`, { params });
+  return response.data;
+};
 
 export interface MessageLogResponse {
   id: number;
@@ -100,7 +103,7 @@ export interface CampaignCreateRequest {
   inactive_days?: number;
 }
 
-export const getCustomers = async (params: { skip?: number; limit?: number; search?: string } = {}): Promise<CustomerListResponse[]> => {
+export const getCustomers = async (params: { skip?: number; limit?: number; search?: string; min_visits?: number; max_visits?: number; min_spent?: number; max_spent?: number } = {}): Promise<CustomerListResponse[]> => {
   const response = await api.get<CustomerListResponse[]>('/api/customers/', { params });
   return response.data;
 };
@@ -110,7 +113,7 @@ export const getCustomerDetail = async (id: number): Promise<CustomerDetailRespo
   return response.data;
 };
 
-export const getMessageLogs = async (params: { skip?: number; limit?: number } = {}): Promise<MessageLogResponse[]> => {
+export const getMessageLogs = async (params: { skip?: number; limit?: number; search?: string; type?: string; status?: string; start_date?: string; end_date?: string } = {}): Promise<MessageLogResponse[]> => {
   const response = await api.get<MessageLogResponse[]>('/api/messages/', { params });
   return response.data;
 };

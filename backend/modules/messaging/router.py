@@ -6,9 +6,30 @@ from modules.messaging import schemas, service
 
 router = APIRouter(prefix="/api/messages", tags=["Messaging"])
 
+from typing import Optional
+from datetime import datetime
+
 @router.get("/", response_model=List[schemas.MessageLogResponse])
-def get_message_logs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return service.get_messages(db, skip=skip, limit=limit)
+def get_message_logs(
+    skip: int = 0, 
+    limit: int = 100, 
+    search: Optional[str] = None,
+    type: Optional[str] = None,
+    status: Optional[str] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    db: Session = Depends(get_db)
+):
+    return service.get_messages(
+        db, 
+        skip=skip, 
+        limit=limit,
+        search=search,
+        log_type=type,
+        status=status,
+        start_date=start_date,
+        end_date=end_date
+    )
 
 @router.post("/campaign")
 def create_campaign(campaign: schemas.CampaignCreateRequest, db: Session = Depends(get_db)):
