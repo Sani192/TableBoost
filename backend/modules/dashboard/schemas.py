@@ -12,4 +12,5 @@ class DashboardResponse(BaseModel):
     total_customers: int
     total_visits: int
     repeat_customers: int
+    total_redeemed: int
     recent_visits: List[RecentVisit]

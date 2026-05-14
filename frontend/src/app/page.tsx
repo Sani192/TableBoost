@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Plus, Repeat2, UsersRound, Utensils, RefreshCw } from 'lucide-react';
+import { Plus, Repeat2, UsersRound, Utensils, RefreshCw, Trophy } from 'lucide-react';
 import ActivityList from '@/components/ActivityList';
 import StatCard from '@/components/StatCard';
 import { getDashboard, DashboardResponse } from '@/lib/api';
@@ -28,11 +28,13 @@ export default function Dashboard() {
         totalCustomers: data.total_customers,
         totalVisits: data.total_visits,
         repeatCustomers: data.repeat_customers,
+        totalRedeemed: data.total_redeemed,
       }
     : {
         totalCustomers: 0,
         totalVisits: 0,
         repeatCustomers: 0,
+        totalRedeemed: 0,
       };
 
   const visits =
@@ -71,7 +73,7 @@ export default function Dashboard() {
 
       {/* Stats Grid — responsive: 1 col mobile, 3 col desktop */}
       <section
-        className={`grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 sm:gap-4 ${isLoading ? 'animate-pulse-soft' : ''}`}
+        className={`grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-4 ${isLoading ? 'animate-pulse-soft' : ''}`}
         aria-label="Business stats"
       >
         <StatCard
@@ -90,6 +92,12 @@ export default function Dashboard() {
           value={stats.repeatCustomers}
           icon={<Repeat2 className="h-4 w-4" />}
           accent="green"
+        />
+        <StatCard
+          label="Redeemed"
+          value={stats.totalRedeemed}
+          icon={<Trophy className="h-4 w-4" />}
+          accent="orange"
         />
       </section>
 

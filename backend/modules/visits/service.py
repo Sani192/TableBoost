@@ -7,6 +7,7 @@ from modules.visits.models import Visit
 from modules.visits.schemas import VisitCreate
 from modules.messaging import service as messaging_service
 from modules.settings import service as settings_service
+from modules.loyalty import service as loyalty_service
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,9 @@ def add_visit(db: Session, visit_data: VisitCreate):
     )
     db.add(new_visit)
     db.flush() # Ensure visit ID is available if needed
+
+    # 2.5 Update Loyalty Progress
+    loyalty_service.update_loyalty_progress(db, customer.id)
     
     # 3. Handle Review SMS — per-visit override takes priority over global setting
     should_send = visit_data.send_sms

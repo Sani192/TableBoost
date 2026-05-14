@@ -19,6 +19,7 @@ export interface DashboardResponse {
   total_customers: number;
   total_visits: number;
   repeat_customers: number;
+  total_redeemed: number;
   recent_visits: {
     customer_name?: string;
     phone_number: string;
@@ -142,5 +143,69 @@ export const getSettings = async (): Promise<SettingsResponse> => {
 
 export const updateSettings = async (payload: SettingsUpdate): Promise<SettingsResponse> => {
   const response = await api.post<SettingsResponse>('/api/settings/', payload);
+  return response.data;
+};
+
+// Loyalty System Evolution
+export interface LoyaltyReward {
+  id: number;
+  name: string;
+  description: string | null;
+  required_visits: number;
+  reward_type: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CustomerRewardStatus {
+  reward_id: number;
+  name: string;
+  description: string | null;
+  required_visits: number;
+  is_eligible: boolean;
+  is_redeemed: boolean;
+}
+
+export interface LoyaltyStatusResponse {
+  customer_id: number;
+  lifetime_visits: number;
+  rewards: CustomerRewardStatus[];
+}
+
+export interface RewardRedemptionResponse {
+  id: number;
+  reward_id: number | null;
+  reward_name: string;
+  visits_threshold: number;
+  redeemed_at: string;
+}
+
+export const getLoyaltyRewards = async (): Promise<LoyaltyReward[]> => {
+  const response = await api.get<LoyaltyReward[]>('/api/loyalty/rewards');
+  return response.data;
+};
+
+export const createLoyaltyReward = async (payload: Omit<LoyaltyReward, 'id' | 'created_at'>): Promise<LoyaltyReward> => {
+  const response = await api.post<LoyaltyReward>('/api/loyalty/rewards', payload);
+  return response.data;
+};
+
+export const updateLoyaltyReward = async (id: number, payload: Partial<LoyaltyReward>): Promise<LoyaltyReward> => {
+  const response = await api.patch<LoyaltyReward>(`/api/loyalty/rewards/${id}`, payload);
+  return response.data;
+};
+
+export const getLoyaltyStatus = async (customerId: number): Promise<LoyaltyStatusResponse> => {
+  const response = await api.get<LoyaltyStatusResponse>(`/api/loyalty/status/${customerId}`);
+  return response.data;
+};
+
+export const redeemReward = async (customerId: number, rewardId: number): Promise<RewardRedemptionResponse> => {
+  const response = await api.post<RewardRedemptionResponse>(`/api/loyalty/redeem/${customerId}/${rewardId}`);
+  return response.data;
+};
+
+export const getRedemptionHistory = async (customerId: number): Promise<RewardRedemptionResponse[]> => {
+  const response = await api.get<RewardRedemptionResponse[]>(`/api/loyalty/history/${customerId}`);
   return response.data;
 };

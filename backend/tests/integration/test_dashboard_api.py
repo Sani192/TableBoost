@@ -34,6 +34,7 @@ def test_get_dashboard_empty():
     assert data["total_customers"] == 0
     assert data["total_visits"] == 0
     assert data["repeat_customers"] == 0
+    assert data["total_redeemed"] == 0
     assert data["recent_visits"] == []
 
 def test_get_dashboard_with_data():
@@ -66,6 +67,7 @@ def test_get_dashboard_with_data():
     assert data["total_customers"] == 2
     assert data["total_visits"] == 3
     assert data["repeat_customers"] == 1
+    assert data["total_redeemed"] == 0
     assert len(data["recent_visits"]) == 3
     
     # Check recent visits contain correct data

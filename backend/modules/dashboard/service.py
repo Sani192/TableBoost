@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from modules.customers.models import Customer
 from modules.visits.models import Visit
+from modules.loyalty import service as loyalty_service
 
 def get_dashboard_stats(db: Session):
     total_customers = db.query(Customer).count()
@@ -11,6 +12,9 @@ def get_dashboard_stats(db: Session):
     # We can do this by grouping visits by customer_id and counting
     subquery = db.query(Visit.customer_id, func.count(Visit.id).label('visit_count')).group_by(Visit.customer_id).subquery()
     repeat_customers = db.query(subquery).filter(subquery.c.visit_count > 1).count()
+    
+    # Loyalty stats
+    total_redeemed = loyalty_service.get_total_redemption_count(db)
     
     # Recent visits (last 10)
     recent_visits_query = db.query(Visit, Customer).join(Customer).order_by(Visit.visited_at.desc()).limit(10).all()
@@ -28,5 +32,6 @@ def get_dashboard_stats(db: Session):
         "total_customers": total_customers,
         "total_visits": total_visits,
         "repeat_customers": repeat_customers,
+        "total_redeemed": total_redeemed,
         "recent_visits": recent_visits
     }

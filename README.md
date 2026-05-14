@@ -47,7 +47,7 @@ TableBoost is a mobile-friendly restaurant management application designed to ca
 4. **Initialize Database Tables:**
    Run this command to create the initial schema:
    ```bash
-   python -c "from backend.core.database import engine, Base; from backend.modules.customers.models import Customer; from backend.modules.visits.models import Visit; from backend.modules.messaging.models import Message; from backend.modules.settings.models import Setting; Base.metadata.create_all(bind=engine)"
+   python -c "from core.database import engine, Base; from modules.customers.models import Customer; from modules.visits.models import Visit; from modules.messaging.models import Message; from modules.settings.models import Setting; from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedemption; Base.metadata.create_all(bind=engine)"
    ```
 
 5. **Run the Backend Server:**

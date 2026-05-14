@@ -5,6 +5,7 @@ from modules.dashboard.router import router as dashboard_router
 from modules.settings.router import router as settings_router
 from modules.customers.router import router as customers_router
 from modules.messaging.router import router as messaging_router
+from modules.loyalty.router import router as loyalty_router
 
 app = FastAPI(title="TableBoost API", version="1.0.0")
 
@@ -21,6 +22,7 @@ app.include_router(dashboard_router)
 app.include_router(settings_router)
 app.include_router(customers_router)
 app.include_router(messaging_router)
+app.include_router(loyalty_router)
 
 @app.get("/")
 def read_root():
