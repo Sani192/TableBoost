@@ -1,0 +1,47 @@
+from core.database import engine, Base, SessionLocal
+from modules.customers.models import Customer, CustomerProfile
+from modules.visits.models import Visit
+from modules.messaging.models import Message, Campaign
+from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedemption
+from modules.automation.models import AutomationConfig, AutomationHistory
+from modules.automation import service as automation_service
+
+def init_db():
+    print("Creating tables...")
+    Base.metadata.create_all(bind=engine)
+    
+    db = SessionLocal()
+    try:
+        # Initialize default automations if they don't exist
+        defaults = [
+            {
+                "automation_type": "birthday",
+                "is_enabled": True,
+                "message_template": "Happy Birthday {name}! 🎂 Enjoy a free drink on us today at TableBoost!"
+            },
+            {
+                "automation_type": "anniversary",
+                "is_enabled": True,
+                "message_template": "Happy Anniversary {name}! ❤️ Thanks for being with us for another year. Here is a special treat for you!"
+            },
+            {
+                "automation_type": "inactivity",
+                "is_enabled": False,
+                "message_template": "Hi {name}, we haven't seen you in a while! 🍕 Come visit us this week and get 10% off your bill."
+            },
+            {
+                "automation_type": "reward_unlocked",
+                "is_enabled": True,
+                "message_template": "Congratulations {name}! 🏆 You've just unlocked a new reward. Visit us to redeem it!"
+            }
+        ]
+        
+        for d in defaults:
+            automation_service.update_automation_config(db, d)
+            
+        print("Database initialized successfully.")
+    finally:
+        db.close()
+
+if __name__ == "__main__":
+    init_db()

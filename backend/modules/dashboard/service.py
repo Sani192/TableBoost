@@ -3,6 +3,7 @@ from sqlalchemy import func
 from modules.customers.models import Customer
 from modules.visits.models import Visit
 from modules.loyalty import service as loyalty_service
+from modules.analytics import service as analytics_service
 
 def get_dashboard_stats(db: Session):
     total_customers = db.query(Customer).count()
@@ -16,6 +17,10 @@ def get_dashboard_stats(db: Session):
     # Loyalty stats
     total_redeemed = loyalty_service.get_total_redemption_count(db)
     celebrations = loyalty_service.get_today_celebrations(db)
+    
+    # Revenue & Segments
+    revenue_metrics = analytics_service.get_revenue_metrics(db)
+    segments = analytics_service.get_customer_segments(db)
     
     # Recent visits (last 10)
     recent_visits_query = db.query(Visit, Customer).join(Customer).order_by(Visit.visited_at.desc()).limit(10).all()
@@ -35,5 +40,7 @@ def get_dashboard_stats(db: Session):
         "repeat_customers": repeat_customers,
         "total_redeemed": total_redeemed,
         "celebrations": celebrations,
-        "recent_visits": recent_visits
+        "recent_visits": recent_visits,
+        "revenue": revenue_metrics,
+        "segments": segments
     }

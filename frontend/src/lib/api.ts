@@ -30,6 +30,16 @@ export interface DashboardResponse {
     visited_at: string;
     amount?: number;
   }[];
+  revenue: {
+    daily_trends: { date: string; revenue: number; visits: number }[];
+    avg_ticket: number;
+    revenue_split: Record<string, number>;
+    monthly_total: number;
+  };
+  segments: {
+    vips_count: number;
+    at_risk_count: number;
+  };
 }
 
 export interface VisitDetail {
@@ -232,5 +242,23 @@ export const redeemReward = async (customerId: number, rewardId: number): Promis
 
 export const getRedemptionHistory = async (customerId: number): Promise<RewardRedemptionResponse[]> => {
   const response = await api.get<RewardRedemptionResponse[]>(`/api/loyalty/history/${customerId}`);
+  return response.data;
+};
+
+// Automation
+export interface AutomationConfig {
+  automation_type: string;
+  is_enabled: boolean;
+  message_template: string;
+  settings?: Record<string, any>;
+}
+
+export const getAutomationConfigs = async (): Promise<AutomationConfig[]> => {
+  const response = await api.get<AutomationConfig[]>('/api/automation/');
+  return response.data;
+};
+
+export const updateAutomationConfig = async (payload: Partial<AutomationConfig>): Promise<AutomationConfig> => {
+  const response = await api.post<AutomationConfig>('/api/automation/', payload);
   return response.data;
 };

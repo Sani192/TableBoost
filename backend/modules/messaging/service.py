@@ -121,3 +121,24 @@ def execute_campaign(db: Session, message_template: str, audience_type: str, ina
     db.commit()
     
     return {"sent_count": sent_count, "failed_count": failed_count, "total": sent_count + failed_count}
+
+def process_scheduled_campaigns(db: Session):
+    now = datetime.now(timezone.utc)
+    # Find scheduled campaigns that are ready to send
+    campaigns = db.query(Campaign).filter(
+        Campaign.status == 'scheduled',
+        Campaign.scheduled_at <= now
+    ).all()
+    
+    for camp in campaigns:
+        try:
+            results = execute_campaign(db, camp.message_template, camp.audience_type)
+            camp.status = 'completed'
+            logger.info(f"Campaign {camp.id} completed: {results}")
+        except Exception as e:
+            camp.status = 'failed'
+            logger.error(f"Campaign {camp.id} failed: {e}")
+            
+    db.commit()
+
+from modules.messaging.models import Message, Campaign

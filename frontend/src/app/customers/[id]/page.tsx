@@ -258,7 +258,6 @@ export default function CustomerDetailPage() {
                       {reward.is_eligible ? (
                         <Button 
                           fullWidth 
-                          size="sm"
                           className="gap-2 h-10 shadow-md shadow-brand-600/10"
                           onClick={() => handleRedeemClick(reward.reward_id, reward.name)}
                           disabled={redeemingId === reward.reward_id}
@@ -368,10 +367,10 @@ export default function CustomerDetailPage() {
         title="Confirm Redemption"
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setShowConfirmModal(false)}>
+            <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
               Cancel
             </Button>
-            <Button size="sm" onClick={confirmRedeem}>
+            <Button onClick={confirmRedeem}>
               Confirm Redemption
             </Button>
           </>
@@ -397,10 +396,10 @@ export default function CustomerDetailPage() {
         title="Edit Customer Profile"
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setShowEditModal(false)}>
+            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
               Cancel
             </Button>
-            <Button size="sm" onClick={handleUpdateProfile} disabled={updatingProfile}>
+            <Button onClick={handleUpdateProfile} disabled={updatingProfile}>
               {updatingProfile ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save Profile'}
             </Button>
           </>

@@ -2,14 +2,16 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Plus, Repeat2, UsersRound, Utensils, RefreshCw, Trophy, Cake, Heart, ChevronRight } from 'lucide-react';
+import { Plus, Repeat2, UsersRound, Utensils, RefreshCw, Trophy, Cake, Heart, ChevronRight, BarChart3, Rocket, Activity, TrendingUp, Wallet, UserCheck } from 'lucide-react';
 import ActivityList from '@/components/ActivityList';
 import StatCard from '@/components/StatCard';
+import Card from '@/components/ui/Card';
 import { getDashboard, DashboardResponse } from '@/lib/api';
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'ops' | 'revenue'>('ops');
 
   const fetchDashboard = () => {
     setIsLoading(true);
@@ -29,12 +31,20 @@ export default function Dashboard() {
         totalVisits: data.total_visits,
         repeatCustomers: data.repeat_customers,
         totalRedeemed: data.total_redeemed,
+        vipsCount: data.segments?.vips_count || 0,
+        atRiskCount: data.segments?.at_risk_count || 0,
+        monthlyRevenue: data.revenue?.monthly_total || 0,
+        avgTicket: data.revenue?.avg_ticket || 0,
       }
     : {
         totalCustomers: 0,
         totalVisits: 0,
         repeatCustomers: 0,
         totalRedeemed: 0,
+        vipsCount: 0,
+        atRiskCount: 0,
+        monthlyRevenue: 0,
+        avgTicket: 0,
       };
 
   const visits =
@@ -52,105 +62,142 @@ export default function Dashboard() {
       <header className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
-            TableBoost
+            Intelligence Hub
           </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
-            Quick Billing Desk
+            Revenue Dashboard
           </h1>
-          <p className="mt-1.5 text-sm font-medium text-stone-500">
-            Add customers in seconds and track today&apos;s activity.
-          </p>
         </div>
         <button
           onClick={fetchDashboard}
           disabled={isLoading}
           className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 shadow-soft transition-all hover:bg-stone-50 hover:text-stone-700 active:scale-95 disabled:opacity-50"
-          aria-label="Refresh dashboard"
         >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </header>
 
-      {/* Celebrations Banner */}
-      {data?.celebrations && (data.celebrations.birthdays > 0 || data.celebrations.anniversaries > 0) && (
-        <section className="animate-in slide-in-from-top-4 duration-500">
-           <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                 <div className="h-10 w-10 bg-brand-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-brand-600/20">
-                    <Trophy className="h-5 w-5" />
-                 </div>
-                 <div>
-                    <h2 className="text-sm font-bold text-brand-900">Today&apos;s Celebrations!</h2>
-                    <p className="text-xs font-medium text-brand-700/80">
-                       {data.celebrations.birthdays > 0 && (
-                         <span className="flex items-center gap-1 inline-flex mr-3">
-                           <Cake className="h-3 w-3" /> {data.celebrations.birthdays} Birthday{data.celebrations.birthdays > 1 ? 's' : ''}
-                         </span>
-                       )}
-                       {data.celebrations.anniversaries > 0 && (
-                         <span className="flex items-center gap-1 inline-flex">
-                           <Heart className="h-3 w-3" /> {data.celebrations.anniversaries} Anniversar{data.celebrations.anniversaries > 1 ? 'ies' : 'y'}
-                         </span>
-                       )}
-                    </p>
-                 </div>
-              </div>
-              <Link 
-                href="/customers?celebrating=true" 
-                className="text-xs font-bold text-brand-600 flex items-center gap-1 hover:underline"
-              >
-                 View Customers <ChevronRight className="h-3 w-3" />
-              </Link>
-           </div>
-        </section>
-      )}
-
-      {/* Stats Grid — responsive: 1 col mobile, 3 col desktop */}
-      <section
-        className={`grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-4 ${isLoading ? 'animate-pulse-soft' : ''}`}
-        aria-label="Business stats"
-      >
-        <StatCard
-          label="Customers"
-          value={stats.totalCustomers}
-          icon={<UsersRound className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Total Visits"
-          value={stats.totalVisits}
-          icon={<Utensils className="h-4 w-4" />}
-          accent="slate"
-        />
-        <StatCard
-          label="Repeat"
-          value={stats.repeatCustomers}
-          icon={<Repeat2 className="h-4 w-4" />}
-          accent="green"
-        />
-        <StatCard
-          label="Redeemed"
-          value={stats.totalRedeemed}
-          icon={<Trophy className="h-4 w-4" />}
-          accent="orange"
-        />
-      </section>
-
-      {/* Primary Action — full width mobile, constrained desktop */}
-      <section aria-label="Primary actions">
-        <Link
-          href="/add-visit"
-          className="group flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-6 py-3.5 text-base font-bold text-white shadow-lift transition-all duration-150 hover:bg-brand-700 hover:shadow-lg active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:ring-offset-2 sm:w-auto sm:px-8"
-          aria-label="Add Visit"
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-stone-100 rounded-2xl w-full max-w-md">
+        <button
+          onClick={() => setActiveTab('ops')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${
+            activeTab === 'ops' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
+          }`}
         >
-          <Plus className="h-5 w-5 transition-transform group-hover:rotate-90" aria-hidden="true" />
-          Add Visit
-        </Link>
-      </section>
+          <Activity className="h-4 w-4" /> Operations
+        </button>
+        <button
+          onClick={() => setActiveTab('revenue')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${
+            activeTab === 'revenue' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
+          }`}
+        >
+          <TrendingUp className="h-4 w-4" /> Intelligence
+        </button>
+      </div>
 
-      {/* Recent Activity */}
-      <section aria-label="Recent activity">
-        <ActivityList visits={visits} />
-      </section>
+      {activeTab === 'ops' ? (
+        <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
+          {/* Celebrations Banner */}
+          {data?.celebrations && (data.celebrations.birthdays > 0 || data.celebrations.anniversaries > 0) && (
+            <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-brand-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-brand-600/20">
+                  <Trophy className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-brand-900">Today&apos;s Celebrations!</h2>
+                  <p className="text-xs font-medium text-brand-700/80">
+                    {data.celebrations.birthdays > 0 && <span>{data.celebrations.birthdays} Birthday{data.celebrations.birthdays > 1 ? 's' : ''} </span>}
+                    {data.celebrations.anniversaries > 0 && <span>{data.celebrations.anniversaries} Anniversary</span>}
+                  </p>
+                </div>
+              </div>
+              <Link href="/customers?celebrating=true" className="text-xs font-bold text-brand-600 flex items-center gap-1 hover:underline">
+                View <ChevronRight className="h-3 w-3" />
+              </Link>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-4">
+            <StatCard label="Customers" value={stats.totalCustomers} icon={<UsersRound className="h-4 w-4" />} />
+            <StatCard label="Total Visits" value={stats.totalVisits} icon={<Utensils className="h-4 w-4" />} accent="slate" />
+            <StatCard label="Repeat Rate" value={`${Math.round((stats.repeatCustomers / (stats.totalCustomers || 1)) * 100)}%`} icon={<Repeat2 className="h-4 w-4" />} accent="green" />
+            <StatCard label="Redeemed" value={stats.totalRedeemed} icon={<Trophy className="h-4 w-4" />} accent="orange" />
+          </div>
+
+          <section>
+            <Link
+              href="/add-visit"
+              className="group flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-6 py-3.5 text-base font-bold text-white shadow-lift transition-all hover:bg-brand-700 active:scale-[0.97] sm:w-auto"
+            >
+              <Plus className="h-5 w-5" /> Add Visit
+            </Link>
+          </section>
+
+          <ActivityList visits={visits} />
+        </div>
+      ) : (
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <StatCard label="Monthly Revenue" value={`$${Math.round(stats.monthlyRevenue)}`} icon={<Wallet className="h-4 w-4" />} accent="green" />
+            <StatCard label="Avg Ticket" value={`$${Math.round(stats.avgTicket)}`} icon={<TrendingUp className="h-4 w-4" />} accent="blue" />
+            <StatCard label="VIP Segments" value={stats.vipsCount} icon={<Trophy className="h-4 w-4" />} accent="orange" />
+            <StatCard label="At Risk" value={stats.atRiskCount} icon={<UserCheck className="h-4 w-4" />} accent="red" />
+          </div>
+
+          <Card className="p-6">
+            <h3 className="text-base font-extrabold text-stone-900 mb-4 flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-brand-600" /> Revenue Trends (Last 7 Days)
+            </h3>
+            <div className="h-32 flex items-end justify-between gap-2 mt-4 px-2">
+              {data?.revenue?.daily_trends.map((day, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
+                  <div 
+                    className="w-full bg-brand-500/10 hover:bg-brand-500 rounded-t-lg transition-all duration-300 relative"
+                    style={{ height: `${(day.revenue / (Math.max(...data.revenue.daily_trends.map(d => d.revenue)) || 1)) * 100}%` }}
+                  >
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                      ${day.revenue}
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-stone-400 truncate w-full text-center">
+                    {new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <Card className="p-5 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                   <div className="h-12 w-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
+                      <Rocket className="h-6 w-6" />
+                   </div>
+                   <div>
+                      <h4 className="text-sm font-bold text-stone-900">Automation Engine</h4>
+                      <p className="text-xs text-stone-500">3 active pilots running</p>
+                   </div>
+                </div>
+                <Link href="/settings" className="text-xs font-bold text-brand-600 hover:underline">Manage</Link>
+             </Card>
+             <Card className="p-5 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                   <div className="h-12 w-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
+                      <UsersRound className="h-6 w-6" />
+                   </div>
+                   <div>
+                      <h4 className="text-sm font-bold text-stone-900">Smart Segments</h4>
+                      <p className="text-xs text-stone-500">New VIP insights available</p>
+                   </div>
+                </div>
+                <Link href="/customers" className="text-xs font-bold text-brand-600 hover:underline">View All</Link>
+             </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

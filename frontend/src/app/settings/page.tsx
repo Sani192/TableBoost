@@ -6,7 +6,10 @@ import {
   getLoyaltyRewards, 
   createLoyaltyReward, 
   updateLoyaltyReward,
-  LoyaltyReward 
+  getAutomationConfigs,
+  updateAutomationConfig,
+  LoyaltyReward,
+  AutomationConfig 
 } from '@/lib/api';
 import { 
   MessageSquare, 
@@ -21,7 +24,11 @@ import {
   ToggleLeft, 
   ToggleRight,
   ChevronRight,
-  Activity
+  Activity,
+  Rocket,
+  Cake,
+  Heart,
+  Calendar
 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -30,6 +37,7 @@ export default function SettingsPage() {
   const [template, setTemplate] = useState('');
   const [inactiveDays, setInactiveDays] = useState<number | string>(30);
   
+  const [automations, setAutomations] = useState<AutomationConfig[]>([]);
   const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
   const [showAddReward, setShowAddReward] = useState(false);
   const [newReward, setNewReward] = useState<{
@@ -53,13 +61,15 @@ export default function SettingsPage() {
 
   const fetchData = async () => {
     try {
-      const [settingsData, rewardsData] = await Promise.all([
+      const [settingsData, rewardsData, automationData] = await Promise.all([
         getSettings(),
-        getLoyaltyRewards()
+        getLoyaltyRewards(),
+        getAutomationConfigs()
       ]);
       setTemplate(settingsData.review_message_template);
       setInactiveDays(settingsData.campaign_inactive_days);
       setRewards(rewardsData);
+      setAutomations(automationData);
       setLoading(false);
     } catch (err) {
       setLoading(false);
@@ -115,6 +125,15 @@ export default function SettingsPage() {
     }
   };
 
+  const toggleAutomation = async (type: string, isEnabled: boolean) => {
+    try {
+      await updateAutomationConfig({ automation_type: type, is_enabled: !isEnabled });
+      fetchData();
+    } catch (err) {
+      alert('Failed to update automation');
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse max-w-2xl mx-auto">
@@ -164,13 +183,52 @@ export default function SettingsPage() {
             </div>
             <div className="bg-stone-50 px-5 py-3 flex items-center justify-between">
               <p className="text-xs text-stone-500 font-medium">Changes apply globally to all customers.</p>
-              <Button type="submit" size="sm" disabled={saving}>
+              <Button type="submit" disabled={saving}>
                 {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-1.5" />}
                 {saving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </Card>
         </form>
+      </section>
+
+      {/* Automation Engine */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Rocket className="h-5 w-5 text-brand-600" />
+          <h2 className="text-lg font-bold text-stone-900">Automation Pilots</h2>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-3">
+          {automations.map(auto => (
+            <Card key={auto.automation_type} className={`p-4 transition-all ${!auto.is_enabled ? 'opacity-60 bg-stone-50' : 'hover:border-brand-200 shadow-sm'}`}>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${auto.is_enabled ? 'bg-brand-50 text-brand-600' : 'bg-stone-200 text-stone-500'}`}>
+                    {auto.automation_type === 'birthday' && <Cake className="h-5 w-5" />}
+                    {auto.automation_type === 'anniversary' && <Heart className="h-5 w-5" />}
+                    {auto.automation_type === 'inactivity' && <Calendar className="h-5 w-5" />}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-stone-900 capitalize">{auto.automation_type} SMS</h3>
+                    <p className="text-xs text-stone-500 font-medium">Auto-pilot engagement</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => toggleAutomation(auto.automation_type, auto.is_enabled)}
+                  className={`p-2 rounded-lg transition-colors ${auto.is_enabled ? 'text-brand-600 hover:bg-brand-50' : 'text-stone-400 hover:bg-stone-100'}`}
+                >
+                  {auto.is_enabled ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
+                </button>
+              </div>
+            </Card>
+          ))}
+          {automations.length === 0 && (
+            <div className="text-center py-6 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+               <p className="text-xs font-bold text-stone-400">Initialize automations to begin.</p>
+            </div>
+          )}
+        </div>
       </section>
 
       {/* Multi-Reward Loyalty Management */}
@@ -180,7 +238,7 @@ export default function SettingsPage() {
             <Trophy className="h-5 w-5 text-brand-600" />
             <h2 className="text-lg font-bold text-stone-900">Loyalty Rewards Hub</h2>
           </div>
-          <Button size="sm" onClick={() => setShowAddReward(!showAddReward)} variant={showAddReward ? 'secondary' : 'primary'}>
+          <Button onClick={() => setShowAddReward(!showAddReward)} variant={showAddReward ? 'secondary' : 'primary'}>
             {showAddReward ? 'Cancel' : <><Plus className="h-4 w-4 mr-1.5" /> Add Reward</>}
           </Button>
         </div>
