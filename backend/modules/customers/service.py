@@ -1,6 +1,6 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
-from modules.customers.models import Customer
+from modules.customers.models import Customer, CustomerProfile
 from modules.visits.models import Visit
 from typing import Optional
 
@@ -12,14 +12,19 @@ def get_customers(
     min_visits: Optional[int] = None,
     max_visits: Optional[int] = None,
     min_spent: Optional[float] = None,
-    max_spent: Optional[float] = None
+    max_spent: Optional[float] = None,
+    birthday_month: Optional[int] = None,
+    birthday_day: Optional[int] = None,
+    anniversary_month: Optional[int] = None,
+    anniversary_day: Optional[int] = None,
+    is_celebrating_today: Optional[bool] = None
 ):
     query = db.query(
         Customer,
         func.count(Visit.id).label("total_visits"),
         func.max(Visit.visited_at).label("last_visit"),
         func.sum(Visit.amount).label("total_spent")
-    ).outerjoin(Visit, Customer.id == Visit.customer_id).group_by(Customer.id)
+    ).options(selectinload(Customer.profile)).outerjoin(Visit, Customer.id == Visit.customer_id).group_by(Customer.id)
     
     if search:
         search_filter = f"%{search}%"
@@ -28,6 +33,39 @@ def get_customers(
             (Customer.phone_number.like(search_filter))
         )
         
+    if birthday_month is not None:
+        query = query.join(CustomerProfile, Customer.id == CustomerProfile.customer_id).filter(
+            func.extract('month', CustomerProfile.birthday) == birthday_month
+        )
+    if birthday_day is not None:
+        if birthday_month is None: # Join only if not already joined
+             query = query.join(CustomerProfile, Customer.id == CustomerProfile.customer_id)
+        query = query.filter(func.extract('day', CustomerProfile.birthday) == birthday_day)
+        
+    if anniversary_month is not None:
+        # Check if already joined via birthday filters
+        is_joined = birthday_month is not None or birthday_day is not None
+        if not is_joined:
+            query = query.join(CustomerProfile, Customer.id == CustomerProfile.customer_id)
+        query = query.filter(func.extract('month', CustomerProfile.anniversary) == anniversary_month)
+    if anniversary_day is not None:
+        is_joined = birthday_month is not None or birthday_day is not None or anniversary_month is not None
+        if not is_joined:
+            query = query.join(CustomerProfile, Customer.id == CustomerProfile.customer_id)
+        query = query.filter(func.extract('day', CustomerProfile.anniversary) == anniversary_day)
+        
+    if is_celebrating_today:
+        from datetime import date
+        today = date.today()
+        # Check if already joined
+        is_joined = birthday_month is not None or birthday_day is not None or anniversary_month is not None or anniversary_day is not None
+        if not is_joined:
+            query = query.join(CustomerProfile, Customer.id == CustomerProfile.customer_id)
+            
+        query = query.filter(
+            ((func.extract('month', CustomerProfile.birthday) == today.month) & (func.extract('day', CustomerProfile.birthday) == today.day)) |
+            ((func.extract('month', CustomerProfile.anniversary) == today.month) & (func.extract('day', CustomerProfile.anniversary) == today.day))
+        )
 
     if min_visits is not None:
         query = query.having(func.count(Visit.id) >= min_visits)
@@ -48,6 +86,8 @@ def get_customers(
             "id": customer.id,
             "phone_number": customer.phone_number,
             "name": customer.name,
+            "birthday": customer.profile.birthday if customer.profile else None,
+            "anniversary": customer.profile.anniversary if customer.profile else None,
             "created_at": customer.created_at,
             "total_visits": total_visits or 0,
             "last_visit": last_visit,
@@ -61,7 +101,7 @@ def get_customer_detail(db: Session, customer_id: int):
         func.count(Visit.id).label("total_visits"),
         func.max(Visit.visited_at).label("last_visit"),
         func.sum(Visit.amount).label("total_spent")
-    ).outerjoin(Visit, Customer.id == Visit.customer_id)\
+    ).options(selectinload(Customer.profile)).outerjoin(Visit, Customer.id == Visit.customer_id)\
      .filter(Customer.id == customer_id).group_by(Customer.id).first()
      
     if not customer_info or not customer_info[0]:
@@ -73,6 +113,8 @@ def get_customer_detail(db: Session, customer_id: int):
         "id": customer.id,
         "phone_number": customer.phone_number,
         "name": customer.name,
+        "birthday": customer.profile.birthday if customer.profile else None,
+        "anniversary": customer.profile.anniversary if customer.profile else None,
         "created_at": customer.created_at,
         "total_visits": total_visits or 0,
         "last_visit": last_visit,

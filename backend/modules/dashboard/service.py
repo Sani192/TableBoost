@@ -15,6 +15,7 @@ def get_dashboard_stats(db: Session):
     
     # Loyalty stats
     total_redeemed = loyalty_service.get_total_redemption_count(db)
+    celebrations = loyalty_service.get_today_celebrations(db)
     
     # Recent visits (last 10)
     recent_visits_query = db.query(Visit, Customer).join(Customer).order_by(Visit.visited_at.desc()).limit(10).all()
@@ -33,5 +34,6 @@ def get_dashboard_stats(db: Session):
         "total_visits": total_visits,
         "repeat_customers": repeat_customers,
         "total_redeemed": total_redeemed,
+        "celebrations": celebrations,
         "recent_visits": recent_visits
     }

@@ -7,6 +7,7 @@ import {
   getLoyaltyStatus, 
   redeemReward, 
   getRedemptionHistory,
+  updateCustomer,
   CustomerDetailResponse, 
   VisitDetail,
   LoyaltyStatusResponse,
@@ -14,7 +15,7 @@ import {
 } from '@/lib/api';
 import ActivityList from '@/components/ActivityList';
 import StatCard from '@/components/StatCard';
-import { Utensils, DollarSign, RefreshCw, Trophy, History, Gift, CheckCircle2, Loader2, Lock, ChevronRight } from 'lucide-react';
+import { Utensils, DollarSign, RefreshCw, Trophy, History, Gift, CheckCircle2, Loader2, Lock, ChevronRight, Cake, Heart, Edit2, Calendar } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Modal from '@/components/ui/Modal';
@@ -36,7 +37,10 @@ export default function CustomerDetailPage() {
   const [redeemingId, setRedeemingId] = useState<number | null>(null);
   const [redeemSuccess, setRedeemSuccess] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editData, setEditData] = useState({ name: '', birthday: '', anniversary: '' });
   const [pendingRedeem, setPendingRedeem] = useState<{ id: number; name: string } | null>(null);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
 
   const fetchData = async () => {
     if (!id) return;
@@ -62,6 +66,34 @@ export default function CustomerDetailPage() {
   useEffect(() => {
     fetchData();
   }, [id]);
+
+  const handleEditClick = () => {
+    if (!customer) return;
+    setEditData({
+      name: customer.name || '',
+      birthday: customer.birthday || '',
+      anniversary: customer.anniversary || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!id || !customer) return;
+    setUpdatingProfile(true);
+    try {
+      await updateCustomer(Number(id), {
+        name: editData.name,
+        birthday: editData.birthday || null,
+        anniversary: editData.anniversary || null
+      });
+      setShowEditModal(false);
+      fetchData();
+    } catch (err) {
+      alert('Failed to update profile');
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
 
   const loadMore = async () => {
     if (!id || loadingMore) return;
@@ -116,9 +148,32 @@ export default function CustomerDetailPage() {
   return (
     <div className="space-y-6 pb-20 max-w-5xl mx-auto">
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-stone-900">{customer.name || customer.phone_number}</h1>
-          <p className="text-stone-500 font-medium">{customer.phone_number}</p>
+        <div className="flex items-start gap-4">
+          <div>
+            <h1 className="text-2xl font-extrabold text-stone-900">{customer.name || customer.phone_number}</h1>
+            <p className="text-stone-500 font-medium">{customer.phone_number}</p>
+            {(customer.birthday || customer.anniversary) && (
+              <div className="flex gap-3 mt-2">
+                {customer.birthday && (
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider bg-stone-50 px-2 py-0.5 rounded-md">
+                    <Cake className="h-3 w-3" /> {new Date(customer.birthday).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </div>
+                )}
+                {customer.anniversary && (
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider bg-stone-50 px-2 py-0.5 rounded-md">
+                    <Heart className="h-3 w-3" /> {new Date(customer.anniversary).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <button 
+            onClick={handleEditClick}
+            className="p-2 hover:bg-stone-100 rounded-xl text-stone-400 transition-colors"
+            title="Edit Profile"
+          >
+            <Edit2 className="h-4 w-4" />
+          </button>
         </div>
         <div className="flex items-center gap-2">
            <div className="px-4 py-2 bg-brand-50 border border-brand-100 rounded-2xl flex items-center gap-2">
@@ -167,13 +222,17 @@ export default function CustomerDetailPage() {
                          reward.is_eligible ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/30' : 
                          'bg-stone-100 text-stone-400'
                        }`}>
-                         {reward.is_redeemed ? <CheckCircle2 className="h-6 w-6" /> : <Trophy className="h-6 w-6" />}
+                         {reward.is_redeemed ? <CheckCircle2 className="h-6 w-6" /> : (
+                           reward.reward_type === 'birthday' ? <Cake className="h-6 w-6" /> :
+                           reward.reward_type === 'anniversary' ? <Heart className="h-6 w-6" /> :
+                           <Trophy className="h-6 w-6" />
+                         )}
                        </div>
                        <div>
                          <div className="flex items-center gap-2">
                             <h3 className="font-bold text-stone-900">{reward.name}</h3>
-                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-600">
-                              {reward.required_visits}V
+                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-600 uppercase">
+                              {reward.reward_type === 'milestone' ? `${reward.required_visits}V` : reward.reward_type}
                             </span>
                          </div>
                          <p className="text-xs text-stone-500 font-medium leading-snug mt-0.5">{reward.description}</p>
@@ -183,12 +242,18 @@ export default function CustomerDetailPage() {
 
                   {!reward.is_redeemed && (
                     <div className="space-y-3">
-                      <div className="h-1.5 w-full bg-stone-100 rounded-full overflow-hidden border border-stone-200/50">
-                        <div 
-                          className={`h-full transition-all duration-1000 ease-out ${reward.is_eligible ? 'bg-brand-600' : 'bg-brand-500/40'}`}
-                          style={{ width: `${Math.min((loyalty.lifetime_visits / reward.required_visits) * 100, 100)}%` }}
-                        />
-                      </div>
+                      {reward.reward_type === 'milestone' ? (
+                        <div className="h-1.5 w-full bg-stone-100 rounded-full overflow-hidden border border-stone-200/50">
+                          <div 
+                            className={`h-full transition-all duration-1000 ease-out ${reward.is_eligible ? 'bg-brand-600' : 'bg-brand-500/40'}`}
+                            style={{ width: `${Math.min((loyalty.lifetime_visits / reward.required_visits) * 100, 100)}%` }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-1.5 w-full bg-stone-50 rounded-full overflow-hidden">
+                           <div className={`h-full ${reward.is_eligible ? 'bg-brand-600 animate-pulse' : 'bg-stone-100'}`} style={{ width: reward.is_eligible ? '100%' : '0%' }} />
+                        </div>
+                      )}
                       
                       {reward.is_eligible ? (
                         <Button 
@@ -203,8 +268,17 @@ export default function CustomerDetailPage() {
                         </Button>
                       ) : (
                         <div className="flex items-center justify-center gap-1.5 py-2 text-stone-400 text-xs font-bold uppercase tracking-wider">
-                           <Lock className="h-3 w-3" />
-                           {reward.required_visits - loyalty.lifetime_visits} visits more
+                           {reward.reward_type === 'milestone' ? (
+                             <>
+                               <Lock className="h-3 w-3" />
+                               {reward.required_visits - loyalty.lifetime_visits} visits more
+                             </>
+                           ) : (
+                             <>
+                               <Calendar className="h-3 w-3" />
+                               Available on {reward.reward_type === 'birthday' ? 'Birthday' : 'Anniversary'}
+                             </>
+                           )}
                         </div>
                       )}
                     </div>
@@ -313,6 +387,63 @@ export default function CustomerDetailPage() {
               This action will mark the reward as redeemed for <strong>{customer.name || customer.phone_number}</strong>. This cannot be undone.
             </p>
           </div>
+        </div>
+      </Modal>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Customer Profile"
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setShowEditModal(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleUpdateProfile} disabled={updatingProfile}>
+              {updatingProfile ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save Profile'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-stone-700 mb-1.5">Full Name</label>
+            <input
+              type="text"
+              value={editData.name}
+              onChange={e => setEditData({ ...editData, name: e.target.value })}
+              className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-medium outline-none focus:border-brand-500 transition-all"
+              placeholder="Enter customer name"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+             <div>
+                <label className="block text-sm font-bold text-stone-700 mb-1.5 flex items-center gap-1.5">
+                  <Cake className="h-3 w-3 text-brand-600" /> Birthday
+                </label>
+                <input
+                  type="date"
+                  value={editData.birthday}
+                  onChange={e => setEditData({ ...editData, birthday: e.target.value })}
+                  className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-brand-500 transition-all"
+                />
+             </div>
+             <div>
+                <label className="block text-sm font-bold text-stone-700 mb-1.5 flex items-center gap-1.5">
+                  <Heart className="h-3 w-3 text-brand-600" /> Anniversary
+                </label>
+                <input
+                  type="date"
+                  value={editData.anniversary}
+                  onChange={e => setEditData({ ...editData, anniversary: e.target.value })}
+                  className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-brand-500 transition-all"
+                />
+             </div>
+          </div>
+          <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider text-center pt-2">
+            Captured data enables yearly loyalty rewards
+          </p>
         </div>
       </Modal>
     </div>

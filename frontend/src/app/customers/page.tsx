@@ -2,7 +2,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { getCustomers, CustomerListResponse } from '@/lib/api';
-import { Search, SlidersHorizontal, RefreshCw, X } from 'lucide-react';
+import { Search, SlidersHorizontal, RefreshCw, X, Cake, Heart, PartyPopper } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import Card from '@/components/ui/Card';
 
 const PAGE_SIZE = 20;
@@ -20,9 +21,22 @@ export default function CustomersPage() {
   const [maxVisits, setMaxVisits] = useState('');
   const [minSpent, setMinSpent] = useState('');
   const [maxSpent, setMaxSpent] = useState('');
+  const [birthdayMonth, setBirthdayMonth] = useState('');
+  const [anniversaryMonth, setAnniversaryMonth] = useState('');
+  const [isCelebrating, setIsCelebrating] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  
+  const searchParams = useSearchParams();
 
   const loaderRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const celebrates = searchParams.get('celebrating') === 'true';
+    if (celebrates) {
+      setIsCelebrating(true);
+      setShowFilters(true);
+    }
+  }, [searchParams]);
 
   const fetchCustomers = useCallback(async (isLoadMore = false) => {
     if (isLoadMore) setLoadingMore(true);
@@ -38,6 +52,9 @@ export default function CustomersPage() {
         max_visits: maxVisits ? Number(maxVisits) : undefined,
         min_spent: minSpent ? Number(minSpent) : undefined,
         max_spent: maxSpent ? Number(maxSpent) : undefined,
+        birthday_month: birthdayMonth ? Number(birthdayMonth) : undefined,
+        anniversary_month: anniversaryMonth ? Number(anniversaryMonth) : undefined,
+        is_celebrating_today: isCelebrating || undefined
       });
 
       if (isLoadMore) {
@@ -54,12 +71,12 @@ export default function CustomersPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [search, minVisits, maxVisits, minSpent, maxSpent, skip]);
+  }, [search, minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth, isCelebrating, skip]);
 
   useEffect(() => {
     const timer = setTimeout(() => fetchCustomers(false), 400);
     return () => clearTimeout(timer);
-  }, [search, minVisits, maxVisits, minSpent, maxSpent]);
+  }, [search, minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth, isCelebrating]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -74,16 +91,26 @@ export default function CustomersPage() {
     return () => observer.disconnect();
   }, [hasMore, loading, loadingMore, fetchCustomers]);
 
-  const activeFiltersCount = [minVisits, maxVisits, minSpent, maxSpent].filter(Boolean).length;
+  const activeFiltersCount = [minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth].filter(Boolean).length + (isCelebrating ? 1 : 0);
 
   const clearFilters = () => {
     setMinVisits('');
     setMaxVisits('');
     setMinSpent('');
     setMaxSpent('');
+    setBirthdayMonth('');
+    setAnniversaryMonth('');
+    setIsCelebrating(false);
     setSearch('');
     setShowFilters(false);
   };
+
+  const months = [
+    { value: '1', label: 'Jan' }, { value: '2', label: 'Feb' }, { value: '3', label: 'Mar' },
+    { value: '4', label: 'Apr' }, { value: '5', label: 'May' }, { value: '6', label: 'Jun' },
+    { value: '7', label: 'Jul' }, { value: '8', label: 'Aug' }, { value: '9', label: 'Sep' },
+    { value: '10', label: 'Oct' }, { value: '11', label: 'Nov' }, { value: '12', label: 'Dec' },
+  ];
 
   return (
     <div className="animate-fade-in space-y-6 pb-6">
@@ -152,6 +179,48 @@ export default function CustomersPage() {
                 onChange={(e) => setMaxSpent(e.target.value)}
                 className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
               />
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-stone-200 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+               <label className="text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Cake className="h-3 w-3 text-brand-600" /> Birthday Month
+               </label>
+               <select
+                 value={birthdayMonth}
+                 onChange={e => setBirthdayMonth(e.target.value)}
+                 className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-brand-500 transition-all"
+               >
+                 <option value="">Any Month</option>
+                 {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+               </select>
+            </div>
+            <div className="space-y-1.5">
+               <label className="text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Heart className="h-3 w-3 text-brand-600" /> Anniversary Month
+               </label>
+               <select
+                 value={anniversaryMonth}
+                 onChange={e => setAnniversaryMonth(e.target.value)}
+                 className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-brand-500 transition-all"
+               >
+                 <option value="">Any Month</option>
+                 {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+               </select>
+            </div>
+            <div className="flex items-end">
+               <button
+                 onClick={() => setIsCelebrating(!isCelebrating)}
+                 className={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-all active:scale-95 ${
+                   isCelebrating 
+                     ? 'border-brand-300 bg-brand-600 text-white shadow-md' 
+                     : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+                 }`}
+               >
+                 <PartyPopper className={`h-4 w-4 ${isCelebrating ? 'animate-bounce' : ''}`} />
+                 Celebrating Today
+               </button>
             </div>
           </div>
         </Card>

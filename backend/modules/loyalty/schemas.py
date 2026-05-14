@@ -32,6 +32,7 @@ class CustomerRewardStatus(BaseModel):
     name: str
     description: Optional[str] = None
     required_visits: int
+    reward_type: str
     is_eligible: bool
     is_redeemed: bool
 

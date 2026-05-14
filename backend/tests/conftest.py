@@ -22,6 +22,7 @@ from modules.customers.models import Customer  # noqa: F401
 from modules.visits.models import Visit  # noqa: F401
 from modules.messaging.models import Message  # noqa: F401
 from modules.settings.models import Setting  # noqa: F401
+from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedemption  # noqa: F401
 
 
 # ---------------------------------------------------------------------------

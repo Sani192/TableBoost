@@ -1,7 +1,9 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
 from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedemption
+from modules.customers.models import Customer, CustomerProfile
 from typing import List, Optional
+from datetime import datetime, date
 
 def get_active_rewards(db: Session):
     return db.query(LoyaltyReward).filter(LoyaltyReward.is_active == True).order_by(LoyaltyReward.required_visits.asc()).all()
@@ -29,7 +31,11 @@ def update_reward(db: Session, reward_id: int, reward_data):
     return reward
 
 def get_loyalty_status(db: Session, customer_id: int):
-    # Get progress
+    # Get customer and progress
+    customer = db.query(Customer).options(selectinload(Customer.profile)).filter(Customer.id == customer_id).first()
+    if not customer:
+        return None
+        
     progress = db.query(LoyaltyProgress).filter(LoyaltyProgress.customer_id == customer_id).first()
     lifetime_visits = progress.lifetime_visits if progress else 0
     
@@ -37,19 +43,53 @@ def get_loyalty_status(db: Session, customer_id: int):
     rewards = get_active_rewards(db)
     
     # Get redemption history for this customer
-    redemptions = db.query(RewardRedemption.reward_id).filter(RewardRedemption.customer_id == customer_id).all()
-    redeemed_ids = {r[0] for r in redemptions if r[0] is not None}
+    redemptions = db.query(RewardRedemption).filter(RewardRedemption.customer_id == customer_id).all()
     
+    today = date.today()
     reward_statuses = []
+    
     for r in rewards:
-        reward_statuses.append({
-            "reward_id": r.id,
-            "name": r.name,
-            "description": r.description,
-            "required_visits": r.required_visits,
-            "is_eligible": lifetime_visits >= r.required_visits and r.id not in redeemed_ids,
-            "is_redeemed": r.id in redeemed_ids
-        })
+        is_eligible = False
+        is_redeemed = False
+        
+        if r.reward_type == "milestone":
+            # Lifetime achievement
+            is_redeemed = any(red.reward_id == r.id for red in redemptions)
+            is_eligible = lifetime_visits >= r.required_visits and not is_redeemed
+        elif r.reward_type == "birthday":
+            if customer.profile and customer.profile.birthday:
+                # Same month and day
+                is_event_today = today.month == customer.profile.birthday.month and today.day == customer.profile.birthday.day
+                # Check if redeemed THIS calendar year
+                redeemed_this_year = any(red.reward_id == r.id and red.redeemed_at.year == today.year for red in redemptions)
+                is_redeemed = redeemed_this_year
+                is_eligible = is_event_today and not redeemed_this_year
+        elif r.reward_type == "anniversary":
+            if customer.profile and customer.profile.anniversary:
+                is_event_today = today.month == customer.profile.anniversary.month and today.day == customer.profile.anniversary.day
+                redeemed_this_year = any(red.reward_id == r.id and red.redeemed_at.year == today.year for red in redemptions)
+                is_redeemed = redeemed_this_year
+                is_eligible = is_event_today and not redeemed_this_year
+                
+        # Visibility Check: Birthday/Anniversary rewards only appear if in current month OR already redeemed
+        should_show = True
+        if r.reward_type == "birthday":
+            is_birthday_month = customer.profile and customer.profile.birthday and customer.profile.birthday.month == today.month
+            should_show = is_birthday_month or is_redeemed
+        elif r.reward_type == "anniversary":
+            is_anniversary_month = customer.profile and customer.profile.anniversary and customer.profile.anniversary.month == today.month
+            should_show = is_anniversary_month or is_redeemed
+            
+        if should_show:
+            reward_statuses.append({
+                "reward_id": r.id,
+                "name": r.name,
+                "description": r.description,
+                "required_visits": r.required_visits,
+                "reward_type": r.reward_type,
+                "is_eligible": is_eligible,
+                "is_redeemed": is_redeemed
+            })
         
     return {
         "customer_id": customer_id,
@@ -75,20 +115,20 @@ def redeem_reward(db: Session, customer_id: int, reward_id: int):
     if not reward:
         raise ValueError("Reward not found or inactive")
         
-    # Check if already redeemed
-    existing = db.query(RewardRedemption).filter(
-        RewardRedemption.customer_id == customer_id,
-        RewardRedemption.reward_id == reward_id
-    ).first()
-    if existing:
+    # Check eligibility using the common logic
+    status = get_loyalty_status(db, customer_id)
+    if not status:
+        raise ValueError("Customer not found")
+        
+    reward_status = next((rs for rs in status["rewards"] if rs["reward_id"] == reward_id), None)
+    if not reward_status:
+        raise ValueError("Reward not available for this customer")
+        
+    if reward_status["is_redeemed"]:
         raise ValueError("Reward already redeemed")
         
-    # Check eligibility
-    progress = db.query(LoyaltyProgress).filter(LoyaltyProgress.customer_id == customer_id).first()
-    lifetime_visits = progress.lifetime_visits if progress else 0
-    
-    if lifetime_visits < reward.required_visits:
-        raise ValueError(f"Customer has not reached the {reward.required_visits} visits milestone")
+    if not reward_status["is_eligible"]:
+        raise ValueError("Customer is not eligible for this reward")
         
     # Record redemption
     redemption = RewardRedemption(
@@ -124,3 +164,20 @@ def get_eligible_count(db: Session):
 
 def get_total_redemption_count(db: Session):
     return db.query(RewardRedemption).count()
+
+def get_today_celebrations(db: Session):
+    today = date.today()
+    birthdays = db.query(CustomerProfile).filter(
+        func.extract('month', CustomerProfile.birthday) == today.month,
+        func.extract('day', CustomerProfile.birthday) == today.day
+    ).count()
+    
+    anniversaries = db.query(CustomerProfile).filter(
+        func.extract('month', CustomerProfile.anniversary) == today.month,
+        func.extract('day', CustomerProfile.anniversary) == today.day
+    ).count()
+    
+    return {
+        "birthdays": birthdays,
+        "anniversaries": anniversaries
+    }

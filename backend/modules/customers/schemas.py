@@ -1,11 +1,19 @@
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 
 class CustomerBase(BaseModel):
     phone_number: str
     name: Optional[str] = None
+    birthday: Optional[date] = None
+    anniversary: Optional[date] = None
+
+class CustomerUpdate(BaseModel):
+    phone_number: Optional[str] = None
+    name: Optional[str] = None
+    birthday: Optional[date] = None
+    anniversary: Optional[date] = None
 
 class CustomerResponse(CustomerBase):
     id: int

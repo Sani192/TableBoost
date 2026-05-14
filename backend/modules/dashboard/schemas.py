@@ -8,9 +8,14 @@ class RecentVisit(BaseModel):
     visited_at: datetime
     amount: Optional[float] = None
 
+class CelebrationStats(BaseModel):
+    birthdays: int
+    anniversaries: int
+
 class DashboardResponse(BaseModel):
     total_customers: int
     total_visits: int
     repeat_customers: int
     total_redeemed: int
+    celebrations: CelebrationStats
     recent_visits: List[RecentVisit]

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Plus, Repeat2, UsersRound, Utensils, RefreshCw, Trophy } from 'lucide-react';
+import { Plus, Repeat2, UsersRound, Utensils, RefreshCw, Trophy, Cake, Heart, ChevronRight } from 'lucide-react';
 import ActivityList from '@/components/ActivityList';
 import StatCard from '@/components/StatCard';
 import { getDashboard, DashboardResponse } from '@/lib/api';
@@ -70,6 +70,40 @@ export default function Dashboard() {
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
         </button>
       </header>
+
+      {/* Celebrations Banner */}
+      {data?.celebrations && (data.celebrations.birthdays > 0 || data.celebrations.anniversaries > 0) && (
+        <section className="animate-in slide-in-from-top-4 duration-500">
+           <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                 <div className="h-10 w-10 bg-brand-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-brand-600/20">
+                    <Trophy className="h-5 w-5" />
+                 </div>
+                 <div>
+                    <h2 className="text-sm font-bold text-brand-900">Today&apos;s Celebrations!</h2>
+                    <p className="text-xs font-medium text-brand-700/80">
+                       {data.celebrations.birthdays > 0 && (
+                         <span className="flex items-center gap-1 inline-flex mr-3">
+                           <Cake className="h-3 w-3" /> {data.celebrations.birthdays} Birthday{data.celebrations.birthdays > 1 ? 's' : ''}
+                         </span>
+                       )}
+                       {data.celebrations.anniversaries > 0 && (
+                         <span className="flex items-center gap-1 inline-flex">
+                           <Heart className="h-3 w-3" /> {data.celebrations.anniversaries} Anniversar{data.celebrations.anniversaries > 1 ? 'ies' : 'y'}
+                         </span>
+                       )}
+                    </p>
+                 </div>
+              </div>
+              <Link 
+                href="/customers?celebrating=true" 
+                className="text-xs font-bold text-brand-600 flex items-center gap-1 hover:underline"
+              >
+                 View Customers <ChevronRight className="h-3 w-3" />
+              </Link>
+           </div>
+        </section>
+      )}
 
       {/* Stats Grid — responsive: 1 col mobile, 3 col desktop */}
       <section

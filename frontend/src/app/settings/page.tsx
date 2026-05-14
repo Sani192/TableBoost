@@ -188,29 +188,43 @@ export default function SettingsPage() {
         {showAddReward && (
           <Card className="p-5 border-brand-200 bg-brand-50/10 animate-in fade-in slide-in-from-top-2">
             <form onSubmit={handleAddReward} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-stone-700 mb-1.5">Reward Name</label>
+                <input
+                  type="text"
+                  required
+                  value={newReward.name}
+                  onChange={e => setNewReward({...newReward, name: e.target.value})}
+                  placeholder="e.g. Free Drink"
+                  className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-medium outline-none focus:border-brand-500"
+                />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-stone-700 mb-1.5">Reward Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={newReward.name}
-                    onChange={e => setNewReward({...newReward, name: e.target.value})}
-                    placeholder="e.g. Free Drink"
-                    className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-medium outline-none focus:border-brand-500"
-                  />
+                  <label className="block text-sm font-bold text-stone-700 mb-1.5">Reward Type</label>
+                  <select
+                    value={newReward.reward_type}
+                    onChange={e => setNewReward({...newReward, reward_type: e.target.value})}
+                    className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-medium outline-none focus:border-brand-500 bg-white"
+                  >
+                    <option value="milestone">Visit Milestone</option>
+                    <option value="birthday">Birthday Reward</option>
+                    <option value="anniversary">Anniversary Reward</option>
+                  </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-stone-700 mb-1.5">Required Visits</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={newReward.required_visits}
-                    onChange={e => setNewReward({...newReward, required_visits: e.target.value})}
-                    className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-brand-500"
-                  />
-                </div>
+                {newReward.reward_type === 'milestone' && (
+                  <div>
+                    <label className="block text-sm font-bold text-stone-700 mb-1.5">Required Visits</label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={newReward.required_visits}
+                      onChange={e => setNewReward({...newReward, required_visits: e.target.value})}
+                      className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-brand-500"
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-bold text-stone-700 mb-1.5">Description</label>
@@ -240,7 +254,7 @@ export default function SettingsPage() {
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-stone-900">{reward.name}</h3>
                         <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-stone-100 text-stone-500">
-                          {reward.required_visits} Visits
+                          {reward.reward_type === 'milestone' ? `${reward.required_visits} Visits` : reward.reward_type}
                         </span>
                       </div>
                       <p className="text-xs text-stone-500 font-medium">{reward.description || 'Milestone reward'}</p>

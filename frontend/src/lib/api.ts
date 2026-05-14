@@ -20,6 +20,10 @@ export interface DashboardResponse {
   total_visits: number;
   repeat_customers: number;
   total_redeemed: number;
+  celebrations: {
+    birthdays: number;
+    anniversaries: number;
+  };
   recent_visits: {
     customer_name?: string;
     phone_number: string;
@@ -78,6 +82,8 @@ export interface CustomerListResponse {
   total_visits: number;
   last_visit: string | null;
   total_spent: number | null;
+  birthday?: string | null;
+  anniversary?: string | null;
 }
 
 export interface CustomerDetailResponse extends CustomerListResponse {}
@@ -104,13 +110,31 @@ export interface CampaignCreateRequest {
   inactive_days?: number;
 }
 
-export const getCustomers = async (params: { skip?: number; limit?: number; search?: string; min_visits?: number; max_visits?: number; min_spent?: number; max_spent?: number } = {}): Promise<CustomerListResponse[]> => {
+export const getCustomers = async (params: { 
+  skip?: number; 
+  limit?: number; 
+  search?: string; 
+  min_visits?: number; 
+  max_visits?: number; 
+  min_spent?: number; 
+  max_spent?: number;
+  birthday_month?: number;
+  birthday_day?: number;
+  anniversary_month?: number;
+  anniversary_day?: number;
+  is_celebrating_today?: boolean;
+} = {}): Promise<CustomerListResponse[]> => {
   const response = await api.get<CustomerListResponse[]>('/api/customers/', { params });
   return response.data;
 };
 
 export const getCustomerDetail = async (id: number): Promise<CustomerDetailResponse> => {
   const response = await api.get<CustomerDetailResponse>(`/api/customers/${id}`);
+  return response.data;
+};
+
+export const updateCustomer = async (id: number, payload: Partial<CustomerDetailResponse>): Promise<CustomerDetailResponse> => {
+  const response = await api.patch<CustomerDetailResponse>(`/api/customers/${id}`, payload);
   return response.data;
 };
 
@@ -162,6 +186,7 @@ export interface CustomerRewardStatus {
   name: string;
   description: string | null;
   required_visits: number;
+  reward_type: string;
   is_eligible: boolean;
   is_redeemed: boolean;
 }
