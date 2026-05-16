@@ -17,5 +17,5 @@ class MessageLogResponse(BaseModel):
 
 class CampaignCreateRequest(BaseModel):
     message: str = Field(..., min_length=1)
-    audience_type: str = Field(..., pattern='^(all|inactive)$')
+    audience_type: str = Field(..., pattern='^(all|inactive|vip|reward_near)$')
     inactive_days: Optional[int] = None

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { 
   getCustomerDetail, 
   getCustomerVisits, 
@@ -15,7 +15,7 @@ import {
 } from '@/lib/api';
 import ActivityList from '@/components/ActivityList';
 import StatCard from '@/components/StatCard';
-import { Utensils, DollarSign, RefreshCw, Trophy, History, Gift, CheckCircle2, Loader2, Lock, ChevronRight, Cake, Heart, Edit2, Calendar } from 'lucide-react';
+import { Utensils, DollarSign, RefreshCw, Trophy, History, Gift, CheckCircle2, Loader2, Lock, ChevronRight, Cake, Heart, Edit2, Calendar, ArrowLeft } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Modal from '@/components/ui/Modal';
@@ -24,6 +24,7 @@ const PAGE_SIZE = 20;
 
 export default function CustomerDetailPage() {
   const { id } = useParams();
+  const router = useRouter();
   const [customer, setCustomer] = useState<CustomerDetailResponse | null>(null);
   const [visits, setVisits] = useState<VisitDetail[]>([]);
   const [loyalty, setLoyalty] = useState<LoyaltyStatusResponse | null>(null);
@@ -149,6 +150,13 @@ export default function CustomerDetailPage() {
     <div className="space-y-6 pb-20 max-w-5xl mx-auto">
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-start gap-4">
+          <button
+            onClick={() => router.back()}
+            className="mt-1 h-9 w-9 flex items-center justify-center rounded-xl bg-stone-100 text-stone-500 hover:bg-stone-200 hover:text-stone-700 transition-all shrink-0"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
           <div>
             <h1 className="text-2xl font-extrabold text-stone-900">{customer.name || customer.phone_number}</h1>
             <p className="text-stone-500 font-medium">{customer.phone_number}</p>

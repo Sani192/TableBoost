@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import MobileNumberInput from '@/components/MobileNumberInput';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
-import { addVisit } from '@/lib/api';
+import { addVisit, getCustomers } from '@/lib/api';
 
 type Feedback = { type: 'success' | 'error'; text: string } | null;
 
@@ -18,8 +18,25 @@ export default function AddVisitPage() {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [sendSms, setSendSms] = useState(true);
+  const [birthday, setBirthday] = useState('');
+  const [anniversary, setAnniversary] = useState('');
+  const [isNewCustomer, setIsNewCustomer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+
+  useEffect(() => {
+    if (phoneNumber.length === 10) {
+      getCustomers({ search: phoneNumber }).then(res => {
+        const existing = res.find((c: any) => c.phone_number === phoneNumber);
+        setIsNewCustomer(!existing);
+        if (existing) {
+          if (!name && existing.name) setName(existing.name);
+        }
+      }).catch(console.error);
+    } else {
+      setIsNewCustomer(false);
+    }
+  }, [phoneNumber]);
 
   const isPhoneValid = phoneNumber.length === 10;
   const isAmountValid = amount.trim() !== '' && !isNaN(Number(amount)) && Number(amount) > 0;
@@ -52,6 +69,8 @@ export default function AddVisitPage() {
         name: trimmedName || undefined,
         amount: numericAmount,
         send_sms: sendSms,
+        birthday: birthday || undefined,
+        anniversary: anniversary || undefined,
       });
 
       setFeedback({
@@ -79,13 +98,13 @@ export default function AddVisitPage() {
     <div className="animate-fade-in space-y-5 pb-6 sm:space-y-6">
       {/* Header */}
       <header className="flex items-center gap-3">
-        <Link
-          href="/"
+        <button
+          onClick={() => router.back()}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 shadow-soft transition-all hover:bg-stone-50 hover:text-stone-700 active:scale-95"
-          aria-label="Back to dashboard"
+          aria-label="Go back"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </Link>
+        </button>
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
             Add Visit
@@ -131,6 +150,27 @@ export default function AddVisitPage() {
               helperText="Mandatory bill amount (must be > 0)."
             />
           </div>
+
+          {isNewCustomer && (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Input
+                label="Birthday"
+                id="birthday"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+                type="date"
+                helperText="Optional"
+              />
+              <Input
+                label="Anniversary"
+                id="anniversary"
+                value={anniversary}
+                onChange={(e) => setAnniversary(e.target.value)}
+                type="date"
+                helperText="Optional"
+              />
+            </div>
+          )}
 
           {/* SMS Toggle */}
           <div className="flex items-center justify-between rounded-2xl border border-stone-100 bg-stone-50 px-4 py-3.5">

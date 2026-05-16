@@ -39,6 +39,21 @@ export default function CustomersPage() {
       setIsCelebrating(true);
       setShowFilters(true);
     }
+    
+    if (searchParams.get('is_vip') === 'true') {
+      setIsVip(true);
+      setShowFilters(true);
+    }
+    
+    if (searchParams.get('is_at_risk') === 'true') {
+      setIsAtRisk(true);
+      setShowFilters(true);
+    }
+    
+    if (searchParams.get('is_reward_near') === 'true') {
+      setIsRewardNear(true);
+      setShowFilters(true);
+    }
   }, [searchParams]);
 
   const fetchCustomers = useCallback(async (isLoadMore = false) => {

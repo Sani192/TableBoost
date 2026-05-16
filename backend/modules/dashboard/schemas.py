@@ -17,6 +17,12 @@ class DailyTrend(BaseModel):
     revenue: float
     visits: int
 
+class CampaignROI(BaseModel):
+    total_messages: int
+    converted_messages: int
+    conversion_rate: float
+    revenue_generated: float
+
 class RevenueMetrics(BaseModel):
     daily_trends: List[DailyTrend]
     avg_ticket: float
@@ -25,11 +31,14 @@ class RevenueMetrics(BaseModel):
     monthly_total: float
     repeat_rate: float
     rewards_stats: dict
+    campaign_roi: Optional[CampaignROI] = None
 
 class SegmentStats(BaseModel):
     vips_count: int
     at_risk_count: int
     near_rewards_count: int
+    lost_count: int
+    new_blood_count: int
 
 class DashboardResponse(BaseModel):
     total_customers: int

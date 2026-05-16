@@ -12,6 +12,7 @@ export default function CampaignsPage() {
   const [inactiveDays, setInactiveDays] = useState(30);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{sent_count: number, failed_count: number} | null>(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     getSettings().then(data => {
@@ -27,6 +28,8 @@ export default function CampaignsPage() {
       const res = await createCampaign({ message, audience_type: audience });
       setResult(res);
       setMessage('');
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       alert('Failed to send campaign');
     } finally {
@@ -162,6 +165,13 @@ export default function CampaignsPage() {
             </div>
           </div>
         </Card>
+      )}
+
+      {success && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg animate-in fade-in slide-in-from-bottom-4">
+          <CheckCircle2 className="h-4 w-4" />
+          <span className="text-sm font-bold">Campaign launched successfully</span>
+        </div>
       )}
     </div>
   );

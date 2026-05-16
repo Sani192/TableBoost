@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from modules.visits.models import Visit
 from modules.customers.models import Customer
 from modules.loyalty.models import RewardRedemption, LoyaltyReward, LoyaltyProgress
-from sqlalchemy import desc, and_
+from modules.messaging.models import Message
 
 def get_revenue_metrics(db: Session):
     today = datetime.now(timezone.utc)
@@ -72,6 +72,35 @@ def get_revenue_metrics(db: Session):
     total_redeemed = db.query(func.count(RewardRedemption.id)).scalar() or 0
     recent_redeemed = db.query(func.count(RewardRedemption.id)).filter(RewardRedemption.redeemed_at >= thirty_days_ago).scalar() or 0
     
+    # 7. Campaign ROI (Last 30 days)
+    total_messages = db.query(func.count(Message.id)).filter(
+        Message.type.in_(['campaign', 'automation']),
+        Message.status == 'sent',
+        Message.sent_at >= thirty_days_ago
+    ).scalar() or 0
+
+    converted_messages = db.query(func.count(func.distinct(Message.id))).join(
+        Visit, Visit.customer_id == Message.customer_id
+    ).filter(
+        Message.type.in_(['campaign', 'automation']),
+        Message.status == 'sent',
+        Message.sent_at >= thirty_days_ago,
+        Visit.visited_at >= Message.sent_at,
+        Visit.visited_at <= Message.sent_at + timedelta(days=7)
+    ).scalar() or 0
+
+    revenue_generated = db.query(func.sum(Visit.amount)).join(
+        Message, Visit.customer_id == Message.customer_id
+    ).filter(
+        Message.type.in_(['campaign', 'automation']),
+        Message.status == 'sent',
+        Message.sent_at >= thirty_days_ago,
+        Visit.visited_at >= Message.sent_at,
+        Visit.visited_at <= Message.sent_at + timedelta(days=7)
+    ).scalar() or 0
+
+    conversion_rate = (converted_messages / total_messages) * 100 if total_messages > 0 else 0
+    
     return {
         "daily_trends": daily_trends,
         "avg_ticket": float(avg_ticket),
@@ -82,6 +111,12 @@ def get_revenue_metrics(db: Session):
         "rewards_stats": {
             "total_redeemed": total_redeemed,
             "recent_redeemed": recent_redeemed
+        },
+        "campaign_roi": {
+            "total_messages": total_messages,
+            "converted_messages": converted_messages,
+            "conversion_rate": float(conversion_rate),
+            "revenue_generated": float(revenue_generated)
         }
     }
 
@@ -107,26 +142,35 @@ def get_customer_segments(db: Session):
         func.max(Visit.visited_at).label('last_visit')
     ).group_by(Visit.customer_id).subquery()
     
-    at_risk = db.query(Customer).join(last_visits, Customer.id == last_visits.c.customer_id)\
+    at_risk_count = db.query(Customer).join(last_visits, Customer.id == last_visits.c.customer_id)\
                 .filter(and_(
                     last_visits.c.last_visit < thirty_days_ago,
                     last_visits.c.last_visit >= ninety_days_ago
-                )).limit(50).all()
+                )).count()
+
+    # Lost (No visits in 90+ days)
+    lost_count = db.query(Customer).join(last_visits, Customer.id == last_visits.c.customer_id)\
+                .filter(last_visits.c.last_visit < ninety_days_ago).count()
+
+    # New Blood (Joined in last 7 days)
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    new_blood_count = db.query(Customer).filter(Customer.created_at >= seven_days_ago).count()
 
     # 3. Near Rewards (Within 2 visits of any milestone reward, including those AT threshold)
-    near_rewards = db.query(Customer).join(LoyaltyProgress, Customer.id == LoyaltyProgress.customer_id)\
+    near_rewards_count = db.query(Customer).join(LoyaltyProgress, Customer.id == LoyaltyProgress.customer_id)\
                      .filter(exists().where(
-                         and_(
-                             LoyaltyReward.reward_type == 'milestone',
-                             LoyaltyReward.is_active == True,
-                             LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits <= 2,
-                             LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits >= 0
-                         )
-                     )).limit(50).all()
+                          and_(
+                              LoyaltyReward.reward_type == 'milestone',
+                              LoyaltyReward.is_active == True,
+                              LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits <= 2,
+                              LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits >= 0
+                          )
+                      )).count()
 
     return {
         "vips_count": len(vips),
-        "at_risk_count": len(at_risk),
-        "near_rewards_count": len(near_rewards)
+        "at_risk_count": at_risk_count,
+        "near_rewards_count": near_rewards_count,
+        "lost_count": lost_count,
+        "new_blood_count": new_blood_count
     }
-

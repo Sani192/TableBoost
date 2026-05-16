@@ -1,7 +1,7 @@
 import re
 from pydantic import BaseModel, field_validator
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 
 class VisitCreate(BaseModel):
@@ -9,6 +9,8 @@ class VisitCreate(BaseModel):
     name: Optional[str] = None
     amount: Optional[Decimal] = None
     send_sms: Optional[bool] = None  # Per-visit override; None = use global setting
+    birthday: Optional[date] = None
+    anniversary: Optional[date] = None
 
     @field_validator('phone_number')
     @classmethod

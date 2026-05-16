@@ -22,7 +22,9 @@ def get_customers(
     is_celebrating_today: Optional[bool] = None,
     is_vip: Optional[bool] = None,
     is_at_risk: Optional[bool] = None,
-    is_reward_near: Optional[bool] = None
+    is_reward_near: Optional[bool] = None,
+    is_lost: Optional[bool] = None,
+    is_new: Optional[bool] = None
 ):
     query = db.query(
         Customer,
@@ -105,6 +107,19 @@ def get_customers(
                              LoyaltyReward.required_visits - func.coalesce(LoyaltyProgress.lifetime_visits, 0) >= 0
                          )
                      ))
+
+    if is_lost:
+        # No visits in 90+ days, MUST have at least one visit
+        cutoff_90 = datetime.now(timezone.utc) - timedelta(days=90)
+        query = query.having(and_(
+            func.max(Visit.visited_at) < cutoff_90,
+            func.max(Visit.visited_at).isnot(None)
+        ))
+
+    if is_new:
+        # Joined in the last 7 days
+        seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+        query = query.filter(Customer.created_at >= seven_days_ago)
 
     if min_visits is not None:
         query = query.having(func.count(Visit.id) >= min_visits)

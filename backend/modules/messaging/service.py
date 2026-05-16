@@ -95,24 +95,27 @@ def execute_campaign(db: Session, message_template: str, audience_type: str, ina
         subquery = db.query(Visit.customer_id).filter(Visit.visited_at >= cutoff_date).subquery()
         customers = db.query(Customer).outerjoin(subquery, Customer.id == subquery.c.customer_id).filter(subquery.c.customer_id == None).all()
     elif audience_type == "vip":
-        # Simplified: top 50 spenders
+        # Top 10% spenders
+        total_customers = db.query(Customer).count()
+        vip_limit = max(1, int(total_customers * 0.1))
+        
         total_spent_sub = db.query(
             Visit.customer_id,
             func.sum(Visit.amount).label('total_amount')
-        ).group_by(Visit.customer_id).order_by(desc('total_amount')).limit(50).subquery()
-        customers = db.query(Customer).join(total_spent_sub, Customer.id == total_spent_sub.c.customer_id).all()
+        ).group_by(Visit.customer_id).order_by(desc('total_amount')).subquery()
+        
+        customers = db.query(Customer).join(total_spent_sub, Customer.id == total_spent_sub.c.customer_id)\
+                 .order_by(desc(total_spent_sub.c.total_amount)).limit(vip_limit).all()
     elif audience_type == "reward_near":
-        # Within 2 visits of any active milestone
-        query = db.query(Customer).join(LoyaltyProgress, Customer.id == LoyaltyProgress.customer_id)\
-                         .filter(exists().where(
-                             and_(
-                                 LoyaltyReward.reward_type == 'milestone',
-                                 LoyaltyReward.is_active == True,
-                                 LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits <= 2,
-                                 LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits > 0
-                             )
-                         ))
-        customers = query.all()
+        # Within 2 visits of any active milestone reward (including boundary)
+        subq = db.query(LoyaltyReward).filter(
+            LoyaltyReward.reward_type == 'milestone',
+            LoyaltyReward.is_active == True,
+            LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits <= 2,
+            LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits >= 0
+        ).exists()
+        
+        customers = db.query(Customer).join(LoyaltyProgress, Customer.id == LoyaltyProgress.customer_id).filter(subq).all()
     else:
         raise ValueError(f"Invalid audience_type: {audience_type}")
 

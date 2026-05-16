@@ -1,13 +1,26 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { Plus, Repeat2, UsersRound, Utensils, RefreshCw, Trophy, Cake, Heart, ChevronRight, BarChart3, Rocket, Activity, TrendingUp, Wallet, UserCheck } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Plus, Repeat2, UsersRound, Utensils, RefreshCw, Trophy, Cake, Heart, ChevronRight, BarChart3, Rocket, Activity, TrendingUp, Wallet, UserCheck, UserX, UserPlus, Target } from 'lucide-react';
 import ActivityList from '@/components/ActivityList';
 import StatCard from '@/components/StatCard';
 import Card from '@/components/ui/Card';
 import Drawer from '@/components/ui/Drawer';
 import { getDashboard, DashboardResponse, getCustomers, getVisits } from '@/lib/api';
+
+type DrilldownConfig = { type: 'customers' | 'visits'; title: string; params: () => Record<string, any> };
+
+const DRILLDOWN_MAP: Record<string, DrilldownConfig> = {
+  vip:         { type: 'customers', title: 'VIP Customers',          params: () => ({ is_vip: true }) },
+  at_risk:     { type: 'customers', title: 'At-Risk Customers',      params: () => ({ is_at_risk: true }) },
+  reward_near: { type: 'customers', title: 'Customers Near Reward',  params: () => ({ is_reward_near: true }) },
+  lost:        { type: 'customers', title: 'Lost Customers',         params: () => ({ is_lost: true }) },
+  new_blood:   { type: 'customers', title: 'New Customers',          params: () => ({ is_new: true }) },
+  weekly:      { type: 'visits',    title: 'Weekly Revenue Visits',  params: () => ({ start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() }) },
+  monthly:     { type: 'visits',    title: 'Monthly Revenue Visits', params: () => ({ start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() }) },
+};
 
 const formatTime = (isoDate: string) => {
   const date = new Date(isoDate);
@@ -33,6 +46,9 @@ const formatTime = (isoDate: string) => {
 };
 
 export default function Dashboard() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'ops' | 'revenue'>('ops');
@@ -43,7 +59,7 @@ export default function Dashboard() {
   const [isDrilldownLoading, setIsDrilldownLoading] = useState(false);
   const [drilldownType, setDrilldownType] = useState<'customers' | 'visits'>('customers');
 
-  const handleDrilldown = async (type: 'customers' | 'visits', title: string, params: any) => {
+  const openDrilldown = useCallback(async (type: 'customers' | 'visits', title: string, params: any) => {
     setDrilldownTitle(title);
     setDrilldownType(type);
     setDrilldownOpen(true);
@@ -52,17 +68,34 @@ export default function Dashboard() {
     
     try {
       if (type === 'customers') {
-        const data = await getCustomers({ limit: 50, ...params });
-        setDrilldownData(data);
+        const res = await getCustomers({ limit: 50, ...params });
+        setDrilldownData(res);
       } else if (type === 'visits') {
-        const data = await getVisits({ limit: 50, ...params });
-        setDrilldownData(data);
+        const res = await getVisits({ limit: 50, ...params });
+        setDrilldownData(res);
       }
     } catch (error) {
       console.error('Failed to fetch drilldown data:', error);
     } finally {
       setIsDrilldownLoading(false);
     }
+  }, []);
+
+  const handleDrilldown = (key: string) => {
+    const config = DRILLDOWN_MAP[key];
+    if (!config) return;
+    router.push(`/?drawer=${key}`, { scroll: false });
+    openDrilldown(config.type, config.title, config.params());
+  };
+
+  const handleDrilldownCustom = (type: 'customers' | 'visits', title: string, params: any, drawerKey: string) => {
+    router.push(`/?drawer=${drawerKey}`, { scroll: false });
+    openDrilldown(type, title, params);
+  };
+
+  const closeDrawer = () => {
+    setDrilldownOpen(false);
+    router.push('/', { scroll: false });
   };
 
   const fetchDashboard = () => {
@@ -77,6 +110,16 @@ export default function Dashboard() {
     fetchDashboard();
   }, []);
 
+  // Restore drawer from URL on mount / back-navigation
+  useEffect(() => {
+    const drawerKey = searchParams.get('drawer');
+    if (drawerKey && DRILLDOWN_MAP[drawerKey] && !drilldownOpen) {
+      const config = DRILLDOWN_MAP[drawerKey];
+      setActiveTab('revenue');
+      openDrilldown(config.type, config.title, config.params());
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const stats = data
     ? {
         totalCustomers: data.total_customers,
@@ -86,11 +129,19 @@ export default function Dashboard() {
         vipsCount: data.segments?.vips_count || 0,
         atRiskCount: data.segments?.at_risk_count || 0,
         nearRewardsCount: data.segments?.near_rewards_count || 0,
+        lostCount: data.segments?.lost_count || 0,
+        newBloodCount: data.segments?.new_blood_count || 0,
         weeklyRevenue: data.revenue?.weekly_total || 0,
         monthlyRevenue: data.revenue?.monthly_total || 0,
         avgTicket: data.revenue?.avg_ticket || 0,
         repeatRate: data.revenue?.repeat_rate || 0,
         recentRedeemed: data.revenue?.rewards_stats?.recent_redeemed || 0,
+        campaignRoi: data.revenue?.campaign_roi || {
+          total_messages: 0,
+          converted_messages: 0,
+          conversion_rate: 0,
+          revenue_generated: 0
+        }
       }
     : {
         totalCustomers: 0,
@@ -105,6 +156,12 @@ export default function Dashboard() {
         avgTicket: 0,
         repeatRate: 0,
         recentRedeemed: 0,
+        campaignRoi: {
+          total_messages: 0,
+          converted_messages: 0,
+          conversion_rate: 0,
+          revenue_generated: 0
+        }
       };
 
   const visits =
@@ -201,17 +258,22 @@ export default function Dashboard() {
       ) : (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <StatCard label="Weekly Revenue" value={`$${Math.round(stats.weeklyRevenue)}`} icon={<Wallet className="h-4 w-4" />} accent="blue" onClick={() => handleDrilldown('visits', 'Weekly Revenue Visits', { start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() })} />
-            <StatCard label="Monthly Revenue" value={`$${Math.round(stats.monthlyRevenue)}`} icon={<TrendingUp className="h-4 w-4" />} accent="green" onClick={() => handleDrilldown('visits', 'Monthly Revenue Visits', { start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() })} />
+            <StatCard label="Weekly Revenue" value={`$${Math.round(stats.weeklyRevenue)}`} icon={<Wallet className="h-4 w-4" />} accent="blue" onClick={() => handleDrilldown('weekly')} />
+            <StatCard label="Monthly Revenue" value={`$${Math.round(stats.monthlyRevenue)}`} icon={<TrendingUp className="h-4 w-4" />} accent="green" onClick={() => handleDrilldown('monthly')} />
             <StatCard label="Repeat Rate" value={`${Math.round(stats.repeatRate)}%`} icon={<Repeat2 className="h-4 w-4" />} accent="slate" />
             <StatCard label="Avg Ticket" value={`$${Math.round(stats.avgTicket)}`} icon={<TrendingUp className="h-4 w-4" />} accent="brand" />
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <StatCard label="VIP Segments" value={stats.vipsCount} icon={<Trophy className="h-4 w-4" />} accent="orange" onClick={() => handleDrilldown('customers', 'VIP Customers', { is_vip: true })} />
-            <StatCard label="At Risk" value={stats.atRiskCount} icon={<UserCheck className="h-4 w-4" />} accent="red" onClick={() => handleDrilldown('customers', 'At-Risk Customers', { is_at_risk: true })} />
-            <StatCard label="Near Reward" value={stats.nearRewardsCount} icon={<Rocket className="h-4 w-4" />} accent="blue" onClick={() => handleDrilldown('customers', 'Customers Near Reward', { is_reward_near: true })} />
+            <StatCard label="VIP Segments" value={stats.vipsCount} icon={<Trophy className="h-4 w-4" />} accent="orange" onClick={() => handleDrilldown('vip')} />
+            <StatCard label="At Risk" value={stats.atRiskCount} icon={<UserCheck className="h-4 w-4" />} accent="red" onClick={() => handleDrilldown('at_risk')} />
+            <StatCard label="Near Reward" value={stats.nearRewardsCount} icon={<Rocket className="h-4 w-4" />} accent="blue" onClick={() => handleDrilldown('reward_near')} />
             <StatCard label="Recent Rewards" value={stats.recentRedeemed} icon={<Trophy className="h-4 w-4" />} accent="slate" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2">
+            <StatCard label="Lost Customers" value={stats.lostCount} icon={<UserX className="h-4 w-4" />} accent="red" onClick={() => handleDrilldown('lost')} />
+            <StatCard label="New Blood" value={stats.newBloodCount} icon={<UserPlus className="h-4 w-4" />} accent="green" onClick={() => handleDrilldown('new_blood')} />
           </div>
 
           <Card className="p-6">
@@ -225,7 +287,7 @@ export default function Dashboard() {
                     <div 
                       className="w-full bg-brand-500/20 hover:bg-brand-500 rounded-t-lg transition-all duration-300 relative min-h-[2px] cursor-pointer"
                       style={{ height: `${(day.revenue / (Math.max(...data.revenue.daily_trends.map(d => d.revenue)) || 1)) * 100}%` }}
-                      onClick={() => handleDrilldown('visits', `Visits on ${new Date(day.date).toLocaleDateString()}`, { start_date: `${day.date}T00:00:00`, end_date: `${day.date}T23:59:59` })}
+                      onClick={() => openDrilldown('visits', `Visits on ${new Date(day.date).toLocaleDateString()}`, { start_date: `${day.date}T00:00:00`, end_date: `${day.date}T23:59:59` })}
                     >
                       <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                         ${day.revenue}
@@ -245,7 +307,32 @@ export default function Dashboard() {
             </div>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+             <Card className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                   <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+                         <Target className="h-6 w-6" />
+                      </div>
+                      <div>
+                         <h4 className="text-sm font-bold text-stone-900">Campaign ROI</h4>
+                         <p className="text-xs text-stone-500">Last 30 days</p>
+                      </div>
+                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                   <div>
+                      <p className="text-[10px] text-stone-400 font-bold">CONVERSION</p>
+                      <p className="text-lg font-extrabold text-stone-900">{stats.campaignRoi.conversion_rate.toFixed(1)}%</p>
+                      <p className="text-[10px] text-stone-500">{stats.campaignRoi.converted_messages}/{stats.campaignRoi.total_messages} visits</p>
+                   </div>
+                   <div>
+                      <p className="text-[10px] text-stone-400 font-bold">REVENUE</p>
+                      <p className="text-lg font-extrabold text-emerald-600">${stats.campaignRoi.revenue_generated.toFixed(2)}</p>
+                      <p className="text-[10px] text-stone-500">attributed</p>
+                   </div>
+                </div>
+             </Card>
              <Card className="p-5 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                    <div className="h-12 w-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
@@ -268,12 +355,12 @@ export default function Dashboard() {
                       <p className="text-xs text-stone-500">New VIP insights available</p>
                    </div>
                 </div>
-                <Link href="/customers" className="text-xs font-bold text-brand-600 hover:underline">View All</Link>
+                <Link href="/customers?is_vip=true" className="text-xs font-bold text-brand-600 hover:underline">View All</Link>
              </Card>
           </div>
         </div>
       )}
-      <Drawer isOpen={drilldownOpen} onClose={() => setDrilldownOpen(false)} title={drilldownTitle}>
+      <Drawer isOpen={drilldownOpen} onClose={closeDrawer} title={drilldownTitle}>
         <div className="space-y-4">
           {isDrilldownLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -286,18 +373,21 @@ export default function Dashboard() {
           ) : drilldownType === 'customers' ? (
             <div className="space-y-3">
               {drilldownData.map((customer: any) => (
-                <div key={customer.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl">
+                <Link key={customer.id} href={`/customers/${customer.id}`} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl hover:bg-stone-100 transition-colors cursor-pointer group">
                   <div>
-                    <p className="font-bold text-stone-900">{customer.name || 'Unknown'}</p>
+                    <p className="font-bold text-stone-900 group-hover:text-brand-600 transition-colors">{customer.name || 'Unknown'}</p>
                     <p className="text-xs text-stone-500">{customer.phone_number}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-stone-900">{customer.total_visits} visits</p>
-                    {customer.total_spent !== null && (
-                      <p className="text-xs text-brand-600 font-bold">${customer.total_spent}</p>
-                    )}
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-stone-900">{customer.total_visits} visits</p>
+                      {customer.total_spent !== null && (
+                        <p className="text-xs text-emerald-600 font-bold">${customer.total_spent}</p>
+                      )}
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-stone-300 group-hover:text-brand-500 transition-colors" />
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (
@@ -305,18 +395,21 @@ export default function Dashboard() {
               {drilldownData.map((visit: any, i) => {
                 const name = visit.customer_name?.trim() || visit.phone_number;
                 return (
-                  <div key={i} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl">
+                  <Link key={i} href={`/customers/${visit.customer_id}`} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl hover:bg-stone-100 transition-colors cursor-pointer group">
                     <div>
-                      <p className="font-bold text-stone-900">{name}</p>
+                      <p className="font-bold text-stone-900 group-hover:text-brand-600 transition-colors">{name}</p>
                       <p className="text-xs text-stone-500">
                         {visit.customer_name ? visit.phone_number : 'Walk-in customer'}
                       </p>
                       <p className="text-xs text-stone-400">{formatTime(visit.visited_at)}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-emerald-600">${Number(visit.amount).toFixed(2)}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-emerald-600">${Number(visit.amount).toFixed(2)}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-stone-300 group-hover:text-brand-500 transition-colors" />
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

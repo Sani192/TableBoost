@@ -8,6 +8,9 @@ import { getDashboard } from '../../src/lib/api';
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
+  useSearchParams: jest.fn(() => ({
+    get: jest.fn().mockReturnValue(null),
+  })),
 }));
 
 jest.mock('../../src/lib/api', () => ({

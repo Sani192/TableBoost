@@ -23,6 +23,8 @@ def list_customers(
     is_vip: Optional[bool] = None,
     is_at_risk: Optional[bool] = None,
     is_reward_near: Optional[bool] = None,
+    is_lost: Optional[bool] = None,
+    is_new: Optional[bool] = None,
     db: Session = Depends(get_db)
 ):
     return service.get_customers(
@@ -32,7 +34,8 @@ def list_customers(
         birthday_month=birthday_month, birthday_day=birthday_day,
         anniversary_month=anniversary_month, anniversary_day=anniversary_day,
         is_celebrating_today=is_celebrating_today,
-        is_vip=is_vip, is_at_risk=is_at_risk, is_reward_near=is_reward_near
+        is_vip=is_vip, is_at_risk=is_at_risk, is_reward_near=is_reward_near,
+        is_lost=is_lost, is_new=is_new
     )
 
 @router.get("/{customer_id}", response_model=schemas.CustomerDetailResponse)

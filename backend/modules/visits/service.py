@@ -2,12 +2,13 @@ import logging
 from datetime import datetime
 from typing import Optional
 from sqlalchemy.orm import Session
-from modules.customers.models import Customer
+from modules.customers.models import Customer, CustomerProfile
 from modules.visits.models import Visit
 from modules.visits.schemas import VisitCreate
 from modules.messaging import service as messaging_service
 from modules.settings import service as settings_service
 from modules.loyalty import service as loyalty_service
+from modules.automation import service as automation_service
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,14 @@ def add_visit(db: Session, visit_data: VisitCreate):
         )
         db.add(customer)
         db.flush() # Flush to get ID without committing transaction yet
+        
+        if visit_data.birthday or visit_data.anniversary:
+            profile = CustomerProfile(
+                customer_id=customer.id,
+                birthday=visit_data.birthday,
+                anniversary=visit_data.anniversary
+            )
+            db.add(profile)
     elif visit_data.name:
         customer.name = visit_data.name
         db.add(customer)
@@ -53,6 +62,9 @@ def add_visit(db: Session, visit_data: VisitCreate):
     # 4. Final Commit
     db.commit()
     db.refresh(new_visit)
+    
+    # Trigger visit_created automation
+    automation_service.trigger_event_automation(db, customer.id, 'visit_created', {'ref': f"visit_{new_visit.id}"})
     
     # Attach status for response schema
     new_visit.sms_status = sms_status

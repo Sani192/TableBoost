@@ -13,14 +13,17 @@ jest.mock('next/navigation', () => ({
 // Mock the API client
 jest.mock('../../src/lib/api', () => ({
   addVisit: jest.fn(),
+  getCustomers: jest.fn().mockResolvedValue([]),
 }));
 
 describe('AddVisitPage', () => {
   const mockPush = jest.fn();
+  const mockBack = jest.fn();
   
   beforeEach(() => {
     (useRouter as jest.Mock).mockReturnValue({
       push: mockPush,
+      back: mockBack,
     });
     jest.clearAllMocks();
   });
@@ -96,9 +99,10 @@ describe('AddVisitPage', () => {
     });
   });
 
-  it('contains a link back to dashboard', () => {
+  it('contains a button back to dashboard', () => {
     render(<AddVisitPage />);
-    const backLink = screen.getByRole('link', { name: /Back/i });
-    expect(backLink).toHaveAttribute('href', '/');
+    const backButton = screen.getByRole('button', { name: /Go back/i });
+    fireEvent.click(backButton);
+    expect(mockBack).toHaveBeenCalled();
   });
 });

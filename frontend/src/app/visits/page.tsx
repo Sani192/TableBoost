@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, Receipt, RefreshCw, Search, SlidersHorizontal, Calendar, DollarSign, X, ChevronUp, ChevronDown } from 'lucide-react';
 import VisitCard from '@/components/VisitCard';
 import { getVisits, VisitDetail } from '@/lib/api';
@@ -14,6 +15,7 @@ type SortKey = 'name' | 'amount' | 'visited_at';
 type SortOrder = 'asc' | 'desc';
 
 export default function VisitsPage() {
+  const router = useRouter();
   const [visits, setVisits] = useState<VisitDetail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -105,13 +107,13 @@ export default function VisitsPage() {
       {/* Header */}
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
+          <button
+            onClick={() => router.back()}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 shadow-soft transition-all hover:bg-stone-50 hover:text-stone-700 active:scale-95"
-            aria-label="Back to dashboard"
+            aria-label="Go back"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          </Link>
+          </button>
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
               History
