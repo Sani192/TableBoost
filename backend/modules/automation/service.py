@@ -285,6 +285,35 @@ def process_specific_automation(automation_type: str):
                 logger.debug(f"Customer ID: {customer.id}, Name: {customer.name}")
                 send_automation_message(db, customer, cfg, f"{today.year}-{today.month}")
         
+        elif automation_type == 'daily_intelligence':
+            from modules.intelligence import service as intel_service
+            logger.info("Running daily intelligence computations")
+            intel_service.compute_daily_intelligence(db)
+            intel_service.compute_campaign_summaries(db)
+            intel_service.compute_reward_effectiveness(db)
+            intel_service.compute_automation_effectiveness(db)
+            
+        elif automation_type == 'daily_recommendations':
+            from modules.intelligence import service as intel_service
+            logger.info("Running daily recommendations evaluation")
+            intel_service.evaluate_recommendations(db)
+            
+        elif automation_type == 'weekly_summary':
+            if today.weekday() == 0: # Monday
+                from modules.intelligence import service as intel_service
+                logger.info("Generating weekly summary")
+                intel_service.generate_summary(db, "weekly")
+            else:
+                logger.info("Not Monday, skipping weekly summary")
+                
+        elif automation_type == 'monthly_summary':
+            if today.day == 1:
+                from modules.intelligence import service as intel_service
+                logger.info("Generating monthly summary")
+                intel_service.generate_summary(db, "monthly")
+            else:
+                logger.info("Not 1st of month, skipping monthly summary")
+        
         else:
             logger.warning(f"Unhandled automation type in process_specific_automation: {automation_type}")
                 

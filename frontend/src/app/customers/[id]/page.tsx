@@ -8,12 +8,16 @@ import {
   redeemReward, 
   getRedemptionHistory,
   updateCustomer,
+  getCustomerIntelligence,
   CustomerDetailResponse, 
   VisitDetail,
   LoyaltyStatusResponse,
-  RewardRedemptionResponse
+  RewardRedemptionResponse,
+  CustomerIntelligenceResponse
 } from '@/lib/api';
 import ActivityList from '@/components/ActivityList';
+import CustomerHealthBadge from '@/components/intelligence/CustomerHealthBadge';
+import CLVBadge from '@/components/intelligence/CLVBadge';
 import StatCard from '@/components/StatCard';
 import { Utensils, DollarSign, RefreshCw, Trophy, History, Gift, CheckCircle2, Loader2, Lock, ChevronRight, Cake, Heart, Edit2, Calendar, ArrowLeft } from 'lucide-react';
 import Button from '@/components/ui/Button';
@@ -29,6 +33,7 @@ export default function CustomerDetailPage() {
   const [visits, setVisits] = useState<VisitDetail[]>([]);
   const [loyalty, setLoyalty] = useState<LoyaltyStatusResponse | null>(null);
   const [redemptions, setRedemptions] = useState<RewardRedemptionResponse[]>([]);
+  const [intelligence, setIntelligence] = useState<CustomerIntelligenceResponse | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -46,16 +51,21 @@ export default function CustomerDetailPage() {
   const fetchData = async () => {
     if (!id) return;
     try {
-      const [custData, visitsData, loyaltyData, historyData] = await Promise.all([
+      const [custData, visitsData, loyaltyData, historyData, intelData] = await Promise.all([
         getCustomerDetail(Number(id)),
         getCustomerVisits(Number(id), { skip: 0, limit: PAGE_SIZE }),
         getLoyaltyStatus(Number(id)),
-        getRedemptionHistory(Number(id))
+        getRedemptionHistory(Number(id)),
+        getCustomerIntelligence(Number(id)).catch(err => {
+          console.log('No intelligence data yet');
+          return null;
+        })
       ]);
       setCustomer(custData);
       setVisits(visitsData);
       setLoyalty(loyaltyData);
       setRedemptions(historyData);
+      setIntelligence(intelData);
       setHasMore(visitsData.length === PAGE_SIZE);
     } catch (err) {
       console.error(err);
@@ -158,7 +168,15 @@ export default function CustomerDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <h1 className="text-2xl font-extrabold text-stone-900">{customer.name || customer.phone_number}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-extrabold text-stone-900">{customer.name || customer.phone_number}</h1>
+              {intelligence && (
+                <div className="flex gap-1.5">
+                  <CustomerHealthBadge status={intelligence.health_status} />
+                  <CLVBadge tier={intelligence.clv_tier} />
+                </div>
+              )}
+            </div>
             <p className="text-stone-500 font-medium">{customer.phone_number}</p>
             {(customer.birthday || customer.anniversary) && (
               <div className="flex gap-3 mt-2">

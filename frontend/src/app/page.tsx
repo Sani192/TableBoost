@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, Repeat2, UsersRound, Utensils, RefreshCw, Trophy, Cake, Heart, ChevronRight, BarChart3, Rocket, Activity, TrendingUp, Wallet, UserCheck, UserX, UserPlus, Target } from 'lucide-react';
+import { Plus, Repeat2, UsersRound, Utensils, RefreshCw, Trophy, Cake, Heart, ChevronRight, BarChart3, Rocket, Activity, TrendingUp, Wallet, UserCheck, UserX, UserPlus, Target, Sparkles, Megaphone, Gift } from 'lucide-react';
 import ActivityList from '@/components/ActivityList';
 import StatCard from '@/components/StatCard';
 import Card from '@/components/ui/Card';
 import Drawer from '@/components/ui/Drawer';
-import { getDashboard, DashboardResponse, getCustomers, getVisits } from '@/lib/api';
+import RecommendationCard from '@/components/dashboard/RecommendationCard';
+import { getDashboard, DashboardResponse, getCustomers, getVisits, getGrowthDashboard, GrowthDashboardResponse, dismissRecommendation, getCampaignRoi, getRewardEffectiveness } from '@/lib/api';
 
 type DrilldownConfig = { type: 'customers' | 'visits'; title: string; params: () => Record<string, any> };
 
@@ -50,8 +51,11 @@ export default function Dashboard() {
   const searchParams = useSearchParams();
 
   const [data, setData] = useState<DashboardResponse | null>(null);
+  const [growthData, setGrowthData] = useState<GrowthDashboardResponse | null>(null);
+  const [campaignRoi, setCampaignRoi] = useState<any[]>([]);
+  const [rewardEffectiveness, setRewardEffectiveness] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'ops' | 'revenue'>('ops');
+  const [activeTab, setActiveTab] = useState<'ops' | 'revenue' | 'growth'>('ops');
   
   const [drilldownOpen, setDrilldownOpen] = useState(false);
   const [drilldownTitle, setDrilldownTitle] = useState('');
@@ -100,10 +104,32 @@ export default function Dashboard() {
 
   const fetchDashboard = () => {
     setIsLoading(true);
-    getDashboard()
-      .then(setData)
+    Promise.all([
+      getDashboard(),
+      getGrowthDashboard(),
+      getCampaignRoi().catch(() => []),
+      getRewardEffectiveness().catch(() => [])
+    ])
+      .then(([dashData, growth, roi, rewards]) => {
+        setData(dashData);
+        setGrowthData(growth);
+        setCampaignRoi(roi);
+        setRewardEffectiveness(rewards);
+      })
       .catch(console.error)
       .finally(() => setIsLoading(false));
+  };
+
+  const handleDismissRecommendation = async (recId: number) => {
+    try {
+      await dismissRecommendation(recId);
+      setGrowthData(prev => prev ? {
+        ...prev,
+        recommendations: prev.recommendations.filter(r => r.id !== recId)
+      } : null);
+    } catch (err) {
+      console.error('Failed to dismiss recommendation:', err);
+    }
   };
 
   useEffect(() => {
@@ -195,7 +221,7 @@ export default function Dashboard() {
       </header>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-stone-100 rounded-2xl w-full max-w-md">
+      <div className="flex gap-1 p-1 bg-stone-100 rounded-2xl w-full max-w-lg">
         <button
           onClick={() => setActiveTab('ops')}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${
@@ -212,9 +238,17 @@ export default function Dashboard() {
         >
           <TrendingUp className="h-4 w-4" /> Intelligence
         </button>
+        <button
+          onClick={() => setActiveTab('growth')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${
+            activeTab === 'growth' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
+          }`}
+        >
+          <Sparkles className="h-4 w-4" /> Growth
+        </button>
       </div>
 
-      {activeTab === 'ops' ? (
+      {activeTab === 'ops' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
           {/* Celebrations Banner */}
           {data?.celebrations && (data.celebrations.birthdays > 0 || data.celebrations.anniversaries > 0) && (
@@ -255,7 +289,8 @@ export default function Dashboard() {
 
           <ActivityList visits={visits} />
         </div>
-      ) : (
+      )}
+      {activeTab === 'revenue' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatCard label="Weekly Revenue" value={`$${Math.round(stats.weeklyRevenue)}`} icon={<Wallet className="h-4 w-4" />} accent="blue" onClick={() => handleDrilldown('weekly')} />
@@ -360,6 +395,136 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {activeTab === 'growth' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+          {/* Growth Cards */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <StatCard label="Healthy" value={growthData?.health?.healthy || 0} icon={<UserCheck className="h-4 w-4" />} accent="green" />
+            <StatCard label="Declining" value={growthData?.health?.declining || 0} icon={<TrendingUp className="h-4 w-4" />} accent="orange" />
+            <StatCard label="At Risk" value={growthData?.health?.churn_risk || 0} icon={<UserX className="h-4 w-4" />} accent="red" />
+            <StatCard label="Net New (30d)" value={growthData?.net_new_customers || 0} icon={<UserPlus className="h-4 w-4" />} accent="blue" />
+          </div>
+
+          {/* Recommendations */}
+          {growthData?.recommendations && growthData.recommendations.length > 0 && (
+            <section className="space-y-3">
+              <h3 className="text-sm font-bold text-stone-500 uppercase tracking-wider">Smart Recommendations</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {growthData.recommendations.map(rec => (
+                  <RecommendationCard
+                    key={rec.id}
+                    id={rec.id}
+                    rule_id={rec.rule_id}
+                    message={rec.message}
+                    priority={rec.priority}
+                    action_type={rec.action_type}
+                    action_params={rec.action_params}
+                    onDismiss={handleDismissRecommendation}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Summaries & Impact */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             {/* Latest Summary */}
+             <Card className="p-5">
+                <h4 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-2">
+                   <Target className="h-4 w-4 text-brand-600" /> Latest Business Summary
+                </h4>
+                {growthData?.latest_summary ? (
+                   <div className="space-y-2">
+                      <p className="text-sm font-medium text-stone-700">
+                         Period: {growthData.latest_summary.period_type} (Ended {new Date(growthData.latest_summary.created_at).toLocaleDateString()})
+                      </p>
+                      <ul className="space-y-1">
+                         {growthData.latest_summary.highlights?.map((h: string, i: number) => (
+                            <li key={i} className="text-xs text-stone-600 flex items-start gap-1">
+                               <span className="text-brand-600">•</span> {h}
+                            </li>
+                         ))}
+                      </ul>
+                   </div>
+                ) : (
+                   <p className="text-xs text-stone-400">No summary generated yet.</p>
+                )}
+             </Card>
+
+             {/* Loyalty Impact */}
+             <Card className="p-5">
+                <h4 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-2">
+                   <Trophy className="h-4 w-4 text-brand-600" /> Loyalty Impact
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                   <div>
+                      <p className="text-[10px] text-stone-400 font-bold">INFLUENCED REVENUE</p>
+                      <p className="text-lg font-extrabold text-stone-900">${growthData?.loyalty_impact?.reward_influenced_revenue || 0}</p>
+                   </div>
+                   <div>
+                      <p className="text-[10px] text-stone-400 font-bold">AVG REVISIT RATE</p>
+                      <p className="text-lg font-extrabold text-emerald-600">{growthData?.loyalty_impact?.avg_revisit_rate || 0}%</p>
+                   </div>
+                </div>
+             </Card>
+          </div>
+
+          {/* Analytics Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             {/* Campaign ROI List */}
+             <Card className="p-5">
+                <h4 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-2">
+                   <Megaphone className="h-4 w-4 text-brand-600" /> Campaign Performance
+                </h4>
+                {campaignRoi.length > 0 ? (
+                   <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {campaignRoi.map((camp, i) => (
+                         <div key={i} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg">
+                            <div>
+                               <p className="text-xs font-bold text-stone-900">{camp.campaign_name}</p>
+                               <p className="text-[10px] text-stone-500">{camp.total_sent} sent • {camp.total_converted} converted</p>
+                            </div>
+                            <div className="text-right">
+                               <p className="text-xs font-bold text-emerald-600">${camp.revenue_attributed}</p>
+                               <p className="text-[10px] text-stone-400">{camp.conversion_rate}% rate</p>
+                            </div>
+                         </div>
+                      ))}
+                   </div>
+                ) : (
+                   <p className="text-xs text-stone-400">No campaign data available.</p>
+                )}
+             </Card>
+
+             {/* Reward Effectiveness List */}
+             <Card className="p-5">
+                <h4 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-2">
+                   <Gift className="h-4 w-4 text-brand-600" /> Reward Effectiveness
+                </h4>
+                {rewardEffectiveness.length > 0 ? (
+                   <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {rewardEffectiveness.map((rew, i) => (
+                         <div key={i} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg">
+                            <div>
+                               <p className="text-xs font-bold text-stone-900">{rew.reward_name}</p>
+                               <p className="text-[10px] text-stone-500">{rew.total_redeemed} redeemed</p>
+                            </div>
+                            <div className="text-right">
+                               <p className="text-xs font-bold text-emerald-600">${rew.reward_influenced_revenue}</p>
+                               <p className="text-[10px] text-stone-400">{rew.post_reward_revisit_rate}% revisit</p>
+                            </div>
+                         </div>
+                      ))}
+                   </div>
+                ) : (
+                   <p className="text-xs text-stone-400">No reward data available.</p>
+                )}
+             </Card>
+          </div>
+        </div>
+      )}
+
       <Drawer isOpen={drilldownOpen} onClose={closeDrawer} title={drilldownTitle}>
         <div className="space-y-4">
           {isDrilldownLoading ? (

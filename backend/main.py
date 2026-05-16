@@ -7,6 +7,7 @@ from modules.customers.router import router as customers_router
 from modules.messaging.router import router as messaging_router
 from modules.loyalty.router import router as loyalty_router
 from modules.automation.router import router as automation_router
+from modules.intelligence.router import router as intelligence_router
 from modules.automation import service as automation_service
 from modules.messaging import service as messaging_service
 from core.database import SessionLocal
@@ -39,6 +40,7 @@ app.include_router(customers_router)
 app.include_router(messaging_router)
 app.include_router(loyalty_router)
 app.include_router(automation_router)
+app.include_router(intelligence_router)
 
 # Initial job registration
 

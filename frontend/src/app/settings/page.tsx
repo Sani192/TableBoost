@@ -28,7 +28,10 @@ import {
   Rocket,
   Cake,
   Heart,
-  Calendar
+  Calendar,
+  Sparkles,
+  Lightbulb,
+  Target
 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -53,6 +56,26 @@ const AUTOMATION_METADATA: Record<string, { label: string; icon: any; descriptio
     label: 'Reward Unlocked SMS',
     icon: Trophy,
     description: 'Instant win notifications'
+  },
+  daily_intelligence: {
+    label: 'Daily Intelligence',
+    icon: Sparkles,
+    description: 'System: Daily intelligence computation'
+  },
+  daily_recommendations: {
+    label: 'Daily Recommendations',
+    icon: Lightbulb,
+    description: 'System: Daily recommendations evaluation'
+  },
+  weekly_summary: {
+    label: 'Weekly Summary',
+    icon: Target,
+    description: 'System: Weekly business summary'
+  },
+  monthly_summary: {
+    label: 'Monthly Summary',
+    icon: Trophy,
+    description: 'System: Monthly business summary'
   }
 };
 

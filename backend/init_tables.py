@@ -4,6 +4,7 @@ from modules.visits.models import Visit
 from modules.messaging.models import Message, Campaign
 from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedemption
 from modules.automation.models import AutomationConfig, AutomationHistory
+from modules.intelligence.models import CustomerIntelligence, CampaignSummary, RewardSummary, AutomationSummary, BusinessSummary, Recommendation
 from modules.automation import service as automation_service
 
 def init_db():
@@ -33,6 +34,30 @@ def init_db():
                 "automation_type": "reward_unlocked",
                 "is_enabled": True,
                 "message_template": "Congratulations {name}! 🏆 You've just unlocked a new reward. Visit us to redeem it!"
+            },
+            {
+                "automation_type": "daily_intelligence",
+                "is_enabled": True,
+                "message_template": "System: Daily intelligence computation",
+                "schedule": "cron:02:00"
+            },
+            {
+                "automation_type": "daily_recommendations",
+                "is_enabled": True,
+                "message_template": "System: Daily recommendations evaluation",
+                "schedule": "cron:06:00"
+            },
+            {
+                "automation_type": "weekly_summary",
+                "is_enabled": True,
+                "message_template": "System: Weekly business summary",
+                "schedule": "cron:03:00"
+            },
+            {
+                "automation_type": "monthly_summary",
+                "is_enabled": True,
+                "message_template": "System: Monthly business summary",
+                "schedule": "cron:03:00"
             }
         ]
         

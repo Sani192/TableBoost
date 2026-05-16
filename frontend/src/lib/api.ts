@@ -272,3 +272,72 @@ export const updateAutomationConfig = async (payload: Partial<AutomationConfig>)
   const response = await api.post<AutomationConfig>('/api/automation/', payload);
   return response.data;
 };
+
+// Intelligence
+export interface GrowthDashboardResponse {
+  health: Record<string, number>;
+  net_new_customers: number;
+  latest_summary?: {
+    period_type: string;
+    metrics: Record<string, any>;
+    trends?: Record<string, any>;
+    highlights?: string[];
+    created_at: string;
+  };
+  recommendations: Array<{
+    id: number;
+    rule_id: string;
+    message: string;
+    priority: string;
+    action_type?: string;
+    action_params?: Record<string, any>;
+  }>;
+  loyalty_impact: {
+    reward_influenced_revenue: number;
+    avg_revisit_rate: number;
+  };
+  top_automation?: {
+    type: string;
+    revisit_rate: number;
+    revenue: number;
+  };
+}
+
+export interface CustomerIntelligenceResponse {
+  customer_id: number;
+  clv_score: number;
+  clv_tier: string;
+  total_spent: number;
+  visit_count: number;
+  avg_visit_gap_days?: number;
+  last_visit_at?: string;
+  health_status: string;
+  health_score: number;
+  spend_trend?: string;
+  computed_at?: string;
+}
+
+export const getGrowthDashboard = async (): Promise<GrowthDashboardResponse> => {
+  const response = await api.get<GrowthDashboardResponse>('/api/intelligence/growth');
+  return response.data;
+};
+
+export const getCustomerIntelligence = async (customerId: number): Promise<CustomerIntelligenceResponse> => {
+  const response = await api.get<CustomerIntelligenceResponse>(`/api/intelligence/customer/${customerId}`);
+  return response.data;
+};
+
+export const dismissRecommendation = async (recId: number): Promise<{ status: string }> => {
+  const response = await api.post<{ status: string }>(`/api/intelligence/recommendations/${recId}/dismiss`);
+  return response.data;
+};
+
+export const getCampaignRoi = async (): Promise<any[]> => {
+  const response = await api.get<any[]>('/api/intelligence/campaigns');
+  return response.data;
+};
+
+export const getRewardEffectiveness = async (): Promise<any[]> => {
+  const response = await api.get<any[]>('/api/intelligence/rewards');
+  return response.data;
+};
