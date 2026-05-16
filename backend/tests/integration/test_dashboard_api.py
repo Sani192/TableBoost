@@ -5,29 +5,9 @@ from core.database import Base, get_db
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-# Setup test database
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Using shared fixtures from conftest.py
 
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-
-client = TestClient(app)
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
-
-def test_get_dashboard_empty():
+def test_get_dashboard_empty(client):
     response = client.get("/api/dashboard/")
     assert response.status_code == 200
     data = response.json()
@@ -37,7 +17,7 @@ def test_get_dashboard_empty():
     assert data["total_redeemed"] == 0
     assert data["recent_visits"] == []
 
-def test_get_dashboard_with_data():
+def test_get_dashboard_with_data(client):
     # Add a visit
     client.post("/api/visits/", json={
         "phone_number": "1234567890", "amount": 10.00,

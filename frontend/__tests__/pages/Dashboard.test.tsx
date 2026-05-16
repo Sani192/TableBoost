@@ -27,13 +27,25 @@ describe('Dashboard Page', () => {
       total_customers: 10,
       total_visits: 15,
       repeat_customers: 5,
-      recent_visits: []
+      recent_visits: [],
+      revenue: {
+        repeat_rate: 50,
+        weekly_total: 1000,
+        monthly_total: 4000,
+        avg_ticket: 50,
+        daily_trends: []
+      },
+      segments: {
+        vips_count: 2,
+        at_risk_count: 3,
+        near_rewards_count: 1
+      }
     });
   });
 
   it('renders the dashboard heading', async () => {
     render(<Dashboard />);
-    expect(await screen.findByRole('heading', { name: /Quick billing desk/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Revenue Dashboard/i })).toBeInTheDocument();
   });
 
   it('contains a link to add a new visit that links to the correct page', async () => {
@@ -46,6 +58,6 @@ describe('Dashboard Page', () => {
     render(<Dashboard />);
     expect(await screen.findByText('10')).toBeInTheDocument();
     expect(screen.getByText('15')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('50%')).toBeInTheDocument();
   });
 });

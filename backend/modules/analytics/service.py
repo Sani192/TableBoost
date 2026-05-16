@@ -129,3 +129,4 @@ def get_customer_segments(db: Session):
         "at_risk_count": len(at_risk),
         "near_rewards_count": len(near_rewards)
     }
+

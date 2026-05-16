@@ -44,3 +44,4 @@ def get_dashboard_stats(db: Session):
         "revenue": revenue_metrics,
         "segments": segments
     }
+

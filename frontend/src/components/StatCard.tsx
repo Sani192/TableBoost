@@ -5,6 +5,7 @@ interface StatCardProps {
   value: number | string;
   icon?: ReactNode;
   accent?: 'orange' | 'green' | 'slate' | 'blue' | 'red' | 'brand';
+  onClick?: () => void;
 }
 
 const accentConfig = {
@@ -40,11 +41,14 @@ const accentConfig = {
   },
 };
 
-export default function StatCard({ label, value, icon, accent = 'orange' }: StatCardProps) {
+export default function StatCard({ label, value, icon, accent = 'orange', onClick }: StatCardProps) {
   const config = accentConfig[accent];
 
   return (
-    <div className="rounded-3xl border border-stone-200/60 bg-white p-4 shadow-card transition-shadow hover:shadow-soft">
+    <div 
+      className={`rounded-3xl border border-stone-200/60 bg-white p-4 shadow-card transition-shadow hover:shadow-soft ${onClick ? 'cursor-pointer hover:bg-stone-50' : ''}`}
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-xs font-semibold uppercase tracking-wider text-stone-500">

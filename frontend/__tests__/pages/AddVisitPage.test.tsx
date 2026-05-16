@@ -75,7 +75,7 @@ describe('AddVisitPage', () => {
       });
     });
 
-    expect(screen.getByText(/Visit saved. Review SMS queued./i)).toBeInTheDocument();
+    expect(screen.getByText(/Visit saved.*Review SMS queued/i)).toBeInTheDocument();
   });
 
   it('shows error message when API call fails', async () => {
@@ -84,9 +84,11 @@ describe('AddVisitPage', () => {
     render(<AddVisitPage />);
     
     const phoneInput = screen.getAllByRole('textbox')[0];
+    const amountInput = screen.getByPlaceholderText(/0.00/i);
     const submitButton = screen.getByRole('button', { name: /Save Visit/i });
 
     fireEvent.change(phoneInput, { target: { value: '1234567890' } });
+    fireEvent.change(amountInput, { target: { value: '10.00' } });
     fireEvent.click(submitButton);
 
     await waitFor(() => {
@@ -94,11 +96,9 @@ describe('AddVisitPage', () => {
     });
   });
 
-  it('navigates back to dashboard when back button is clicked', () => {
+  it('contains a link back to dashboard', () => {
     render(<AddVisitPage />);
-    const backButton = screen.getAllByRole('button', { name: 'Back' })[0];
-    
-    fireEvent.click(backButton);
-    expect(mockPush).toHaveBeenCalledWith('/');
+    const backLink = screen.getByRole('link', { name: /Back/i });
+    expect(backLink).toHaveAttribute('href', '/');
   });
 });

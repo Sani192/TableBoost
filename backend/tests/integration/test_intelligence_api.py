@@ -6,28 +6,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta, timezone
 
-# Setup test database
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_intel.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Using shared fixtures from conftest.py
 
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
-
-def test_intelligence_kpis_not_null():
+def test_intelligence_kpis_not_null(client):
     """Verify that intelligence data is correctly exposed in the dashboard response."""
     # Add some data
     client.post("/api/visits/", json={"phone_number": "1112223333", "amount": 100.0, "name": "VIP User", "send_sms": False})
@@ -48,7 +29,7 @@ def test_intelligence_kpis_not_null():
     assert len(data["revenue"]["daily_trends"]) == 7
     assert "vips_count" in data["segments"]
 
-def test_daily_trends_gap_filling():
+def test_daily_trends_gap_filling(client):
     """Verify that all 7 days are represented in daily trends even with gaps."""
     response = client.get("/api/dashboard/")
     data = response.json()
@@ -60,7 +41,7 @@ def test_daily_trends_gap_filling():
         assert "revenue" in day
         assert "visits" in day
 
-def test_vip_logic_top_10_percent():
+def test_vip_logic_top_10_percent(client):
     """Verify VIP logic follows top 10% rule."""
     # Add 10 customers, 1 spender
     for i in range(10):

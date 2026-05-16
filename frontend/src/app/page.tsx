@@ -6,12 +6,64 @@ import { Plus, Repeat2, UsersRound, Utensils, RefreshCw, Trophy, Cake, Heart, Ch
 import ActivityList from '@/components/ActivityList';
 import StatCard from '@/components/StatCard';
 import Card from '@/components/ui/Card';
-import { getDashboard, DashboardResponse } from '@/lib/api';
+import Drawer from '@/components/ui/Drawer';
+import { getDashboard, DashboardResponse, getCustomers, getVisits } from '@/lib/api';
+
+const formatTime = (isoDate: string) => {
+  const date = new Date(isoDate);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  const dayLabel = isToday
+    ? 'Today'
+    : isYesterday
+      ? 'Yesterday'
+      : date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+  const time = date.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  return `${dayLabel}, ${time}`;
+};
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'ops' | 'revenue'>('ops');
+  
+  const [drilldownOpen, setDrilldownOpen] = useState(false);
+  const [drilldownTitle, setDrilldownTitle] = useState('');
+  const [drilldownData, setDrilldownData] = useState<any[]>([]);
+  const [isDrilldownLoading, setIsDrilldownLoading] = useState(false);
+  const [drilldownType, setDrilldownType] = useState<'customers' | 'visits'>('customers');
+
+  const handleDrilldown = async (type: 'customers' | 'visits', title: string, params: any) => {
+    setDrilldownTitle(title);
+    setDrilldownType(type);
+    setDrilldownOpen(true);
+    setIsDrilldownLoading(true);
+    setDrilldownData([]);
+    
+    try {
+      if (type === 'customers') {
+        const data = await getCustomers({ limit: 50, ...params });
+        setDrilldownData(data);
+      } else if (type === 'visits') {
+        const data = await getVisits({ limit: 50, ...params });
+        setDrilldownData(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch drilldown data:', error);
+    } finally {
+      setIsDrilldownLoading(false);
+    }
+  };
 
   const fetchDashboard = () => {
     setIsLoading(true);
@@ -149,16 +201,16 @@ export default function Dashboard() {
       ) : (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <StatCard label="Weekly Revenue" value={`$${Math.round(stats.weeklyRevenue)}`} icon={<Wallet className="h-4 w-4" />} accent="blue" />
-            <StatCard label="Monthly Revenue" value={`$${Math.round(stats.monthlyRevenue)}`} icon={<TrendingUp className="h-4 w-4" />} accent="green" />
+            <StatCard label="Weekly Revenue" value={`$${Math.round(stats.weeklyRevenue)}`} icon={<Wallet className="h-4 w-4" />} accent="blue" onClick={() => handleDrilldown('visits', 'Weekly Revenue Visits', { start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() })} />
+            <StatCard label="Monthly Revenue" value={`$${Math.round(stats.monthlyRevenue)}`} icon={<TrendingUp className="h-4 w-4" />} accent="green" onClick={() => handleDrilldown('visits', 'Monthly Revenue Visits', { start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() })} />
             <StatCard label="Repeat Rate" value={`${Math.round(stats.repeatRate)}%`} icon={<Repeat2 className="h-4 w-4" />} accent="slate" />
             <StatCard label="Avg Ticket" value={`$${Math.round(stats.avgTicket)}`} icon={<TrendingUp className="h-4 w-4" />} accent="brand" />
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <StatCard label="VIP Segments" value={stats.vipsCount} icon={<Trophy className="h-4 w-4" />} accent="orange" />
-            <StatCard label="At Risk" value={stats.atRiskCount} icon={<UserCheck className="h-4 w-4" />} accent="red" />
-            <StatCard label="Near Reward" value={stats.nearRewardsCount} icon={<Rocket className="h-4 w-4" />} accent="blue" />
+            <StatCard label="VIP Segments" value={stats.vipsCount} icon={<Trophy className="h-4 w-4" />} accent="orange" onClick={() => handleDrilldown('customers', 'VIP Customers', { is_vip: true })} />
+            <StatCard label="At Risk" value={stats.atRiskCount} icon={<UserCheck className="h-4 w-4" />} accent="red" onClick={() => handleDrilldown('customers', 'At-Risk Customers', { is_at_risk: true })} />
+            <StatCard label="Near Reward" value={stats.nearRewardsCount} icon={<Rocket className="h-4 w-4" />} accent="blue" onClick={() => handleDrilldown('customers', 'Customers Near Reward', { is_reward_near: true })} />
             <StatCard label="Recent Rewards" value={stats.recentRedeemed} icon={<Trophy className="h-4 w-4" />} accent="slate" />
           </div>
 
@@ -171,8 +223,9 @@ export default function Dashboard() {
                 data.revenue.daily_trends.map((day, i) => (
                   <div key={i} className="flex-1 h-full flex flex-col justify-end items-center gap-2 group">
                     <div 
-                      className="w-full bg-brand-500/20 hover:bg-brand-500 rounded-t-lg transition-all duration-300 relative min-h-[2px]"
+                      className="w-full bg-brand-500/20 hover:bg-brand-500 rounded-t-lg transition-all duration-300 relative min-h-[2px] cursor-pointer"
                       style={{ height: `${(day.revenue / (Math.max(...data.revenue.daily_trends.map(d => d.revenue)) || 1)) * 100}%` }}
+                      onClick={() => handleDrilldown('visits', `Visits on ${new Date(day.date).toLocaleDateString()}`, { start_date: `${day.date}T00:00:00`, end_date: `${day.date}T23:59:59` })}
                     >
                       <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                         ${day.revenue}
@@ -220,6 +273,56 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      <Drawer isOpen={drilldownOpen} onClose={() => setDrilldownOpen(false)} title={drilldownTitle}>
+        <div className="space-y-4">
+          {isDrilldownLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-6 w-6 animate-spin text-brand-600" />
+            </div>
+          ) : drilldownData.length === 0 ? (
+            <div className="text-center py-8 text-stone-500 font-bold">
+              No data available for this segment.
+            </div>
+          ) : drilldownType === 'customers' ? (
+            <div className="space-y-3">
+              {drilldownData.map((customer: any) => (
+                <div key={customer.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl">
+                  <div>
+                    <p className="font-bold text-stone-900">{customer.name || 'Unknown'}</p>
+                    <p className="text-xs text-stone-500">{customer.phone_number}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-stone-900">{customer.total_visits} visits</p>
+                    {customer.total_spent !== null && (
+                      <p className="text-xs text-brand-600 font-bold">${customer.total_spent}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {drilldownData.map((visit: any, i) => {
+                const name = visit.customer_name?.trim() || visit.phone_number;
+                return (
+                  <div key={i} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl">
+                    <div>
+                      <p className="font-bold text-stone-900">{name}</p>
+                      <p className="text-xs text-stone-500">
+                        {visit.customer_name ? visit.phone_number : 'Walk-in customer'}
+                      </p>
+                      <p className="text-xs text-stone-400">{formatTime(visit.visited_at)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-emerald-600">${Number(visit.amount).toFixed(2)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Drawer>
     </div>
   );
 }

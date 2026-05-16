@@ -9,3 +9,4 @@ router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 @router.get("/", response_model=DashboardResponse)
 def get_dashboard(db: Session = Depends(get_db)):
     return service.get_dashboard_stats(db)
+
