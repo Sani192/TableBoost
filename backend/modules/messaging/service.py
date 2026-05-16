@@ -1,10 +1,11 @@
 import logging
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from modules.messaging.models import Message
+from sqlalchemy import and_, desc, func, exists
+from modules.messaging.models import Message, Campaign
 from modules.customers.models import Customer
 from modules.visits.models import Visit
+from modules.loyalty.models import LoyaltyProgress, LoyaltyReward
 from modules.settings import service as settings_service
 
 logger = logging.getLogger(__name__)
@@ -93,6 +94,25 @@ def execute_campaign(db: Session, message_template: str, audience_type: str, ina
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=inactive_days)
         subquery = db.query(Visit.customer_id).filter(Visit.visited_at >= cutoff_date).subquery()
         customers = db.query(Customer).outerjoin(subquery, Customer.id == subquery.c.customer_id).filter(subquery.c.customer_id == None).all()
+    elif audience_type == "vip":
+        # Simplified: top 50 spenders
+        total_spent_sub = db.query(
+            Visit.customer_id,
+            func.sum(Visit.amount).label('total_amount')
+        ).group_by(Visit.customer_id).order_by(desc('total_amount')).limit(50).subquery()
+        customers = db.query(Customer).join(total_spent_sub, Customer.id == total_spent_sub.c.customer_id).all()
+    elif audience_type == "reward_near":
+        # Within 2 visits of any active milestone
+        query = db.query(Customer).join(LoyaltyProgress, Customer.id == LoyaltyProgress.customer_id)\
+                         .filter(exists().where(
+                             and_(
+                                 LoyaltyReward.reward_type == 'milestone',
+                                 LoyaltyReward.is_active == True,
+                                 LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits <= 2,
+                                 LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits > 0
+                             )
+                         ))
+        customers = query.all()
     else:
         raise ValueError(f"Invalid audience_type: {audience_type}")
 

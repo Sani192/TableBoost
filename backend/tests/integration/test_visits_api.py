@@ -224,4 +224,4 @@ class TestRootEndpoint:
         response = client.get("/")
 
         assert response.status_code == 200
-        assert response.json()["message"] == "Welcome to TableBoost API Phase 1"
+        assert response.json()["message"] == "Welcome to TableBoost API"

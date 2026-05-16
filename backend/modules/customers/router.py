@@ -20,6 +20,9 @@ def list_customers(
     anniversary_month: Optional[int] = None,
     anniversary_day: Optional[int] = None,
     is_celebrating_today: Optional[bool] = None,
+    is_vip: Optional[bool] = None,
+    is_at_risk: Optional[bool] = None,
+    is_reward_near: Optional[bool] = None,
     db: Session = Depends(get_db)
 ):
     return service.get_customers(
@@ -28,7 +31,8 @@ def list_customers(
         min_spent=min_spent, max_spent=max_spent,
         birthday_month=birthday_month, birthday_day=birthday_day,
         anniversary_month=anniversary_month, anniversary_day=anniversary_day,
-        is_celebrating_today=is_celebrating_today
+        is_celebrating_today=is_celebrating_today,
+        is_vip=is_vip, is_at_risk=is_at_risk, is_reward_near=is_reward_near
     )
 
 @router.get("/{customer_id}", response_model=schemas.CustomerDetailResponse)

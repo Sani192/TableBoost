@@ -10,7 +10,13 @@ router = APIRouter(prefix="/api/automation", tags=["Automation"])
 class AutomationConfigBase(BaseModel):
     automation_type: str
     is_enabled: bool
-    message_template: Optional[str] = "Hi {name}, we miss you! Visit us soon for a special treat."
+    message_template: Optional[str] = None
+    settings: Optional[dict] = None
+
+class AutomationUpdate(BaseModel):
+    automation_type: str
+    is_enabled: Optional[bool] = None
+    message_template: Optional[str] = None
     settings: Optional[dict] = None
 
 @router.get("/", response_model=List[AutomationConfigBase])
@@ -18,5 +24,11 @@ def list_automations(db: Session = Depends(get_db)):
     return service.get_automation_configs(db)
 
 @router.post("/", response_model=AutomationConfigBase)
-def update_automation(config: AutomationConfigBase, db: Session = Depends(get_db)):
-    return service.update_automation_config(db, config.dict())
+def update_automation(config: AutomationUpdate, db: Session = Depends(get_db)):
+    updated_config = service.update_automation_config(db, config.dict(exclude_unset=True))
+    
+    # Sync scheduler to apply changes immediately
+    from core.scheduler import scheduler
+    service.sync_scheduler(scheduler, db)
+    
+    return updated_config

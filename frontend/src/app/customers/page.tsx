@@ -24,6 +24,9 @@ export default function CustomersPage() {
   const [birthdayMonth, setBirthdayMonth] = useState('');
   const [anniversaryMonth, setAnniversaryMonth] = useState('');
   const [isCelebrating, setIsCelebrating] = useState(false);
+  const [isVip, setIsVip] = useState(false);
+  const [isAtRisk, setIsAtRisk] = useState(false);
+  const [isRewardNear, setIsRewardNear] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
   const searchParams = useSearchParams();
@@ -54,7 +57,10 @@ export default function CustomersPage() {
         max_spent: maxSpent ? Number(maxSpent) : undefined,
         birthday_month: birthdayMonth ? Number(birthdayMonth) : undefined,
         anniversary_month: anniversaryMonth ? Number(anniversaryMonth) : undefined,
-        is_celebrating_today: isCelebrating || undefined
+        is_celebrating_today: isCelebrating || undefined,
+        is_vip: isVip || undefined,
+        is_at_risk: isAtRisk || undefined,
+        is_reward_near: isRewardNear || undefined
       });
 
       if (isLoadMore) {
@@ -71,12 +77,12 @@ export default function CustomersPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [search, minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth, isCelebrating, skip]);
+  }, [search, minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth, isCelebrating, isVip, isAtRisk, isRewardNear, skip]);
 
   useEffect(() => {
     const timer = setTimeout(() => fetchCustomers(false), 400);
     return () => clearTimeout(timer);
-  }, [search, minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth, isCelebrating]);
+  }, [search, minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth, isCelebrating, isVip, isAtRisk, isRewardNear]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -91,7 +97,7 @@ export default function CustomersPage() {
     return () => observer.disconnect();
   }, [hasMore, loading, loadingMore, fetchCustomers]);
 
-  const activeFiltersCount = [minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth].filter(Boolean).length + (isCelebrating ? 1 : 0);
+  const activeFiltersCount = [minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth].filter(Boolean).length + (isCelebrating ? 1 : 0) + (isVip ? 1 : 0) + (isAtRisk ? 1 : 0) + (isRewardNear ? 1 : 0);
 
   const clearFilters = () => {
     setMinVisits('');
@@ -101,6 +107,9 @@ export default function CustomersPage() {
     setBirthdayMonth('');
     setAnniversaryMonth('');
     setIsCelebrating(false);
+    setIsVip(false);
+    setIsAtRisk(false);
+    setIsRewardNear(false);
     setSearch('');
     setShowFilters(false);
   };
@@ -209,19 +218,36 @@ export default function CustomersPage() {
                  {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                </select>
             </div>
-            <div className="flex items-end">
-               <button
-                 onClick={() => setIsCelebrating(!isCelebrating)}
-                 className={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-all active:scale-95 ${
-                   isCelebrating 
-                     ? 'border-brand-300 bg-brand-600 text-white shadow-md' 
-                     : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
-                 }`}
-               >
-                 <PartyPopper className={`h-4 w-4 ${isCelebrating ? 'animate-bounce' : ''}`} />
-                 Celebrating Today
-               </button>
-            </div>
+          </div>
+
+          <div className="pt-3 border-t border-stone-200">
+             <label className="text-xs font-bold text-stone-500 uppercase tracking-wider block mb-2">Smart Segments</label>
+             <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setIsVip(!isVip)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isVip ? 'bg-orange-600 border-orange-600 text-white shadow-sm' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'}`}
+                >
+                  VIP Customers
+                </button>
+                <button
+                  onClick={() => setIsAtRisk(!isAtRisk)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isAtRisk ? 'bg-red-600 border-red-600 text-white shadow-sm' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'}`}
+                >
+                  At Risk
+                </button>
+                <button
+                  onClick={() => setIsRewardNear(!isRewardNear)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isRewardNear ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'}`}
+                >
+                  Near Reward
+                </button>
+                <button
+                  onClick={() => setIsCelebrating(!isCelebrating)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isCelebrating ? 'bg-brand-600 border-brand-600 text-white shadow-sm' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'}`}
+                >
+                  Celebrating Today
+                </button>
+             </div>
           </div>
         </Card>
       )}

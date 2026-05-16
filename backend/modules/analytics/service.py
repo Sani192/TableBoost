@@ -1,16 +1,17 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case, desc
+from sqlalchemy import func, case, desc, and_, exists
 from datetime import datetime, timedelta, timezone
 from modules.visits.models import Visit
 from modules.customers.models import Customer
-from modules.loyalty.models import RewardRedemption
+from modules.loyalty.models import RewardRedemption, LoyaltyReward, LoyaltyProgress
+from sqlalchemy import desc, and_
 
 def get_revenue_metrics(db: Session):
     today = datetime.now(timezone.utc)
     
-    # 1. Daily Revenue (Last 7 days)
-    seven_days_ago = today - timedelta(days=7)
-    daily_revenue = db.query(
+    # 1. Daily Revenue (Last 7 days - GAP FILLED)
+    seven_days_ago = (today - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
+    daily_revenue_raw = db.query(
         func.date(Visit.visited_at).label('date'),
         func.sum(Visit.amount).label('revenue'),
         func.count(Visit.id).label('visit_count')
@@ -18,8 +19,22 @@ def get_revenue_metrics(db: Session):
      .group_by(func.date(Visit.visited_at))\
      .order_by(func.date(Visit.visited_at)).all()
      
-    # 2. Average Ticket Size
-    avg_ticket = db.query(func.avg(Visit.amount)).scalar() or 0
+    # Fill gaps for the last 7 days
+    revenue_map = {str(r[0]): {"revenue": float(r[1]), "visits": r[2]} for r in daily_revenue_raw}
+    daily_trends = []
+    for i in range(7):
+        day_date = (seven_days_ago + timedelta(days=i)).date()
+        day_str = str(day_date)
+        stats = revenue_map.get(day_str, {"revenue": 0.0, "visits": 0})
+        daily_trends.append({
+            "date": day_str,
+            "revenue": stats["revenue"],
+            "visits": stats["visits"]
+        })
+     
+    # 2. Average Ticket Size (Rolling 30 days)
+    thirty_days_ago = today - timedelta(days=30)
+    avg_ticket = db.query(func.avg(Visit.amount)).filter(Visit.visited_at >= thirty_days_ago).scalar() or 0
     
     # 3. New vs Repeat Customer Revenue (Last 30 days)
     thirty_days_ago = today - timedelta(days=30)
@@ -41,37 +56,76 @@ def get_revenue_metrics(db: Session):
      .group_by('customer_type').all()
 
     # 4. Weekly/Monthly Revenue
-    thirty_days_revenue = sum(r[1] for r in daily_revenue) # This is only 7 days, let's get 30
+    last_week = today - timedelta(days=7)
+    weekly_total = db.query(func.sum(Visit.amount)).filter(Visit.visited_at >= last_week).scalar() or 0
+    monthly_total = db.query(func.sum(Visit.amount)).filter(Visit.visited_at >= thirty_days_ago).scalar() or 0
+    
+    # 5. Repeat Visit Rate (Percentage of visits from repeat customers in last 30 days)
+    total_visits_30 = db.query(func.count(Visit.id)).filter(Visit.visited_at >= thirty_days_ago).scalar() or 1
+    repeat_visits_30 = db.query(func.count(Visit.id)).join(first_visits, Visit.customer_id == first_visits.c.customer_id)\
+                        .filter(Visit.visited_at >= thirty_days_ago)\
+                        .filter(Visit.visited_at > first_visits.c.first_visit_at).scalar() or 0
+    
+    repeat_rate = (repeat_visits_30 / total_visits_30) * 100
+
+    # 6. Rewards Redeemed (Total vs Last 30 days)
+    total_redeemed = db.query(func.count(RewardRedemption.id)).scalar() or 0
+    recent_redeemed = db.query(func.count(RewardRedemption.id)).filter(RewardRedemption.redeemed_at >= thirty_days_ago).scalar() or 0
     
     return {
-        "daily_trends": [{"date": str(r[0]), "revenue": float(r[1]), "visits": r[2]} for r in daily_revenue],
+        "daily_trends": daily_trends,
         "avg_ticket": float(avg_ticket),
         "revenue_split": {r[0]: float(r[1]) for r in revenue_split},
-        "monthly_total": sum(float(r[1]) for r in revenue_split)
+        "weekly_total": float(weekly_total),
+        "monthly_total": float(monthly_total),
+        "repeat_rate": float(repeat_rate),
+        "rewards_stats": {
+            "total_redeemed": total_redeemed,
+            "recent_redeemed": recent_redeemed
+        }
     }
 
 def get_customer_segments(db: Session):
     # VIPs (Top 10% spenders)
-    # Get total spent per customer
+    total_customers = db.query(Customer).count()
+    vip_limit = max(1, int(total_customers * 0.1))
+    
     total_spent_sub = db.query(
         Visit.customer_id,
         func.sum(Visit.amount).label('total_amount')
     ).group_by(Visit.customer_id).order_by(desc('total_amount')).subquery()
     
     vips = db.query(Customer).join(total_spent_sub, Customer.id == total_spent_sub.c.customer_id)\
-             .order_by(desc(total_spent_sub.c.total_amount)).limit(50).all() # Simplified "Top" for now
+             .order_by(desc(total_spent_sub.c.total_amount)).limit(vip_limit).all()
              
-    # At-Risk (No visits in 30 days)
+    # At-Risk (No visits in 30-90 days)
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
+    
     last_visits = db.query(
         Visit.customer_id,
         func.max(Visit.visited_at).label('last_visit')
     ).group_by(Visit.customer_id).subquery()
     
     at_risk = db.query(Customer).join(last_visits, Customer.id == last_visits.c.customer_id)\
-                .filter(last_visits.c.last_visit < thirty_days_ago).limit(50).all()
+                .filter(and_(
+                    last_visits.c.last_visit < thirty_days_ago,
+                    last_visits.c.last_visit >= ninety_days_ago
+                )).limit(50).all()
+
+    # 3. Near Rewards (Within 2 visits of any milestone reward, including those AT threshold)
+    near_rewards = db.query(Customer).join(LoyaltyProgress, Customer.id == LoyaltyProgress.customer_id)\
+                     .filter(exists().where(
+                         and_(
+                             LoyaltyReward.reward_type == 'milestone',
+                             LoyaltyReward.is_active == True,
+                             LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits <= 2,
+                             LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits >= 0
+                         )
+                     )).limit(50).all()
 
     return {
         "vips_count": len(vips),
-        "at_risk_count": len(at_risk)
+        "at_risk_count": len(at_risk),
+        "near_rewards_count": len(near_rewards)
     }

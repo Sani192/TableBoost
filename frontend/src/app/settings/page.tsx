@@ -33,11 +33,36 @@ import {
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 
+const AUTOMATION_METADATA: Record<string, { label: string; icon: any; description: string }> = {
+  birthday: {
+    label: 'Birthday SMS',
+    icon: Cake,
+    description: 'Sent on customer birthdays'
+  },
+  anniversary: {
+    label: 'Anniversary SMS',
+    icon: Heart,
+    description: 'Sent on signup anniversaries'
+  },
+  inactivity: {
+    label: 'Inactivity Recovery',
+    icon: Calendar,
+    description: 'Targets quiet customers'
+  },
+  reward_unlocked: {
+    label: 'Reward Unlocked SMS',
+    icon: Trophy,
+    description: 'Instant win notifications'
+  }
+};
+
 export default function SettingsPage() {
   const [template, setTemplate] = useState('');
   const [inactiveDays, setInactiveDays] = useState<number | string>(30);
   
   const [automations, setAutomations] = useState<AutomationConfig[]>([]);
+  const [editingAuto, setEditingAuto] = useState<string | null>(null);
+  const [editTemplate, setEditTemplate] = useState('');
   const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
   const [showAddReward, setShowAddReward] = useState(false);
   const [newReward, setNewReward] = useState<{
@@ -134,6 +159,16 @@ export default function SettingsPage() {
     }
   };
 
+  const handleUpdateAutoTemplate = async (type: string) => {
+    try {
+      await updateAutomationConfig({ automation_type: type, message_template: editTemplate });
+      setEditingAuto(null);
+      fetchData();
+    } catch (err) {
+      alert('Failed to update template');
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse max-w-2xl mx-auto">
@@ -200,29 +235,79 @@ export default function SettingsPage() {
         </div>
         
         <div className="grid grid-cols-1 gap-3">
-          {automations.map(auto => (
-            <Card key={auto.automation_type} className={`p-4 transition-all ${!auto.is_enabled ? 'opacity-60 bg-stone-50' : 'hover:border-brand-200 shadow-sm'}`}>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${auto.is_enabled ? 'bg-brand-50 text-brand-600' : 'bg-stone-200 text-stone-500'}`}>
-                    {auto.automation_type === 'birthday' && <Cake className="h-5 w-5" />}
-                    {auto.automation_type === 'anniversary' && <Heart className="h-5 w-5" />}
-                    {auto.automation_type === 'inactivity' && <Calendar className="h-5 w-5" />}
+          {automations
+            .filter(a => a.automation_type !== 'campaign_scheduler')
+            .map(auto => {
+              const meta = AUTOMATION_METADATA[auto.automation_type] || { label: auto.automation_type, icon: Rocket, description: 'Auto-pilot engagement' };
+              const Icon = meta.icon;
+              
+              return (
+                <Card key={auto.automation_type} className={`p-4 transition-all ${!auto.is_enabled ? 'opacity-60 bg-stone-50' : 'hover:border-brand-200 shadow-sm'}`}>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${auto.is_enabled ? 'bg-brand-50 text-brand-600' : 'bg-stone-200 text-stone-500'}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-stone-900">{meta.label}</h3>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-stone-500 font-medium">{meta.description}</p>
+                          {auto.is_enabled && auto.schedule && (
+                            <span className="text-[9px] font-extrabold bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                              {auto.schedule.replace('cron:', '').replace('interval:', 'Every ' + (auto.schedule.split(':')[1] === '1' ? 'Hour' : auto.schedule.split(':')[1] + ' Hours'))}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => toggleAutomation(auto.automation_type, auto.is_enabled)}
+                      className={`p-2 rounded-lg transition-colors ${auto.is_enabled ? 'text-brand-600 hover:bg-brand-50' : 'text-stone-400 hover:bg-stone-100'}`}
+                    >
+                      {auto.is_enabled ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
+                    </button>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-stone-900 capitalize">{auto.automation_type} SMS</h3>
-                    <p className="text-xs text-stone-500 font-medium">Auto-pilot engagement</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => toggleAutomation(auto.automation_type, auto.is_enabled)}
-                  className={`p-2 rounded-lg transition-colors ${auto.is_enabled ? 'text-brand-600 hover:bg-brand-50' : 'text-stone-400 hover:bg-stone-100'}`}
-                >
-                  {auto.is_enabled ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
-                </button>
-              </div>
-            </Card>
-          ))}
+
+                  {auto.is_enabled && (
+                    <div className="mt-3 pt-3 border-t border-stone-100 flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                         <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Active Template</p>
+                         <button 
+                            onClick={() => {
+                               if (editingAuto === auto.automation_type) {
+                                  setEditingAuto(null);
+                               } else {
+                                  setEditingAuto(auto.automation_type);
+                                  setEditTemplate(auto.message_template);
+                               }
+                            }}
+                            className="text-xs font-bold text-brand-600 hover:underline"
+                         >
+                            {editingAuto === auto.automation_type ? 'Cancel' : 'Customize'}
+                         </button>
+                      </div>
+                      
+                      {editingAuto === auto.automation_type ? (
+                         <div className="space-y-3">
+                            <textarea
+                               value={editTemplate}
+                               onChange={e => setEditTemplate(e.target.value)}
+                               className="w-full rounded-xl border border-stone-200 p-3 text-xs font-medium outline-none focus:border-brand-500 transition-all bg-stone-50"
+                               rows={3}
+                            />
+                            <Button onClick={() => handleUpdateAutoTemplate(auto.automation_type)} fullWidth>
+                               Save Template
+                            </Button>
+                         </div>
+                      ) : (
+                         <p className="text-xs text-stone-600 font-medium italic">&quot;{auto.message_template}&quot;</p>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              );
+            })
+          }
           {automations.length === 0 && (
             <div className="text-center py-6 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
                <p className="text-xs font-bold text-stone-400">Initialize automations to begin.</p>

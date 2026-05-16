@@ -34,11 +34,18 @@ export interface DashboardResponse {
     daily_trends: { date: string; revenue: number; visits: number }[];
     avg_ticket: number;
     revenue_split: Record<string, number>;
+    weekly_total: number;
     monthly_total: number;
+    repeat_rate: number;
+    rewards_stats: {
+      total_redeemed: number;
+      recent_redeemed: number;
+    };
   };
   segments: {
     vips_count: number;
     at_risk_count: number;
+    near_rewards_count: number;
   };
 }
 
@@ -133,6 +140,9 @@ export const getCustomers = async (params: {
   anniversary_month?: number;
   anniversary_day?: number;
   is_celebrating_today?: boolean;
+  is_vip?: boolean;
+  is_at_risk?: boolean;
+  is_reward_near?: boolean;
 } = {}): Promise<CustomerListResponse[]> => {
   const response = await api.get<CustomerListResponse[]>('/api/customers/', { params });
   return response.data;

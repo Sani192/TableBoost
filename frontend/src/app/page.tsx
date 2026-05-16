@@ -33,8 +33,12 @@ export default function Dashboard() {
         totalRedeemed: data.total_redeemed,
         vipsCount: data.segments?.vips_count || 0,
         atRiskCount: data.segments?.at_risk_count || 0,
+        nearRewardsCount: data.segments?.near_rewards_count || 0,
+        weeklyRevenue: data.revenue?.weekly_total || 0,
         monthlyRevenue: data.revenue?.monthly_total || 0,
         avgTicket: data.revenue?.avg_ticket || 0,
+        repeatRate: data.revenue?.repeat_rate || 0,
+        recentRedeemed: data.revenue?.rewards_stats?.recent_redeemed || 0,
       }
     : {
         totalCustomers: 0,
@@ -43,8 +47,12 @@ export default function Dashboard() {
         totalRedeemed: 0,
         vipsCount: 0,
         atRiskCount: 0,
+        nearRewardsCount: 0,
+        weeklyRevenue: 0,
         monthlyRevenue: 0,
         avgTicket: 0,
+        repeatRate: 0,
+        recentRedeemed: 0,
       };
 
   const visits =
@@ -141,32 +149,46 @@ export default function Dashboard() {
       ) : (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <StatCard label="Monthly Revenue" value={`$${Math.round(stats.monthlyRevenue)}`} icon={<Wallet className="h-4 w-4" />} accent="green" />
-            <StatCard label="Avg Ticket" value={`$${Math.round(stats.avgTicket)}`} icon={<TrendingUp className="h-4 w-4" />} accent="blue" />
+            <StatCard label="Weekly Revenue" value={`$${Math.round(stats.weeklyRevenue)}`} icon={<Wallet className="h-4 w-4" />} accent="blue" />
+            <StatCard label="Monthly Revenue" value={`$${Math.round(stats.monthlyRevenue)}`} icon={<TrendingUp className="h-4 w-4" />} accent="green" />
+            <StatCard label="Repeat Rate" value={`${Math.round(stats.repeatRate)}%`} icon={<Repeat2 className="h-4 w-4" />} accent="slate" />
+            <StatCard label="Avg Ticket" value={`$${Math.round(stats.avgTicket)}`} icon={<TrendingUp className="h-4 w-4" />} accent="brand" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatCard label="VIP Segments" value={stats.vipsCount} icon={<Trophy className="h-4 w-4" />} accent="orange" />
             <StatCard label="At Risk" value={stats.atRiskCount} icon={<UserCheck className="h-4 w-4" />} accent="red" />
+            <StatCard label="Near Reward" value={stats.nearRewardsCount} icon={<Rocket className="h-4 w-4" />} accent="blue" />
+            <StatCard label="Recent Rewards" value={stats.recentRedeemed} icon={<Trophy className="h-4 w-4" />} accent="slate" />
           </div>
 
           <Card className="p-6">
             <h3 className="text-base font-extrabold text-stone-900 mb-4 flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-brand-600" /> Revenue Trends (Last 7 Days)
             </h3>
-            <div className="h-32 flex items-end justify-between gap-2 mt-4 px-2">
-              {data?.revenue?.daily_trends.map((day, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
-                  <div 
-                    className="w-full bg-brand-500/10 hover:bg-brand-500 rounded-t-lg transition-all duration-300 relative"
-                    style={{ height: `${(day.revenue / (Math.max(...data.revenue.daily_trends.map(d => d.revenue)) || 1)) * 100}%` }}
-                  >
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                      ${day.revenue}
+            <div className="h-32 flex items-end justify-between gap-2 mt-4 px-2 relative">
+              {data?.revenue?.daily_trends && data.revenue.daily_trends.some(d => d.revenue > 0) ? (
+                data.revenue.daily_trends.map((day, i) => (
+                  <div key={i} className="flex-1 h-full flex flex-col justify-end items-center gap-2 group">
+                    <div 
+                      className="w-full bg-brand-500/20 hover:bg-brand-500 rounded-t-lg transition-all duration-300 relative min-h-[2px]"
+                      style={{ height: `${(day.revenue / (Math.max(...data.revenue.daily_trends.map(d => d.revenue)) || 1)) * 100}%` }}
+                    >
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                        ${day.revenue}
+                      </div>
                     </div>
+                    <span className="text-[10px] font-bold text-stone-400 truncate w-full text-center">
+                      {new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold text-stone-400 truncate w-full text-center">
-                    {new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
-                  </span>
+                ))
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-stone-400 bg-stone-50/50 rounded-xl border border-dashed border-stone-200">
+                  <BarChart3 className="h-8 w-8 mb-2 opacity-20" />
+                  <p className="text-xs font-bold">No recent revenue activity</p>
                 </div>
-              ))}
+              )}
             </div>
           </Card>
 

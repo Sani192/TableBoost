@@ -73,6 +73,30 @@ export default function CampaignsPage() {
                 <span className="font-bold">All</span>
                 <span className="text-[10px] uppercase font-bold opacity-70">Customers</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setAudience('vip')}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                  audience === 'vip' 
+                    ? 'border-brand-500 bg-brand-50 text-brand-700' 
+                    : 'border-stone-100 bg-white text-stone-500 hover:border-stone-200'
+                }`}
+              >
+                <span className="font-bold">VIP</span>
+                <span className="text-[10px] uppercase font-bold opacity-70">Spenders</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAudience('reward_near')}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                  audience === 'reward_near' 
+                    ? 'border-brand-500 bg-brand-50 text-brand-700' 
+                    : 'border-stone-100 bg-white text-stone-500 hover:border-stone-200'
+                }`}
+              >
+                <span className="font-bold">Near Reward</span>
+                <span className="text-[10px] uppercase font-bold opacity-70">Milestones</span>
+              </button>
             </div>
             
             {audience === 'inactive' && (

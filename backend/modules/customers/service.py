@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import func
+from sqlalchemy import and_, or_, desc, func, exists
 from modules.customers.models import Customer, CustomerProfile
 from modules.visits.models import Visit
-from typing import Optional
+from modules.loyalty.models import LoyaltyProgress, LoyaltyReward
+from typing import Optional, List
+from datetime import datetime, date, timedelta, timezone
 
 def get_customers(
     db: Session,
@@ -17,7 +19,10 @@ def get_customers(
     birthday_day: Optional[int] = None,
     anniversary_month: Optional[int] = None,
     anniversary_day: Optional[int] = None,
-    is_celebrating_today: Optional[bool] = None
+    is_celebrating_today: Optional[bool] = None,
+    is_vip: Optional[bool] = None,
+    is_at_risk: Optional[bool] = None,
+    is_reward_near: Optional[bool] = None
 ):
     query = db.query(
         Customer,
@@ -55,7 +60,6 @@ def get_customers(
         query = query.filter(func.extract('day', CustomerProfile.anniversary) == anniversary_day)
         
     if is_celebrating_today:
-        from datetime import date
         today = date.today()
         # Check if already joined
         is_joined = birthday_month is not None or birthday_day is not None or anniversary_month is not None or anniversary_day is not None
@@ -66,6 +70,41 @@ def get_customers(
             ((func.extract('month', CustomerProfile.birthday) == today.month) & (func.extract('day', CustomerProfile.birthday) == today.day)) |
             ((func.extract('month', CustomerProfile.anniversary) == today.month) & (func.extract('day', CustomerProfile.anniversary) == today.day))
         )
+        
+    if is_at_risk:
+        # 30-90 days since last visit, MUST have at least one visit
+        cutoff_30 = datetime.now(timezone.utc) - timedelta(days=30)
+        cutoff_90 = datetime.now(timezone.utc) - timedelta(days=90)
+        query = query.having(and_(
+            func.max(Visit.visited_at) < cutoff_30,
+            func.max(Visit.visited_at) >= cutoff_90,
+            func.max(Visit.visited_at).isnot(None)
+        ))
+
+    if is_vip:
+        # Top 10% by total spent
+        total_customers = db.query(Customer).count()
+        vip_limit = max(1, int(total_customers * 0.1))
+        
+        # Subquery for top spender IDs
+        vip_ids_sub = db.query(Customer.id).outerjoin(Visit)\
+                        .group_by(Customer.id)\
+                        .order_by(desc(func.sum(Visit.amount)))\
+                        .limit(vip_limit).subquery()
+        
+        query = query.filter(Customer.id.in_(vip_ids_sub))
+
+    if is_reward_near:
+        # Customers within 2 visits of any active milestone reward (including boundary)
+        query = query.outerjoin(LoyaltyProgress, Customer.id == LoyaltyProgress.customer_id)\
+                     .filter(exists().where(
+                         and_(
+                             LoyaltyReward.reward_type == 'milestone',
+                             LoyaltyReward.is_active == True,
+                             LoyaltyReward.required_visits - func.coalesce(LoyaltyProgress.lifetime_visits, 0) <= 2,
+                             LoyaltyReward.required_visits - func.coalesce(LoyaltyProgress.lifetime_visits, 0) >= 0
+                         )
+                     ))
 
     if min_visits is not None:
         query = query.having(func.count(Visit.id) >= min_visits)

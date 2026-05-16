@@ -7,10 +7,20 @@ from modules.customers.router import router as customers_router
 from modules.messaging.router import router as messaging_router
 from modules.loyalty.router import router as loyalty_router
 from modules.automation.router import router as automation_router
-from apscheduler.schedulers.background import BackgroundScheduler
 from modules.automation import service as automation_service
 from modules.messaging import service as messaging_service
 from core.database import SessionLocal
+from core.scheduler import scheduler
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+# Ensure the automation service logger is also at INFO level
+logging.getLogger('modules.automation.service').setLevel(logging.INFO)
 
 app = FastAPI(title="TableBoost API", version="1.0.0")
 
@@ -30,27 +40,25 @@ app.include_router(messaging_router)
 app.include_router(loyalty_router)
 app.include_router(automation_router)
 
-# Scheduler Setup
-scheduler = BackgroundScheduler()
+# Initial job registration
 
-def run_daily_jobs():
-    db = SessionLocal()
-    try:
-        automation_service.process_daily_automations(db)
-    finally:
-        db.close()
+# Initial job registration
+db = SessionLocal()
+try:
+    logger.info("Syncing scheduler with database configurations...")
+    automation_service.sync_scheduler(scheduler, db)
+finally:
+    db.close()
 
-def run_hourly_jobs():
-    db = SessionLocal()
-    try:
-        messaging_service.process_scheduled_campaigns(db)
-    finally:
-        db.close()
-
-scheduler.add_job(run_daily_jobs, 'cron', hour=9, minute=0) # Run at 9 AM daily
-scheduler.add_job(run_hourly_jobs, 'interval', hours=1) # Run every hour
+logger.info("Starting background scheduler...")
 scheduler.start()
+
+# Log scheduled jobs
+logger.info("=== Scheduled Jobs ===")
+for job in scheduler.get_jobs():
+    logger.info(f"- Job ID: {job.id}, Trigger: {job.trigger}")
+logger.info("=======================")
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to TableBoost API Phase 1"}
+    return {"message": "Welcome to TableBoost API"}

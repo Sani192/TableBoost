@@ -4,6 +4,7 @@ from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedempt
 from modules.customers.models import Customer, CustomerProfile
 from typing import List, Optional
 from datetime import datetime, date
+from modules.automation import service as automation_service
 
 def get_active_rewards(db: Session):
     return db.query(LoyaltyReward).filter(LoyaltyReward.is_active == True).order_by(LoyaltyReward.required_visits.asc()).all()
@@ -108,6 +109,18 @@ def update_loyalty_progress(db: Session, customer_id: int):
         db.add(progress)
     
     db.flush()
+    
+    # Check for reward unlocking
+    new_visits = progress.lifetime_visits
+    unlocked_reward = db.query(LoyaltyReward).filter(
+        LoyaltyReward.reward_type == 'milestone',
+        LoyaltyReward.required_visits == new_visits,
+        LoyaltyReward.is_active == True
+    ).first()
+    
+    if unlocked_reward:
+        automation_service.trigger_event_automation(db, customer_id, 'reward_unlocked', {'ref': f"visit_{new_visits}"})
+        
     return progress
 
 def redeem_reward(db: Session, customer_id: int, reward_id: int):

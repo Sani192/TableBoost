@@ -4,7 +4,7 @@ interface StatCardProps {
   label: string;
   value: number | string;
   icon?: ReactNode;
-  accent?: 'orange' | 'green' | 'slate' | 'blue' | 'red';
+  accent?: 'orange' | 'green' | 'slate' | 'blue' | 'red' | 'brand';
 }
 
 const accentConfig = {
@@ -31,6 +31,11 @@ const accentConfig = {
   red: {
     iconBg: 'bg-red-50',
     iconText: 'text-red-600',
+    valueSuffix: '',
+  },
+  brand: {
+    iconBg: 'bg-brand-50',
+    iconText: 'text-brand-600',
     valueSuffix: '',
   },
 };
