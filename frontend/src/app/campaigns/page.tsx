@@ -1,18 +1,40 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createCampaign, getSettings } from '@/lib/api';
+import { createCampaign, getSettings, updateSettings } from '@/lib/api';
 import { Megaphone, Users, Send, CheckCircle2, Settings as SettingsIcon } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 
+type Feedback = { type: 'success' | 'error', text: string } | null;
+
 export default function CampaignsPage() {
-  const [message, setMessage] = useState('');
   const [audience, setAudience] = useState('inactive');
-  const [inactiveDays, setInactiveDays] = useState(30);
+  const [inactiveDays, setInactiveDays] = useState<number | string>(30);
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{sent_count: number, failed_count: number} | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isSavingDays, setIsSavingDays] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+
+  const handleSaveInactiveDays = async () => {
+    if (inactiveDays === '') {
+      setFeedback({ type: 'error', text: 'Please enter a valid number of days.' });
+      return;
+    }
+    setIsSavingDays(true);
+    try {
+      await updateSettings({ campaign_inactive_days: Number(inactiveDays) });
+      setFeedback({ type: 'success', text: 'Inactivity period updated!' });
+      setTimeout(() => setFeedback(null), 3000);
+    } catch (error) {
+      console.error(error);
+      setFeedback({ type: 'error', text: 'Failed to update inactivity period.' });
+    } finally {
+      setIsSavingDays(false);
+    }
+  };
 
   useEffect(() => {
     getSettings().then(data => {
@@ -25,7 +47,11 @@ export default function CampaignsPage() {
     setLoading(true);
     setResult(null);
     try {
-      const res = await createCampaign({ message, audience_type: audience });
+      const res = await createCampaign({ 
+        message, 
+        audience_type: audience,
+        inactive_days: audience === 'inactive' ? Number(inactiveDays) : undefined
+      });
       setResult(res);
       setMessage('');
       setSuccess(true);
@@ -104,16 +130,27 @@ export default function CampaignsPage() {
             
             {audience === 'inactive' && (
               <div className="mt-3 flex items-center justify-between bg-stone-50 px-4 py-2.5 rounded-lg border border-stone-100">
-                <span className="text-xs font-medium text-stone-500">
-                  Using default inactivity period: <strong className="text-stone-900">{inactiveDays} days</strong>
-                </span>
-                <Link 
-                  href="/settings" 
-                  className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-brand-600 hover:text-brand-700"
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-stone-500">Inactivity period:</span>
+                  <input
+                    type="number"
+                    value={inactiveDays}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setInactiveDays(val === '' ? '' : Number(val));
+                    }}
+                    className="w-16 rounded border border-stone-200 px-2 py-1 text-sm font-bold text-stone-900 focus:border-brand-500 outline-none"
+                    min="1"
+                  />
+                  <span className="text-xs font-medium text-stone-500">days</span>
+                </div>
+                <button
+                  onClick={handleSaveInactiveDays}
+                  disabled={isSavingDays}
+                  className="text-[10px] font-bold uppercase tracking-wider text-brand-600 hover:text-brand-700 disabled:opacity-50"
                 >
-                  <SettingsIcon className="h-3 w-3" />
-                  Change
-                </Link>
+                  {isSavingDays ? 'Saving...' : 'Save'}
+                </button>
               </div>
             )}
           </div>

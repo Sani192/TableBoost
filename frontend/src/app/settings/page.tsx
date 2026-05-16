@@ -58,7 +58,6 @@ const AUTOMATION_METADATA: Record<string, { label: string; icon: any; descriptio
 
 export default function SettingsPage() {
   const [template, setTemplate] = useState('');
-  const [inactiveDays, setInactiveDays] = useState<number | string>(30);
   
   const [automations, setAutomations] = useState<AutomationConfig[]>([]);
   const [editingAuto, setEditingAuto] = useState<string | null>(null);
@@ -92,7 +91,6 @@ export default function SettingsPage() {
         getAutomationConfigs()
       ]);
       setTemplate(settingsData.review_message_template);
-      setInactiveDays(settingsData.campaign_inactive_days);
       setRewards(rewardsData);
       setAutomations(automationData);
       setLoading(false);
@@ -114,8 +112,7 @@ export default function SettingsPage() {
 
     try {
       await updateSettings({ 
-        review_message_template: template,
-        campaign_inactive_days: Number(inactiveDays)
+        review_message_template: template
       });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -206,15 +203,7 @@ export default function SettingsPage() {
                   className="w-full rounded-xl border border-stone-200 px-4 py-3 text-sm font-medium outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all"
                 />
               </div>
-              <div className="pt-2">
-                <label className="block text-sm font-bold text-stone-700 mb-1.5">Campaign Inactivity (Days)</label>
-                <input
-                  type="number"
-                  value={inactiveDays}
-                  onChange={e => setInactiveDays(e.target.value)}
-                  className="w-24 rounded-xl border border-stone-200 px-4 py-3 text-sm font-bold outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all"
-                />
-              </div>
+
             </div>
             <div className="bg-stone-50 px-5 py-3 flex items-center justify-between">
               <p className="text-xs text-stone-500 font-medium">Changes apply globally to all customers.</p>
