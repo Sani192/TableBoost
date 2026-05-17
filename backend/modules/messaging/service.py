@@ -122,6 +122,16 @@ def execute_campaign(db: Session, message_template: str, audience_type: str, ina
     sent_count = 0
     failed_count = 0
     
+    from modules.messaging.models import Campaign
+    campaign = Campaign(
+        name=f"Campaign {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
+        message_template=message_template,
+        audience_type=audience_type,
+        status="completed",
+    )
+    db.add(campaign)
+    db.flush() # Get campaign ID
+    
     for customer in customers:
         message_content = message_template.replace("{name}", customer.name or "there")
         try:
@@ -135,6 +145,7 @@ def execute_campaign(db: Session, message_template: str, audience_type: str, ina
             
         new_message = Message(
             customer_id=customer.id,
+            campaign_id=campaign.id,
             message_text=message_content,
             type="campaign",
             status=status,

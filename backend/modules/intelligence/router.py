@@ -28,10 +28,22 @@ def get_campaign_roi(db: Session = Depends(get_db)):
     return service.get_campaign_roi_list(db)
 
 
+@router.get("/campaigns/{campaign_id}/customers")
+def get_campaign_customers(campaign_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+    """List customers targeted by a campaign with conversion status."""
+    return service.get_campaign_customers(db, campaign_id, skip, limit)
+
+
 @router.get("/rewards")
 def get_reward_effectiveness(db: Session = Depends(get_db)):
     """Per-reward effectiveness."""
     return service.get_reward_effectiveness_list(db)
+
+
+@router.get("/rewards/{reward_id}/customers")
+def get_reward_customers(reward_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+    """List customers who redeemed a reward."""
+    return service.get_reward_customers(db, reward_id, skip, limit)
 
 
 @router.get("/automations")
@@ -60,6 +72,43 @@ def get_recommendations(db: Session = Depends(get_db)):
             "action_params": r.action_params,
         }
         for r in recs
+    ]
+
+
+@router.get("/customers")
+def get_intelligence_customers(filter: str = None, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+    """List customers with intelligence filters."""
+    from modules.intelligence.models import CustomerIntelligence
+    from modules.customers.models import Customer
+    
+    query = db.query(Customer, CustomerIntelligence).join(CustomerIntelligence, Customer.id == CustomerIntelligence.customer_id)
+    
+    if filter == "declining_vip":
+        query = query.filter(
+            CustomerIntelligence.clv_tier == "high",
+            CustomerIntelligence.health_status.in_(["declining", "churn_risk"])
+        )
+    elif filter == "healthy":
+        query = query.filter(CustomerIntelligence.health_status == "healthy")
+    elif filter == "declining":
+        query = query.filter(CustomerIntelligence.health_status == "declining")
+    elif filter == "churn_risk":
+        query = query.filter(CustomerIntelligence.health_status == "churn_risk")
+    elif filter == "net_new":
+        from datetime import datetime, timedelta, timezone
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        query = query.filter(Customer.created_at >= cutoff)
+        
+    results = query.offset(skip).limit(limit).all()
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "phone_number": c.phone_number,
+            "total_visits": intel.visit_count,
+            "total_spent": intel.total_spent
+        }
+        for c, intel in results
     ]
 
 

@@ -7,6 +7,7 @@ class Message(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    campaign_id = Column(Integer, ForeignKey("campaigns.id"), nullable=True)
     message_text = Column(String, nullable=False)
     type = Column(String, default="review") # review, campaign, automation
     status = Column(String, default="sent") # sent, failed

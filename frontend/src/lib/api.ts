@@ -168,6 +168,16 @@ export const createCampaign = async (payload: CampaignCreateRequest): Promise<{ 
   return response.data;
 };
 
+export const getCampaignCustomers = async (campaignId: number, skip: number = 0, limit: number = 20): Promise<Array<{ id: number; name: string; phone_number: string; status: string; amount: number; visited_at: string | null }>> => {
+  const response = await api.get(`/api/intelligence/campaigns/${campaignId}/customers`, { params: { skip, limit } });
+  return response.data;
+};
+
+export const getRewardCustomers = async (rewardId: number, skip: number = 0, limit: number = 20): Promise<Array<{ id: number; name: string; phone_number: string; status: string; amount: number; visited_at: string | null }>> => {
+  const response = await api.get(`/api/intelligence/rewards/${rewardId}/customers`, { params: { skip, limit } });
+  return response.data;
+};
+
 export interface SettingsResponse {
   review_message_template: string;
   auto_send_sms: boolean;
@@ -339,5 +349,10 @@ export const getCampaignRoi = async (): Promise<any[]> => {
 
 export const getRewardEffectiveness = async (): Promise<any[]> => {
   const response = await api.get<any[]>('/api/intelligence/rewards');
+  return response.data;
+};
+
+export const getIntelligenceCustomers = async (params: { filter?: string; skip?: number; limit?: number }): Promise<any[]> => {
+  const response = await api.get<any[]>('/api/intelligence/customers', { params });
   return response.data;
 };

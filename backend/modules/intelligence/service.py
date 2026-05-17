@@ -165,9 +165,9 @@ def compute_campaign_summaries(db: Session):
 
     for camp in campaigns:
         msgs = db.query(Message).filter(
-            Message.type == "campaign",
             Message.status == "sent",
-            Message.message_text.contains(camp.message_template[:30]) if camp.message_template else True,
+            (Message.campaign_id == camp.id) | 
+            ((Message.campaign_id == None) & (Message.type == "campaign") & (Message.message_text.contains(camp.message_template[:30]) if camp.message_template else True))
         ).all()
 
         total_sent = len(msgs)
@@ -636,6 +636,80 @@ def get_campaign_roi_list(db: Session):
         }
         for s in summaries
     ]
+
+
+def get_campaign_customers(db: Session, campaign_id: int, skip: int = 0, limit: int = 20):
+    """Return list of customers targeted by a campaign with conversion status."""
+    from modules.messaging.models import Message, Campaign
+    from modules.customers.models import Customer
+    from modules.visits.models import Visit
+    from datetime import timedelta
+    
+    camp = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if not camp:
+        return []
+        
+    msgs = db.query(Message, Customer).join(
+        Customer, Message.customer_id == Customer.id
+    ).filter(
+        Message.status == "sent",
+        (Message.campaign_id == camp.id) | 
+        ((Message.campaign_id == None) & (Message.type == "campaign") & (Message.message_text.contains(camp.message_template[:30]) if camp.message_template else True))
+    ).offset(skip).limit(limit).all()
+    
+    results = []
+    for msg, cust in msgs:
+        # Check if converted
+        visit = db.query(Visit).filter(
+            Visit.customer_id == cust.id,
+            Visit.visited_at >= msg.sent_at,
+            Visit.visited_at <= msg.sent_at + timedelta(days=7),
+        ).first()
+        
+        results.append({
+            "id": cust.id,
+            "name": cust.name,
+            "phone_number": cust.phone_number,
+            "status": "converted" if visit else "sent",
+            "amount": float(visit.amount or 0) if visit else 0,
+            "visited_at": visit.visited_at if visit else None
+        })
+        
+    return results
+
+
+def get_reward_customers(db: Session, reward_id: int, skip: int = 0, limit: int = 20):
+    """Return list of customers who redeemed a reward."""
+    from modules.loyalty.models import RewardRedemption
+    from modules.customers.models import Customer
+    from modules.visits.models import Visit
+    from datetime import timedelta
+    
+    redemptions = db.query(RewardRedemption, Customer).join(
+        Customer, RewardRedemption.customer_id == Customer.id
+    ).filter(
+        RewardRedemption.reward_id == reward_id
+    ).offset(skip).limit(limit).all()
+    
+    results = []
+    for red, cust in redemptions:
+        # Find visit around redemption time
+        visit = db.query(Visit).filter(
+            Visit.customer_id == cust.id,
+            Visit.visited_at >= red.redeemed_at - timedelta(hours=2),
+            Visit.visited_at <= red.redeemed_at + timedelta(hours=2),
+        ).first()
+        
+        results.append({
+            "id": cust.id,
+            "name": cust.name,
+            "phone_number": cust.phone_number,
+            "status": "redeemed",
+            "amount": float(visit.amount or 0) if visit else 0,
+            "visited_at": red.redeemed_at
+        })
+        
+    return results
 
 
 def get_reward_effectiveness_list(db: Session):

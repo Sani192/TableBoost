@@ -8,8 +8,9 @@ import ActivityList from '@/components/ActivityList';
 import StatCard from '@/components/StatCard';
 import Card from '@/components/ui/Card';
 import Drawer from '@/components/ui/Drawer';
+import Button from '@/components/ui/Button';
 import RecommendationCard from '@/components/dashboard/RecommendationCard';
-import { getDashboard, DashboardResponse, getCustomers, getVisits, getGrowthDashboard, GrowthDashboardResponse, dismissRecommendation, getCampaignRoi, getRewardEffectiveness } from '@/lib/api';
+import { getDashboard, DashboardResponse, getCustomers, getVisits, getGrowthDashboard, GrowthDashboardResponse, dismissRecommendation, getCampaignRoi, getRewardEffectiveness, getIntelligenceCustomers } from '@/lib/api';
 
 type DrilldownConfig = { type: 'customers' | 'visits'; title: string; params: () => Record<string, any> };
 
@@ -62,28 +63,62 @@ export default function Dashboard() {
   const [drilldownData, setDrilldownData] = useState<any[]>([]);
   const [isDrilldownLoading, setIsDrilldownLoading] = useState(false);
   const [drilldownType, setDrilldownType] = useState<'customers' | 'visits'>('customers');
+  
+  const [drilldownSkip, setDrilldownSkip] = useState(0);
+  const [drilldownHasMore, setDrilldownHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [currentParams, setCurrentParams] = useState<any>({});
 
-  const openDrilldown = useCallback(async (type: 'customers' | 'visits', title: string, params: any) => {
+  const openDrilldown = useCallback(async (type: 'customers' | 'visits', title: string, params: any, isLoadMore = false) => {
     setDrilldownTitle(title);
     setDrilldownType(type);
     setDrilldownOpen(true);
-    setIsDrilldownLoading(true);
-    setDrilldownData([]);
+    
+    if (isLoadMore) {
+      setIsLoadingMore(true);
+    } else {
+      setIsDrilldownLoading(true);
+      setDrilldownData([]);
+      setDrilldownSkip(0);
+      setCurrentParams(params);
+    }
     
     try {
-      if (type === 'customers') {
-        const res = await getCustomers({ limit: 50, ...params });
-        setDrilldownData(res);
+      const currentSkip = isLoadMore ? drilldownSkip + 20 : 0;
+      let res: any[] = [];
+      
+      const queryParams = { ...params };
+      delete queryParams.is_intel;
+      
+      if (params?.is_intel) {
+        res = await getIntelligenceCustomers({ filter: params.filter, skip: currentSkip, limit: 20 });
+      } else if (params?.is_campaign) {
+        const { getCampaignCustomers } = await import('@/lib/api');
+        res = await getCampaignCustomers(params.campaign_id, currentSkip, 20);
+      } else if (params?.is_reward) {
+        const { getRewardCustomers } = await import('@/lib/api');
+        res = await getRewardCustomers(params.reward_id, currentSkip, 20);
+      } else if (type === 'customers') {
+        res = await getCustomers({ limit: 20, skip: currentSkip, ...queryParams });
       } else if (type === 'visits') {
-        const res = await getVisits({ limit: 50, ...params });
+        res = await getVisits({ limit: 20, skip: currentSkip, ...queryParams });
+      }
+      
+      if (isLoadMore) {
+        setDrilldownData(prev => [...prev, ...res]);
+        setDrilldownSkip(currentSkip);
+      } else {
         setDrilldownData(res);
       }
+      
+      setDrilldownHasMore(res.length === 20);
     } catch (error) {
       console.error('Failed to fetch drilldown data:', error);
     } finally {
       setIsDrilldownLoading(false);
+      setIsLoadingMore(false);
     }
-  }, []);
+  }, [drilldownSkip]);
 
   const handleDrilldown = (key: string) => {
     const config = DRILLDOWN_MAP[key];
@@ -130,6 +165,20 @@ export default function Dashboard() {
     } catch (err) {
       console.error('Failed to dismiss recommendation:', err);
     }
+  };
+
+  const handleRecommendationAction = async (type: string, params?: Record<string, any>) => {
+    if (type === 'view_customers') {
+      openDrilldown('customers', 'Recommended Customers', { is_intel: true, filter: params?.filter });
+    } else if (type === 'create_campaign') {
+      router.push('/messages');
+    } else if (type === 'review_settings') {
+      router.push('/settings');
+    }
+  };
+
+  const handleGrowthDrilldown = async (filter: string, title: string) => {
+    openDrilldown('customers', title, { is_intel: true, filter });
   };
 
   useEffect(() => {
@@ -400,10 +449,10 @@ export default function Dashboard() {
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
           {/* Growth Cards */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <StatCard label="Healthy" value={growthData?.health?.healthy || 0} icon={<UserCheck className="h-4 w-4" />} accent="green" />
-            <StatCard label="Declining" value={growthData?.health?.declining || 0} icon={<TrendingUp className="h-4 w-4" />} accent="orange" />
-            <StatCard label="At Risk" value={growthData?.health?.churn_risk || 0} icon={<UserX className="h-4 w-4" />} accent="red" />
-            <StatCard label="Net New (30d)" value={growthData?.net_new_customers || 0} icon={<UserPlus className="h-4 w-4" />} accent="blue" />
+            <StatCard label="Healthy" value={growthData?.health?.healthy || 0} icon={<UserCheck className="h-4 w-4" />} accent="green" onClick={() => handleGrowthDrilldown('healthy', 'Healthy Customers')} />
+            <StatCard label="Declining" value={growthData?.health?.declining || 0} icon={<TrendingUp className="h-4 w-4" />} accent="orange" onClick={() => handleGrowthDrilldown('declining', 'Declining Customers')} />
+            <StatCard label="At Risk" value={growthData?.health?.churn_risk || 0} icon={<UserX className="h-4 w-4" />} accent="red" onClick={() => handleGrowthDrilldown('churn_risk', 'At Risk Customers')} />
+            <StatCard label="Net New (30d)" value={growthData?.net_new_customers || 0} icon={<UserPlus className="h-4 w-4" />} accent="blue" onClick={() => handleGrowthDrilldown('net_new', 'Net New Customers (30d)')} />
           </div>
 
           {/* Recommendations */}
@@ -421,6 +470,7 @@ export default function Dashboard() {
                     action_type={rec.action_type}
                     action_params={rec.action_params}
                     onDismiss={handleDismissRecommendation}
+                    onAction={handleRecommendationAction}
                   />
                 ))}
               </div>
@@ -480,14 +530,17 @@ export default function Dashboard() {
                 {campaignRoi.length > 0 ? (
                    <div className="space-y-3 max-h-60 overflow-y-auto">
                       {campaignRoi.map((camp, i) => (
-                         <div key={i} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg">
+                         <div key={i} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg cursor-pointer hover:bg-stone-100 transition-colors" onClick={() => openDrilldown('customers', camp.campaign_name, { is_campaign: true, campaign_id: camp.campaign_id })}>
                             <div>
                                <p className="text-xs font-bold text-stone-900">{camp.campaign_name}</p>
                                <p className="text-[10px] text-stone-500">{camp.total_sent} sent • {camp.total_converted} converted</p>
                             </div>
-                            <div className="text-right">
-                               <p className="text-xs font-bold text-emerald-600">${camp.revenue_attributed}</p>
-                               <p className="text-[10px] text-stone-400">{camp.conversion_rate}% rate</p>
+                            <div className="text-right flex items-center gap-2">
+                               <div>
+                                  <p className="text-xs font-bold text-emerald-600">${camp.revenue_attributed}</p>
+                                  <p className="text-[10px] text-stone-400">{camp.conversion_rate}% rate</p>
+                               </div>
+                               <ChevronRight className="h-4 w-4 text-stone-300" />
                             </div>
                          </div>
                       ))}
@@ -505,14 +558,17 @@ export default function Dashboard() {
                 {rewardEffectiveness.length > 0 ? (
                    <div className="space-y-3 max-h-60 overflow-y-auto">
                       {rewardEffectiveness.map((rew, i) => (
-                         <div key={i} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg">
+                         <div key={i} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg cursor-pointer hover:bg-stone-100 transition-colors" onClick={() => openDrilldown('customers', rew.reward_name, { is_reward: true, reward_id: rew.reward_id })}>
                             <div>
                                <p className="text-xs font-bold text-stone-900">{rew.reward_name}</p>
                                <p className="text-[10px] text-stone-500">{rew.total_redeemed} redeemed</p>
                             </div>
-                            <div className="text-right">
-                               <p className="text-xs font-bold text-emerald-600">${rew.reward_influenced_revenue}</p>
-                               <p className="text-[10px] text-stone-400">{rew.post_reward_revisit_rate}% revisit</p>
+                            <div className="text-right flex items-center gap-2">
+                               <div>
+                                  <p className="text-xs font-bold text-emerald-600">${rew.reward_influenced_revenue}</p>
+                                  <p className="text-[10px] text-stone-400">{rew.post_reward_revisit_rate}% revisit</p>
+                               </div>
+                               <ChevronRight className="h-4 w-4 text-stone-300" />
                             </div>
                          </div>
                       ))}
@@ -545,9 +601,29 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
-                      <p className="text-sm font-bold text-stone-900">{customer.total_visits} visits</p>
-                      {customer.total_spent !== null && (
-                        <p className="text-xs text-emerald-600 font-bold">${customer.total_spent}</p>
+                      {currentParams?.is_campaign ? (
+                        <>
+                          <p className={`text-sm font-bold ${customer.status === 'converted' ? 'text-emerald-600' : 'text-stone-500'}`}>
+                            {customer.status === 'converted' ? 'Converted' : 'Sent'}
+                          </p>
+                          {customer.status === 'converted' && (
+                            <p className="text-xs text-emerald-600 font-bold">${customer.amount}</p>
+                          )}
+                        </>
+                      ) : currentParams?.is_reward ? (
+                        <>
+                          <p className="text-sm font-bold text-emerald-600">Redeemed</p>
+                          {customer.amount > 0 && (
+                            <p className="text-xs text-emerald-600 font-bold">${customer.amount}</p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-bold text-stone-900">{customer.total_visits} visits</p>
+                          {customer.total_spent !== null && (
+                            <p className="text-xs text-emerald-600 font-bold">${customer.total_spent}</p>
+                          )}
+                        </>
                       )}
                     </div>
                     <ChevronRight className="h-4 w-4 text-stone-300 group-hover:text-brand-500 transition-colors" />
@@ -577,6 +653,27 @@ export default function Dashboard() {
                   </Link>
                 );
               })}
+            </div>
+          )}
+          
+          {drilldownHasMore && (
+            <div className="mt-4 border-t border-stone-100 pt-4">
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => openDrilldown(drilldownType, drilldownTitle, currentParams, true)}
+                disabled={isLoadingMore}
+                className="bg-stone-50 border-none shadow-none hover:bg-stone-100"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Loading more...
+                  </>
+                ) : (
+                  'Load More'
+                )}
+              </Button>
             </div>
           )}
         </div>
