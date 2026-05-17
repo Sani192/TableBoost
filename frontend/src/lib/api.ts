@@ -5,6 +5,8 @@ export interface AddVisitPayload {
   name?: string;
   amount?: number;
   send_sms?: boolean;
+  birthday?: string;
+  anniversary?: string;
 }
 
 export interface AddVisitResponse {
@@ -41,11 +43,19 @@ export interface DashboardResponse {
       total_redeemed: number;
       recent_redeemed: number;
     };
+    campaign_roi: {
+      total_messages: number;
+      converted_messages: number;
+      conversion_rate: number;
+      revenue_generated: number;
+    };
   };
   segments: {
     vips_count: number;
     at_risk_count: number;
     near_rewards_count: number;
+    lost_count: number;
+    new_blood_count: number;
   };
 }
 
@@ -178,6 +188,11 @@ export const getRewardCustomers = async (rewardId: number, skip: number = 0, lim
   return response.data;
 };
 
+export const getAllRewardCustomers = async (skip: number = 0, limit: number = 20): Promise<Array<{ id: number; name: string; phone_number: string; status: string; amount: number; visited_at: string | null }>> => {
+  const response = await api.get('/api/intelligence/rewards/customers', { params: { skip, limit } });
+  return response.data;
+};
+
 export interface SettingsResponse {
   review_message_template: string;
   auto_send_sms: boolean;
@@ -270,6 +285,7 @@ export interface AutomationConfig {
   automation_type: string;
   is_enabled: boolean;
   message_template: string;
+  schedule?: string;
   settings?: Record<string, any>;
 }
 

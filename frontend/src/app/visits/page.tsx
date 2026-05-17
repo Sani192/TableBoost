@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Receipt, RefreshCw, Search, SlidersHorizontal, Calendar, DollarSign, X, ChevronUp, ChevronDown } from 'lucide-react';
@@ -8,6 +8,8 @@ import VisitCard from '@/components/VisitCard';
 import { getVisits, VisitDetail } from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
+import VisitListItem from '@/components/ui/VisitListItem';
+import { useSearchParams, usePathname } from 'next/navigation';
 
 const PAGE_SIZE = 20;
 
@@ -16,31 +18,55 @@ type SortOrder = 'asc' | 'desc';
 
 export default function VisitsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  
   const [visits, setVisits] = useState<VisitDetail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   
-  // Filter States
-  const [search, setSearch] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [minAmount, setMinAmount] = useState('');
-  const [maxAmount, setMaxAmount] = useState('');
+  // Filter States - Initialize from URL
+  const [search, setSearch] = useState(searchParams.get('q') || '');
+  const [startDate, setStartDate] = useState(searchParams.get('start_date') || '');
+  const [endDate, setEndDate] = useState(searchParams.get('end_date') || '');
+  const [minAmount, setMinAmount] = useState(searchParams.get('min_amount') || '');
+  const [maxAmount, setMaxAmount] = useState(searchParams.get('max_amount') || '');
   
   // Sort States
-  const [sortKey, setSortKey] = useState<SortKey>('visited_at');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [sortKey, setSortKey] = useState<SortKey>((searchParams.get('sort_by') as SortKey) || 'visited_at');
+  const [sortOrder, setSortOrder] = useState<SortOrder>((searchParams.get('sort_order') as SortOrder) || 'desc');
+  
+  const hasActiveFilters = Boolean(
+    searchParams.get('start_date') || searchParams.get('end_date') || 
+    searchParams.get('min_amount') || searchParams.get('max_amount')
+  );
+  const [showFilters, setShowFilters] = useState(hasActiveFilters);
   
   const [skip, setSkip] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const loaderRef = useRef<HTMLDivElement>(null);
+
+  // Sync state to URL without reloading
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search) params.set('q', search);
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
+    if (minAmount) params.set('min_amount', minAmount);
+    if (maxAmount) params.set('max_amount', maxAmount);
+    if (sortKey && sortKey !== 'visited_at') params.set('sort_by', sortKey);
+    if (sortOrder && sortOrder !== 'desc') params.set('sort_order', sortOrder);
+
+    const newUrl = `${pathname}?${params.toString()}`;
+    router.replace(newUrl, { scroll: false });
+  }, [search, startDate, endDate, minAmount, maxAmount, sortKey, sortOrder, pathname, router]);
 
   const fetchVisits = useCallback(async (isLoadMore = false) => {
     if (isLoadMore) setIsLoadingMore(true);
     else setIsLoading(true);
 
     try {
-      const currentSkip = isLoadMore ? skip + PAGE_SIZE : 0;
+      const currentSkip = isLoadMore ? skip : 0;
       const data = await getVisits({
         skip: currentSkip,
         limit: PAGE_SIZE,
@@ -69,6 +95,28 @@ export default function VisitsPage() {
       setIsLoadingMore(false);
     }
   }, [search, startDate, endDate, minAmount, maxAmount, skip, sortKey, sortOrder]);
+
+  const loadingRef = useRef(false);
+  loadingRef.current = isLoading || isLoadingMore;
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
+          setSkip(prev => prev + 20);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (loaderRef.current) observer.observe(loaderRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, visits.length]);
+
+  useEffect(() => {
+    if (skip > 0) {
+      fetchVisits(true);
+    }
+  }, [skip]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -180,7 +228,7 @@ export default function VisitsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Min Amount</label>
+              <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Min Spent</label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
                 <input
@@ -194,7 +242,7 @@ export default function VisitsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Max Amount</label>
+              <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Max Spent</label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
                 <input
@@ -282,66 +330,16 @@ export default function VisitsPage() {
 
             <ul className="divide-y divide-stone-100">
               {visits.map((visit) => (
-                <li key={visit.id} className="hover:bg-stone-50/50 transition-colors">
-                  <div className="flex items-center gap-3 px-5 py-4 sm:px-6">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-sm font-bold text-brand-700">
-                      {(visit.customer_name || visit.phone_number).slice(0, 1).toUpperCase()}
-                    </div>
-                    
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-stone-900">
-                        {visit.customer_name || 'Walk-in Customer'}
-                      </p>
-                      <p className="truncate text-xs font-medium text-stone-500">
-                        {visit.phone_number}
-                      </p>
-                    </div>
-
-                    <div className="shrink-0 text-right w-24 sm:w-32">
-                      <p className="text-sm font-bold text-stone-900">
-                        {visit.amount ? `$${Number(visit.amount).toFixed(2)}` : '—'}
-                      </p>
-                    </div>
-
-                    <div className="hidden sm:block shrink-0 text-right w-40">
-                      <p className="text-xs font-bold text-stone-500">
-                        {new Date(visit.visited_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                      <p className="text-[10px] font-medium text-stone-400">
-                        {new Date(visit.visited_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                      </p>
-                    </div>
-                    
-                    {/* Mobile time only */}
-                    <div className="sm:hidden shrink-0 text-right">
-                       <p className="text-[10px] font-bold text-stone-400 uppercase">
-                        {new Date(visit.visited_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                      </p>
-                    </div>
-                  </div>
+                <li key={visit.id} className="block transition-colors">
+                  <VisitListItem visit={visit} isTable={true} />
                 </li>
               ))}
             </ul>
 
-            {/* Load More */}
+            {/* Load More Indicator */}
             {hasMore && (
-              <div className="border-t border-stone-100 p-4">
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  onClick={() => fetchVisits(true)}
-                  disabled={isLoadingMore}
-                  className="bg-stone-50 border-none shadow-none hover:bg-stone-100"
-                >
-                  {isLoadingMore ? (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      Loading more...
-                    </>
-                  ) : (
-                    'Load More Records'
-                  )}
-                </Button>
+              <div ref={loaderRef} className="py-6 flex justify-center">
+                <RefreshCw className="h-6 w-6 animate-spin text-brand-400" />
               </div>
             )}
           </>

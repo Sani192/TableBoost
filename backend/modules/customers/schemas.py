@@ -26,6 +26,9 @@ class CustomerListResponse(CustomerResponse):
     total_visits: int = 0
     last_visit: Optional[datetime] = None
     total_spent: Optional[Decimal] = None
+    health_status: Optional[str] = None
+    clv_tier: Optional[str] = None
+    spend_trend: Optional[str] = None
 
 class VisitMinimal(BaseModel):
     id: int

@@ -6,11 +6,12 @@ interface DrawerProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
+  subtitle?: string;
   children: ReactNode;
   footer?: ReactNode;
 }
 
-export default function Drawer({ isOpen, onClose, title, children, footer }: DrawerProps) {
+export default function Drawer({ isOpen, onClose, title, subtitle, children, footer }: DrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,7 +50,10 @@ export default function Drawer({ isOpen, onClose, title, children, footer }: Dra
         >
           {/* Header */}
           <div className="px-6 py-5 flex items-center justify-between border-b border-stone-100">
-            <h3 className="text-lg font-extrabold text-stone-900 tracking-tight">{title}</h3>
+            <div>
+              <h3 className="text-lg font-extrabold text-stone-900 tracking-tight">{title}</h3>
+              {subtitle && <p className="text-xs font-medium text-stone-500 mt-0.5">{subtitle}</p>}
+            </div>
             <button 
               onClick={onClose}
               className="p-2 rounded-xl text-stone-400 hover:text-stone-600 hover:bg-stone-50 transition-all"

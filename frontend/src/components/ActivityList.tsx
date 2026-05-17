@@ -1,10 +1,9 @@
 import Link from 'next/link';
-import { Clock3, ChevronRight, Receipt } from 'lucide-react';
-import VisitCard from './VisitCard';
-import { StoredVisit } from '@/lib/visits-store';
+import { ChevronRight, Receipt } from 'lucide-react';
+import VisitListItem from './ui/VisitListItem';
 
 interface ActivityListProps {
-  visits: StoredVisit[];
+  visits: any[];
   /** Maximum items to display. Defaults to 10. */
   limit?: number;
 }
@@ -46,9 +45,9 @@ export default function ActivityList({ visits, limit = 10 }: ActivityListProps) 
         </div>
       ) : (
         <ul className="divide-y divide-stone-100">
-          {displayed.map((visit) => (
-            <li key={visit.id}>
-              <VisitCard visit={visit} />
+          {displayed.map((visit, i) => (
+            <li key={visit.id || i}>
+              <VisitListItem visit={visit} showTags={true} />
             </li>
           ))}
         </ul>

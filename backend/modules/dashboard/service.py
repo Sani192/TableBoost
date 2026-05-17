@@ -4,11 +4,11 @@ from modules.customers.models import Customer
 from modules.visits.models import Visit
 from modules.loyalty import service as loyalty_service
 from modules.analytics import service as analytics_service
+from modules.intelligence.models import CustomerIntelligence
 
 def get_dashboard_stats(db: Session):
     total_customers = db.query(Customer).count()
     total_visits = db.query(Visit).count()
-    
     # Repeat customers are customers with > 1 visit
     # We can do this by grouping visits by customer_id and counting
     subquery = db.query(Visit.customer_id, func.count(Visit.id).label('visit_count')).group_by(Visit.customer_id).subquery()
@@ -23,15 +23,27 @@ def get_dashboard_stats(db: Session):
     segments = analytics_service.get_customer_segments(db)
     
     # Recent visits (last 10)
-    recent_visits_query = db.query(Visit, Customer).join(Customer).order_by(Visit.visited_at.desc()).limit(10).all()
+    recent_visits_query = db.query(Visit, Customer, CustomerIntelligence).select_from(Visit).join(Customer, Visit.customer_id == Customer.id).outerjoin(CustomerIntelligence, Customer.id == CustomerIntelligence.customer_id).order_by(Visit.visited_at.desc()).limit(10).all()
     
     recent_visits = []
-    for visit, customer in recent_visits_query:
+    for visit, customer, intel in recent_visits_query:
+        # Fetch total visits and spent for fallback heuristics
+        cust_total_visits = db.query(func.count(Visit.id)).filter(Visit.customer_id == customer.id).scalar() or 0
+        total_spent = db.query(func.sum(Visit.amount)).filter(Visit.customer_id == customer.id).scalar() or 0
+        last_visit = db.query(func.max(Visit.visited_at)).filter(Visit.customer_id == customer.id).scalar()
+        
         recent_visits.append({
+            "customer_id": customer.id,
             "customer_name": customer.name,
             "phone_number": customer.phone_number,
             "visited_at": visit.visited_at,
-            "amount": visit.amount
+            "amount": visit.amount,
+            "health_status": intel.health_status if intel else None,
+            "clv_tier": intel.clv_tier if intel else None,
+            "spend_trend": intel.spend_trend if intel else None,
+            "total_visits": cust_total_visits,
+            "total_spent": float(total_spent),
+            "last_visit": last_visit
         })
         
     return {

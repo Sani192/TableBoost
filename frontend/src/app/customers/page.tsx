@@ -1,67 +1,75 @@
 'use client';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import Link from 'next/link';
 import { getCustomers, CustomerListResponse } from '@/lib/api';
-import { Search, SlidersHorizontal, RefreshCw, X, Cake, Heart, PartyPopper } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { Search, SlidersHorizontal, RefreshCw, X, Cake, Heart } from 'lucide-react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Card from '@/components/ui/Card';
+import CustomerListItem from '@/components/ui/CustomerListItem';
 
 const PAGE_SIZE = 20;
 
 export default function CustomersPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [customers, setCustomers] = useState<CustomerListResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [skip, setSkip] = useState(0);
 
-  // Filters
-  const [search, setSearch] = useState('');
-  const [minVisits, setMinVisits] = useState('');
-  const [maxVisits, setMaxVisits] = useState('');
-  const [minSpent, setMinSpent] = useState('');
-  const [maxSpent, setMaxSpent] = useState('');
-  const [birthdayMonth, setBirthdayMonth] = useState('');
-  const [anniversaryMonth, setAnniversaryMonth] = useState('');
-  const [isCelebrating, setIsCelebrating] = useState(false);
-  const [isVip, setIsVip] = useState(false);
-  const [isAtRisk, setIsAtRisk] = useState(false);
-  const [isRewardNear, setIsRewardNear] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  // Filters - Initialize from URL
+  const [search, setSearch] = useState(searchParams.get('q') || '');
+  const [minVisits, setMinVisits] = useState(searchParams.get('min_visits') || '');
+  const [maxVisits, setMaxVisits] = useState(searchParams.get('max_visits') || '');
+  const [minSpent, setMinSpent] = useState(searchParams.get('min_spent') || '');
+  const [maxSpent, setMaxSpent] = useState(searchParams.get('max_spent') || '');
+  const [birthdayMonth, setBirthdayMonth] = useState(searchParams.get('birthday_month') || '');
+  const [anniversaryMonth, setAnniversaryMonth] = useState(searchParams.get('anniversary_month') || '');
   
-  const searchParams = useSearchParams();
+  const [isCelebrating, setIsCelebrating] = useState(searchParams.get('celebrating') === 'true');
+  const [isVip, setIsVip] = useState(searchParams.get('is_vip') === 'true');
+  const [isAtRisk, setIsAtRisk] = useState(searchParams.get('is_at_risk') === 'true');
+  const [isRewardNear, setIsRewardNear] = useState(searchParams.get('is_reward_near') === 'true');
+  
+  const hasActiveFilters = Boolean(
+    searchParams.get('min_visits') || searchParams.get('max_visits') ||
+    searchParams.get('min_spent') || searchParams.get('max_spent') ||
+    searchParams.get('birthday_month') || searchParams.get('anniversary_month') ||
+    searchParams.get('celebrating') === 'true' || searchParams.get('is_vip') === 'true' ||
+    searchParams.get('is_at_risk') === 'true' || searchParams.get('is_reward_near') === 'true'
+  );
+  
+  const [showFilters, setShowFilters] = useState(hasActiveFilters);
 
   const loaderRef = useRef<HTMLDivElement>(null);
 
+  // Sync state to URL without reloading
   useEffect(() => {
-    const celebrates = searchParams.get('celebrating') === 'true';
-    if (celebrates) {
-      setIsCelebrating(true);
-      setShowFilters(true);
-    }
-    
-    if (searchParams.get('is_vip') === 'true') {
-      setIsVip(true);
-      setShowFilters(true);
-    }
-    
-    if (searchParams.get('is_at_risk') === 'true') {
-      setIsAtRisk(true);
-      setShowFilters(true);
-    }
-    
-    if (searchParams.get('is_reward_near') === 'true') {
-      setIsRewardNear(true);
-      setShowFilters(true);
-    }
-  }, [searchParams]);
+    const params = new URLSearchParams();
+    if (search) params.set('q', search);
+    if (minVisits) params.set('min_visits', minVisits);
+    if (maxVisits) params.set('max_visits', maxVisits);
+    if (minSpent) params.set('min_spent', minSpent);
+    if (maxSpent) params.set('max_spent', maxSpent);
+    if (birthdayMonth) params.set('birthday_month', birthdayMonth);
+    if (anniversaryMonth) params.set('anniversary_month', anniversaryMonth);
+    if (isCelebrating) params.set('celebrating', 'true');
+    if (isVip) params.set('is_vip', 'true');
+    if (isAtRisk) params.set('is_at_risk', 'true');
+    if (isRewardNear) params.set('is_reward_near', 'true');
+
+    const newUrl = `${pathname}?${params.toString()}`;
+    router.replace(newUrl, { scroll: false });
+  }, [search, minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth, isCelebrating, isVip, isAtRisk, isRewardNear, pathname, router]);
 
   const fetchCustomers = useCallback(async (isLoadMore = false) => {
     if (isLoadMore) setLoadingMore(true);
     else setLoading(true);
 
     try {
-      const currentSkip = isLoadMore ? skip + PAGE_SIZE : 0;
+      const currentSkip = isLoadMore ? skip : 0;
       const data = await getCustomers({
         skip: currentSkip,
         limit: PAGE_SIZE,
@@ -95,22 +103,34 @@ export default function CustomersPage() {
   }, [search, minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth, isCelebrating, isVip, isAtRisk, isRewardNear, skip]);
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchCustomers(false), 400);
+    const timer = setTimeout(() => {
+        setSkip(0);
+        fetchCustomers(false);
+    }, 400);
     return () => clearTimeout(timer);
   }, [search, minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth, isCelebrating, isVip, isAtRisk, isRewardNear]);
+
+  const loadingRef = useRef(false);
+  loadingRef.current = loading || loadingMore;
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
-          fetchCustomers(true);
+        if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
+          setSkip(prev => prev + 20);
         }
       },
       { threshold: 0.1 }
     );
     if (loaderRef.current) observer.observe(loaderRef.current);
     return () => observer.disconnect();
-  }, [hasMore, loading, loadingMore, fetchCustomers]);
+  }, [hasMore, customers.length]);
+
+  useEffect(() => {
+    if (skip > 0) {
+      fetchCustomers(true);
+    }
+  }, [skip]);
 
   const activeFiltersCount = [minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth].filter(Boolean).length + (isCelebrating ? 1 : 0) + (isVip ? 1 : 0) + (isAtRisk ? 1 : 0) + (isRewardNear ? 1 : 0);
 
@@ -294,18 +314,7 @@ export default function CustomersPage() {
       ) : (
         <div className="space-y-3">
           {customers.map(c => (
-            <Link key={c.id} href={`/customers/${c.id}`} className="block bg-white p-4 rounded-xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="font-bold text-stone-900">{c.name || 'Unknown'}</h3>
-                  <p className="text-sm text-stone-500">{c.phone_number}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-brand-600">{c.total_visits} visits</p>
-                  <p className="text-[10px] text-stone-400">${c.total_spent || 0} spent</p>
-                </div>
-              </div>
-            </Link>
+            <CustomerListItem key={c.id} customer={c} />
           ))}
           {hasMore && (
             <div ref={loaderRef} className="py-6 flex justify-center">

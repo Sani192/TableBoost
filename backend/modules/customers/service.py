@@ -3,6 +3,7 @@ from sqlalchemy import and_, or_, desc, func, exists
 from modules.customers.models import Customer, CustomerProfile
 from modules.visits.models import Visit
 from modules.loyalty.models import LoyaltyProgress, LoyaltyReward
+from modules.intelligence.models import CustomerIntelligence
 from typing import Optional, List
 from datetime import datetime, date, timedelta, timezone
 
@@ -30,8 +31,11 @@ def get_customers(
         Customer,
         func.count(Visit.id).label("total_visits"),
         func.max(Visit.visited_at).label("last_visit"),
-        func.sum(Visit.amount).label("total_spent")
-    ).options(selectinload(Customer.profile)).outerjoin(Visit, Customer.id == Visit.customer_id).group_by(Customer.id)
+        func.sum(Visit.amount).label("total_spent"),
+        CustomerIntelligence.health_status.label("health_status"),
+        CustomerIntelligence.clv_tier.label("clv_tier"),
+        CustomerIntelligence.spend_trend.label("spend_trend")
+    ).options(selectinload(Customer.profile)).outerjoin(Visit, Customer.id == Visit.customer_id).outerjoin(CustomerIntelligence, Customer.id == CustomerIntelligence.customer_id).group_by(Customer.id, CustomerIntelligence.health_status, CustomerIntelligence.clv_tier, CustomerIntelligence.spend_trend)
     
     if search:
         search_filter = f"%{search}%"
@@ -74,14 +78,13 @@ def get_customers(
         )
         
     if is_at_risk:
-        # 30-90 days since last visit, MUST have at least one visit
-        cutoff_30 = datetime.now(timezone.utc) - timedelta(days=30)
-        cutoff_90 = datetime.now(timezone.utc) - timedelta(days=90)
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
         query = query.having(and_(
-            func.max(Visit.visited_at) < cutoff_30,
-            func.max(Visit.visited_at) >= cutoff_90,
-            func.max(Visit.visited_at).isnot(None)
-        ))
+            func.count(Visit.id) > 1,
+            func.max(Visit.visited_at) < thirty_days_ago,
+            func.max(Visit.visited_at) >= ninety_days_ago
+        )).filter(or_(CustomerIntelligence.health_status == 'churn_risk', CustomerIntelligence.health_status.is_(None)))
 
     if is_vip:
         # Top 10% by total spent
@@ -134,20 +137,23 @@ def get_customers(
 
     results = query.offset(skip).limit(limit).all()
     
-    response = []
-    for customer, total_visits, last_visit, total_spent in results:
-        response.append({
-            "id": customer.id,
-            "phone_number": customer.phone_number,
-            "name": customer.name,
-            "birthday": customer.profile.birthday if customer.profile else None,
-            "anniversary": customer.profile.anniversary if customer.profile else None,
-            "created_at": customer.created_at,
+    return [
+        {
+            "id": cust.id,
+            "phone_number": cust.phone_number,
+            "name": cust.name,
+            "birthday": cust.profile.birthday if cust.profile else None,
+            "anniversary": cust.profile.anniversary if cust.profile else None,
+            "created_at": cust.created_at,
             "total_visits": total_visits or 0,
             "last_visit": last_visit,
-            "total_spent": total_spent or 0.0
-        })
-    return response
+            "total_spent": float(total_spent) if total_spent else 0.0,
+            "health_status": health_status,
+            "clv_tier": clv_tier,
+            "spend_trend": spend_trend
+        }
+        for cust, total_visits, last_visit, total_spent, health_status, clv_tier, spend_trend in results
+    ]
 
 def get_customer_detail(db: Session, customer_id: int):
     customer_info = db.query(

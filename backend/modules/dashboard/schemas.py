@@ -3,10 +3,16 @@ from typing import List, Optional
 from datetime import datetime
 
 class RecentVisit(BaseModel):
+    customer_id: int
     customer_name: Optional[str] = None
     phone_number: str
     visited_at: datetime
     amount: Optional[float] = None
+    health_status: Optional[str] = None
+    clv_tier: Optional[str] = None
+    total_visits: Optional[int] = None
+    total_spent: Optional[float] = None
+    last_visit: Optional[datetime] = None
 
 class CelebrationStats(BaseModel):
     birthdays: int

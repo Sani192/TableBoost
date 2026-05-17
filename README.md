@@ -85,6 +85,27 @@ Current intelligence capabilities include:
 - Weekly and monthly business summaries.
 - Lightweight recommendations that can be dismissed after review.
 
+### Customer Intelligence Tags
+
+The system uses a combination of backend calculations and frontend heuristics to tag customers:
+
+#### CLV Tiers (Customer Lifetime Value)
+*   **High CLV**: Top 20% of customers (by spend, frequency, and recency).
+*   **Medium CLV**: Next 40% of customers.
+*   **Low CLV**: Bottom 40% of customers.
+
+#### Customer Health Status
+*   **New**: Fewer than 3 total visits.
+*   **Healthy**: Visiting regularly based on their average gap.
+*   **Cooling**: Slightly overdue compared to their normal pattern.
+*   **Declining**: Significantly overdue.
+*   **Churn Risk**: Very overdue and at high risk of not returning.
+
+#### Special Frontend Tags
+*   **VIP**: High CLV OR 10+ visits OR >$300 total spent.
+*   **NEW**: 0 or 1 visit.
+*   **LOST**: Not seen in >90 days (fallback).
+
 ---
 
 ## Application Screens

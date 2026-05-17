@@ -77,7 +77,7 @@ export default function CampaignsPage() {
               <Users className="h-4 w-4 text-stone-400" />
               Target Audience
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => setAudience('inactive')}
@@ -125,6 +125,18 @@ export default function CampaignsPage() {
               >
                 <span className="font-bold">Near Reward</span>
                 <span className="text-[10px] uppercase font-bold opacity-70">Milestones</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAudience('at_risk')}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                  audience === 'at_risk' 
+                    ? 'border-red-500 bg-red-50 text-red-700' 
+                    : 'border-stone-100 bg-white text-stone-500 hover:border-stone-200'
+                }`}
+              >
+                <span className="font-bold">At Risk</span>
+                <span className="text-[10px] uppercase font-bold opacity-70">30-90 Days</span>
               </button>
             </div>
             

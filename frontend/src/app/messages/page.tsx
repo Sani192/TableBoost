@@ -4,31 +4,57 @@ import { getMessageLogs, MessageLogResponse } from '@/lib/api';
 import { Star, Megaphone, Search, SlidersHorizontal, RefreshCw, X, Calendar } from 'lucide-react';
 import Card from '@/components/ui/Card';
 
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+
 const PAGE_SIZE = 20;
 
 export default function MessagesPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [logs, setLogs] = useState<MessageLogResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [skip, setSkip] = useState(0);
 
-  // Filters
-  const [search, setSearch] = useState('');
-  const [type, setType] = useState('');
-  const [status, setStatus] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
+  // Filters - Initialize from URL
+  const [search, setSearch] = useState(searchParams.get('q') || '');
+  const [type, setType] = useState(searchParams.get('type') || '');
+  const [status, setStatus] = useState(searchParams.get('status') || '');
+  const [startDate, setStartDate] = useState(searchParams.get('start_date') || '');
+  const [endDate, setEndDate] = useState(searchParams.get('end_date') || '');
+  
+  const hasActiveFilters = Boolean(
+    searchParams.get('type') || searchParams.get('status') || 
+    searchParams.get('start_date') || searchParams.get('end_date')
+  );
+  const [showFilters, setShowFilters] = useState(hasActiveFilters);
 
   const loaderRef = useRef<HTMLDivElement>(null);
+
+  // Sync state to URL without reloading
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search) params.set('q', search);
+    if (type) params.set('type', type);
+    if (status) params.set('status', status);
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
+
+    const newUrl = `${pathname}?${params.toString()}`;
+    router.replace(newUrl, { scroll: false });
+  }, [search, type, status, startDate, endDate, pathname, router]);
+
+
 
   const fetchLogs = useCallback(async (isLoadMore = false) => {
     if (isLoadMore) setLoadingMore(true);
     else setLoading(true);
 
     try {
-      const currentSkip = isLoadMore ? skip + PAGE_SIZE : 0;
+      const currentSkip = isLoadMore ? skip : 0;
       const data = await getMessageLogs({
         skip: currentSkip,
         limit: PAGE_SIZE,
@@ -60,18 +86,27 @@ export default function MessagesPage() {
     return () => clearTimeout(timer);
   }, [search, type, status, startDate, endDate]);
 
+  const loadingRef = useRef(false);
+  loadingRef.current = loading || loadingMore;
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
-          fetchLogs(true);
+        if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
+          setSkip(prev => prev + 20);
         }
       },
       { threshold: 0.1 }
     );
     if (loaderRef.current) observer.observe(loaderRef.current);
     return () => observer.disconnect();
-  }, [hasMore, loading, loadingMore, fetchLogs]);
+  }, [hasMore, logs.length]);
+
+  useEffect(() => {
+    if (skip > 0) {
+      fetchLogs(true);
+    }
+  }, [skip]);
 
   const activeFiltersCount = [type, status, startDate, endDate].filter(Boolean).length;
 

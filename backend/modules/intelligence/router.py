@@ -40,6 +40,12 @@ def get_reward_effectiveness(db: Session = Depends(get_db)):
     return service.get_reward_effectiveness_list(db)
 
 
+@router.get("/rewards/customers")
+def get_all_reward_customers(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+    """List customers who redeemed ANY reward."""
+    return service.get_reward_customers(db, None, skip, limit)
+
+
 @router.get("/rewards/{reward_id}/customers")
 def get_reward_customers(reward_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     """List customers who redeemed a reward."""
@@ -98,6 +104,13 @@ def get_intelligence_customers(filter: str = None, skip: int = 0, limit: int = 2
         from datetime import datetime, timedelta, timezone
         cutoff = datetime.now(timezone.utc) - timedelta(days=30)
         query = query.filter(Customer.created_at >= cutoff)
+    elif filter == "repeat":
+        query = query.filter(CustomerIntelligence.visit_count > 1)
+    elif filter == "redeemed":
+        from modules.loyalty.models import RewardRedemption
+        query = query.filter(Customer.id.in_(db.query(RewardRedemption.customer_id)))
+    elif filter == "visited":
+        query = query.filter(CustomerIntelligence.visit_count > 0)
         
     results = query.offset(skip).limit(limit).all()
     return [

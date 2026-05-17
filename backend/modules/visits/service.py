@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from modules.customers.models import Customer, CustomerProfile
 from modules.visits.models import Visit
 from modules.visits.schemas import VisitCreate
@@ -9,6 +10,7 @@ from modules.messaging import service as messaging_service
 from modules.settings import service as settings_service
 from modules.loyalty import service as loyalty_service
 from modules.automation import service as automation_service
+from modules.intelligence.models import CustomerIntelligence
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +85,7 @@ def get_visits(
     sort_by: str = "visited_at",
     sort_order: str = "desc"
 ):
-    query = db.query(Visit, Customer).join(Customer)
+    query = db.query(Visit, Customer, CustomerIntelligence).select_from(Visit).join(Customer, Visit.customer_id == Customer.id).outerjoin(CustomerIntelligence, Customer.id == CustomerIntelligence.customer_id)
 
     if search:
         search_filter = f"%{search}%"
@@ -123,9 +125,13 @@ def get_visits(
 
     results = query.offset(skip).limit(limit).all()
     
-    # Map results to include customer info
     visits = []
-    for visit, customer in results:
+    for visit, customer, intel in results:
+        # Fetch total visits and spent for fallback heuristics
+        total_visits = db.query(func.count(Visit.id)).filter(Visit.customer_id == customer.id).scalar() or 0
+        total_spent = db.query(func.sum(Visit.amount)).filter(Visit.customer_id == customer.id).scalar() or 0
+        last_visit = db.query(func.max(Visit.visited_at)).filter(Visit.customer_id == customer.id).scalar()
+        
         visits.append({
             "id": visit.id,
             "customer_id": visit.customer_id,
@@ -133,7 +139,13 @@ def get_visits(
             "phone_number": customer.phone_number,
             "amount": visit.amount,
             "visited_at": visit.visited_at,
-            "sms_status": getattr(visit, 'sms_status', None)
+            "sms_status": getattr(visit, 'sms_status', None),
+            "health_status": intel.health_status if intel else None,
+            "clv_tier": intel.clv_tier if intel else None,
+            "spend_trend": intel.spend_trend if intel else None,
+            "total_visits": total_visits,
+            "total_spent": float(total_spent),
+            "last_visit": last_visit
         })
         
     return visits

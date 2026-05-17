@@ -678,18 +678,24 @@ def get_campaign_customers(db: Session, campaign_id: int, skip: int = 0, limit: 
     return results
 
 
-def get_reward_customers(db: Session, reward_id: int, skip: int = 0, limit: int = 20):
+def get_reward_customers(db: Session, reward_id: int = None, skip: int = 0, limit: int = 20):
     """Return list of customers who redeemed a reward."""
     from modules.loyalty.models import RewardRedemption
     from modules.customers.models import Customer
     from modules.visits.models import Visit
     from datetime import timedelta
     
-    redemptions = db.query(RewardRedemption, Customer).join(
+    query = db.query(RewardRedemption, Customer).join(
         Customer, RewardRedemption.customer_id == Customer.id
-    ).filter(
-        RewardRedemption.reward_id == reward_id
-    ).offset(skip).limit(limit).all()
+    )
+    
+    if reward_id is not None:
+        query = query.filter(RewardRedemption.reward_id == reward_id)
+        
+    redemptions = query.offset(skip).limit(limit).all()
+    
+    from modules.intelligence.models import CustomerIntelligence
+    from sqlalchemy import func
     
     results = []
     for red, cust in redemptions:
@@ -700,13 +706,22 @@ def get_reward_customers(db: Session, reward_id: int, skip: int = 0, limit: int 
             Visit.visited_at <= red.redeemed_at + timedelta(hours=2),
         ).first()
         
+        intel = db.query(CustomerIntelligence).filter(CustomerIntelligence.customer_id == cust.id).first()
+        cust_total_visits = db.query(func.count(Visit.id)).filter(Visit.customer_id == cust.id).scalar() or 0
+        total_spent = db.query(func.sum(Visit.amount)).filter(Visit.customer_id == cust.id).scalar() or 0
+        
         results.append({
             "id": cust.id,
             "name": cust.name,
             "phone_number": cust.phone_number,
             "status": "redeemed",
             "amount": float(visit.amount or 0) if visit else 0,
-            "visited_at": red.redeemed_at
+            "visited_at": red.redeemed_at,
+            "health_status": intel.health_status if intel else None,
+            "clv_tier": intel.clv_tier if intel else None,
+            "spend_trend": intel.spend_trend if intel else None,
+            "total_visits": cust_total_visits,
+            "total_spent": float(total_spent)
         })
         
     return results

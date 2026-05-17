@@ -45,6 +45,12 @@ class VisitDetail(BaseModel):
     amount: Optional[Decimal] = None
     visited_at: datetime
     sms_status: Optional[str] = None
+    health_status: Optional[str] = None
+    clv_tier: Optional[str] = None
+    spend_trend: Optional[str] = None
+    total_visits: Optional[int] = None
+    total_spent: Optional[float] = None
+    last_visit: Optional[datetime] = None
 
     class Config:
         from_attributes = True

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { 
   getCustomerDetail, 
   getCustomerVisits, 
@@ -19,7 +20,7 @@ import ActivityList from '@/components/ActivityList';
 import CustomerHealthBadge from '@/components/intelligence/CustomerHealthBadge';
 import CLVBadge from '@/components/intelligence/CLVBadge';
 import StatCard from '@/components/StatCard';
-import { Utensils, DollarSign, RefreshCw, Trophy, History, Gift, CheckCircle2, Loader2, Lock, ChevronRight, Cake, Heart, Edit2, Calendar, ArrowLeft } from 'lucide-react';
+import { Utensils, DollarSign, RefreshCw, Trophy, History, Gift, CheckCircle2, Loader2, Lock, ChevronRight, Cake, Heart, Edit2, Calendar, ArrowLeft, Receipt } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Modal from '@/components/ui/Modal';
@@ -329,24 +330,46 @@ export default function CustomerDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Visit History */}
         <section className="space-y-4">
-          <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
-            <History className="h-5 w-5 text-stone-400" />
-            Visit History
-          </h2>
-          {formattedVisits.length > 0 ? (
-            <div className="space-y-4">
-              <ActivityList visits={formattedVisits} />
-              {hasMore && (
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="bg-stone-50 border border-stone-200 text-stone-600 hover:bg-stone-100 h-12 rounded-2xl"
-                >
-                  {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Load More Visits'}
-                </Button>
-              )}
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+              <History className="h-5 w-5 text-stone-400" />
+              Visit History
+            </h2>
+            {visits.length > 5 && (
+              <Link
+                href={`/visits?q=${encodeURIComponent(customer.phone_number)}`}
+                className="flex h-8 items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 text-xs font-bold text-stone-600 transition-all hover:bg-stone-50 hover:text-brand-600 active:scale-95"
+              >
+                View All
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            )}
+          </div>
+          {visits.length > 0 ? (
+            <div className="space-y-3">
+              {visits.slice(0, 5).map(v => (
+                <div key={v.id} className="flex items-center justify-between p-4 bg-white rounded-xl border border-stone-200 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 bg-brand-50 text-brand-600 rounded-lg flex items-center justify-center shrink-0">
+                      <Receipt className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-stone-900 text-sm">Visit</p>
+                      <p className="text-[10px] text-stone-400 uppercase font-bold tracking-tight">
+                        {v.visited_at ? new Date(v.visited_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-stone-900">
+                      {v.amount !== null && v.amount !== undefined ? `$${Number(v.amount).toFixed(2)}` : '—'}
+                    </p>
+                    <p className="text-xs font-bold text-stone-500">
+                      {v.visited_at ? new Date(v.visited_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <p className="text-sm text-stone-500 bg-stone-50 p-4 rounded-xl">No visits recorded.</p>
