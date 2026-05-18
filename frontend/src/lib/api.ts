@@ -82,8 +82,9 @@ export interface GetVisitsParams {
 }
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000',
+  baseURL: '',
   timeout: 8000,
+  withCredentials: true,
 });
 
 export const addVisit = async (payload: AddVisitPayload): Promise<AddVisitResponse> => {
@@ -372,3 +373,33 @@ export const getIntelligenceCustomers = async (params: { filter?: string; skip?:
   const response = await api.get<any[]>('/api/intelligence/customers', { params });
   return response.data;
 };
+
+export const changePassword = async (payload: { current_password: string; new_password: string }): Promise<{ message: string }> => {
+  const response = await api.post<{ message: string }>('/api/auth/change-password', payload);
+  return response.data;
+};
+
+export interface UserProfileResponse {
+  id: number;
+  user_id: number;
+  first_name: string | null;
+  last_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserProfileUpdate {
+  first_name?: string | null;
+  last_name?: string | null;
+}
+
+export const getProfile = async (): Promise<UserProfileResponse> => {
+  const response = await api.get<UserProfileResponse>('/api/auth/profile');
+  return response.data;
+};
+
+export const updateProfile = async (payload: UserProfileUpdate): Promise<UserProfileResponse> => {
+  const response = await api.put<UserProfileResponse>('/api/auth/profile', payload);
+  return response.data;
+};
+

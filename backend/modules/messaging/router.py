@@ -3,13 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List
 from core.database import get_db
 from modules.messaging import schemas, service
+from modules.auth.router import get_current_user, check_role
 
 router = APIRouter(prefix="/api/messages", tags=["Messaging"])
 
 from typing import Optional
 from datetime import datetime
 
-@router.get("/", response_model=List[schemas.MessageLogResponse])
+@router.get("/", response_model=List[schemas.MessageLogResponse], dependencies=[Depends(check_role(["OWNER", "MANAGER"]))])
 def get_message_logs(
     skip: int = 0, 
     limit: int = 100, 
@@ -31,7 +32,7 @@ def get_message_logs(
         end_date=end_date
     )
 
-@router.post("/campaign")
+@router.post("/campaign", dependencies=[Depends(check_role(["OWNER", "MANAGER"]))])
 def create_campaign(campaign: schemas.CampaignCreateRequest, db: Session = Depends(get_db)):
     try:
         result = service.execute_campaign(db, campaign.message, campaign.audience_type, campaign.inactive_days)

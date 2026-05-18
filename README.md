@@ -85,6 +85,17 @@ Current intelligence capabilities include:
 - Weekly and monthly business summaries.
 - Lightweight recommendations that can be dismissed after review.
 
+### 8. Authentication & Role-Based Access Control (RBAC)
+
+TableBoost includes a production-safe authentication system with role-based access control.
+
+- **JWT Authentication**: Secure stateless authentication using JSON Web Tokens.
+- **HTTP-only Cookies**: Session tokens are stored in secure, HTTP-only cookies to prevent XSS attacks.
+- **Roles**:
+  - **OWNER**: Full access to all features, analytics, and settings.
+  - **MANAGER**: Access to operations, analytics, and limited settings.
+  - **STAFF**: Operational access only (Add Visit). Cannot access sensitive analytics or settings.
+
 ### Customer Intelligence Tags
 
 The system uses a combination of backend calculations and frontend heuristics to tag customers:
@@ -112,6 +123,7 @@ The system uses a combination of backend calculations and frontend heuristics to
 
 | Screen | Purpose |
 | --- | --- |
+| `/login` | Secure login page for all roles. |
 | `/` | Dashboard with operations, revenue, growth insights, recommendations, and drilldowns. |
 | `/add-visit` | Fast mobile visit capture for staff. |
 | `/visits` | Visit history with search, date, amount, and sorting controls. |
@@ -129,6 +141,7 @@ The FastAPI backend exposes modular APIs under `/api`:
 
 | Module | Prefix | Capabilities |
 | --- | --- | --- |
+| Auth | `/api/auth` | Login, logout, and session verification. |
 | Visits | `/api/visits` | Create visits and list/filter visit history. |
 | Customers | `/api/customers` | List, filter, update, and inspect customer profiles and visits. |
 | Dashboard | `/api/dashboard` | Aggregate operational, revenue, segment, celebration, and recent-visit metrics. |
@@ -152,6 +165,8 @@ The FastAPI backend exposes modular APIs under `/api`:
 - APScheduler
 - Uvicorn
 - Pytest
+- Passlib & Bcrypt (Password hashing)
+- Python-Jose (JWT)
 
 ### Frontend
 
@@ -159,7 +174,6 @@ The FastAPI backend exposes modular APIs under `/api`:
 - React 18
 - TypeScript
 - Tailwind CSS
-- Axios
 - Lucide React icons
 - Jest
 - React Testing Library
@@ -174,6 +188,7 @@ TableBoost/
 │   ├── api/                  # Shared API dependencies
 │   ├── core/                 # Config, database, scheduler
 │   ├── modules/
+│   │   ├── auth/             # JWT handling and auth routes
 │   │   ├── automation/       # Automation configs, history, scheduler integration
 │   │   ├── customers/        # Customer CRM and profile logic
 │   │   ├── dashboard/        # Dashboard aggregation
@@ -181,6 +196,7 @@ TableBoost/
 │   │   ├── loyalty/          # Rewards, progress, redemptions
 │   │   ├── messaging/        # Message logs and campaigns
 │   │   ├── settings/         # Engagement settings
+│   │   ├── users/            # User models and schemas
 │   │   └── visits/           # Visit capture and history
 │   ├── tests/                # Backend unit and integration tests
 │   ├── init_tables.py        # Table creation and default automation seeding
@@ -189,6 +205,7 @@ TableBoost/
 ├── frontend/
 │   ├── src/app/              # Next.js app routes
 │   ├── src/components/       # Reusable UI and feature components
+│   ├── src/context/          # React Context (Auth)
 │   ├── src/lib/api.ts        # Frontend API client and response types
 │   └── __tests__/            # Frontend tests
 └── README.md

@@ -6,12 +6,13 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from modules.visits.schemas import VisitCreate, VisitResponse, VisitDetail
 from modules.visits import service
+from modules.auth.router import get_current_user, check_role
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/visits", tags=["Visits"])
 
-@router.get("/", response_model=List[VisitDetail])
+@router.get("/", response_model=List[VisitDetail], dependencies=[Depends(check_role(["OWNER", "MANAGER"]))])
 def list_visits(
     skip: int = 0,
     limit: int = 100,
@@ -37,7 +38,7 @@ def list_visits(
         sort_order=sort_order
     )
 
-@router.post("/", response_model=VisitResponse)
+@router.post("/", response_model=VisitResponse, dependencies=[Depends(get_current_user)])
 def create_visit(visit_data: VisitCreate, db: Session = Depends(get_db)):
     try:
         return service.add_visit(db, visit_data)

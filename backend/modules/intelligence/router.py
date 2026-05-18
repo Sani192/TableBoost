@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from core.database import get_db
 from modules.intelligence import service
+from modules.auth.router import get_current_user, check_role
 
-router = APIRouter(prefix="/api/intelligence", tags=["Intelligence"])
+router = APIRouter(prefix="/api/intelligence", tags=["Intelligence"], dependencies=[Depends(check_role(["OWNER", "MANAGER"]))])
 
 
 @router.get("/growth")

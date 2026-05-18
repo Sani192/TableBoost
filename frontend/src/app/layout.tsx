@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Navigation from '@/components/Navigation';
+import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
   title: 'TableBoost — Quick Billing Desk',
@@ -22,10 +23,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Navigation />
-        <div className="container-app min-h-screen py-4 pb-20 sm:py-6 sm:pt-24 lg:py-8 lg:pt-28">
-          {children}
-        </div>
+        <AuthProvider>
+          <Navigation />
+          <div className="container-app min-h-screen py-4 pb-20 sm:py-6 sm:pt-24 lg:py-8 lg:pt-28">
+            {children}
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -23,6 +23,7 @@ from modules.visits.models import Visit  # noqa: F401
 from modules.messaging.models import Message  # noqa: F401
 from modules.settings.models import Setting  # noqa: F401
 from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedemption  # noqa: F401
+from modules.users.models import User, UserProfile  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
@@ -84,9 +85,17 @@ def client(db):
         finally:
             pass  # session lifecycle managed by the `db` fixture
 
+    from modules.auth.router import get_current_user
+    from modules.users.models import User
+
+    def _override_get_current_user():
+        return User(id=1, username="testowner", role="OWNER", is_active=True)
+
     app.dependency_overrides[get_db] = _override_get_db
-    with TestClient(app) as c:
-        yield c
+    app.dependency_overrides[get_current_user] = _override_get_current_user
+    
+    c = TestClient(app)
+    yield c
     app.dependency_overrides.clear()
 
 

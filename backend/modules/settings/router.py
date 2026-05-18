@@ -4,10 +4,11 @@ from core.database import get_db
 from modules.settings.schemas import SettingsResponse, SettingsUpdate
 from modules.settings import service
 from modules.messaging.service import DEFAULT_TEMPLATE
+from modules.auth.router import get_current_user, check_role
 
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
-@router.get("/", response_model=SettingsResponse)
+@router.get("/", response_model=SettingsResponse, dependencies=[Depends(check_role(["OWNER"]))])
 def get_settings(db: Session = Depends(get_db)):
     template = service.get_setting(db, "review_message_template", default=DEFAULT_TEMPLATE)
     auto_send = service.get_setting(db, "auto_send_sms", default=True)
@@ -18,7 +19,7 @@ def get_settings(db: Session = Depends(get_db)):
         campaign_inactive_days=inactive_days
     )
 
-@router.post("/", response_model=SettingsResponse)
+@router.post("/", response_model=SettingsResponse, dependencies=[Depends(check_role(["OWNER"]))])
 def update_settings(settings: SettingsUpdate, db: Session = Depends(get_db)):
     if settings.review_message_template is not None:
         service.set_setting(db, "review_message_template", settings.review_message_template)

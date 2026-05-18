@@ -5,6 +5,7 @@ from modules.messaging.models import Message, Campaign
 from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedemption
 from modules.automation.models import AutomationConfig, AutomationHistory
 from modules.intelligence.models import CustomerIntelligence, CampaignSummary, RewardSummary, AutomationSummary, BusinessSummary, Recommendation
+from modules.users.models import User
 from modules.automation import service as automation_service
 
 def init_db():

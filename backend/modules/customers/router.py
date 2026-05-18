@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from core.database import get_db
 from modules.customers import schemas, service
+from modules.auth.router import get_current_user, check_role
 
 router = APIRouter(prefix="/api/customers", tags=["Customers"])
 
-@router.get("/", response_model=List[schemas.CustomerListResponse])
+@router.get("/", response_model=List[schemas.CustomerListResponse], dependencies=[Depends(check_role(["OWNER", "MANAGER"]))])
 def list_customers(
     skip: int = 0,
     limit: int = 100,
@@ -38,7 +39,7 @@ def list_customers(
         is_lost=is_lost, is_new=is_new
     )
 
-@router.get("/{customer_id}", response_model=schemas.CustomerDetailResponse)
+@router.get("/{customer_id}", response_model=schemas.CustomerDetailResponse, dependencies=[Depends(get_current_user)])
 def get_customer(customer_id: int, db: Session = Depends(get_db)):
     customer = service.get_customer_detail(db, customer_id)
     if not customer:
@@ -46,11 +47,11 @@ def get_customer(customer_id: int, db: Session = Depends(get_db)):
     return customer
 
 
-@router.get("/{customer_id}/visits", response_model=List[schemas.VisitMinimal])
+@router.get("/{customer_id}/visits", response_model=List[schemas.VisitMinimal], dependencies=[Depends(get_current_user)])
 def get_customer_visits(customer_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     return service.get_customer_visits(db, customer_id, skip=skip, limit=limit)
 
-@router.patch("/{customer_id}", response_model=schemas.CustomerResponse)
+@router.patch("/{customer_id}", response_model=schemas.CustomerResponse, dependencies=[Depends(get_current_user)])
 def update_customer(customer_id: int, customer_data: schemas.CustomerUpdate, db: Session = Depends(get_db)):
     customer = db.query(service.Customer).filter(service.Customer.id == customer_id).first()
     if not customer:
