@@ -74,5 +74,5 @@ def create_visit(
             status="FAILED",
             metadata_json={"phone_number": visit_data.phone_number, "amount": visit_data.amount, "error": str(e)}
         )
+        db.rollback()
         raise HTTPException(status_code=500, detail="An unexpected error occurred while saving the visit.")
-

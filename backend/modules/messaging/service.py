@@ -156,6 +156,9 @@ def execute_campaign(db: Session, message_template: str, audience_type: str, ina
     
     return {"sent_count": sent_count, "failed_count": failed_count, "total": sent_count + failed_count}
 
+from core.decorators import resilient_job
+
+@resilient_job("Scheduled Campaigns")
 def process_scheduled_campaigns(db: Session):
     now = datetime.now(timezone.utc)
     # Find scheduled campaigns that are ready to send

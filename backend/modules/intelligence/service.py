@@ -35,99 +35,103 @@ def compute_daily_intelligence(db: Session):
     all_scores = []
 
     for cust in customers:
-        cid = cust[0]
-        visit_count = cust.visit_count or 0
-        total_spent = float(cust.total_spent or 0)
-        last_visit = cust.last_visit
-        first_visit = cust.first_visit
+        try:
+            cid = cust[0]
+            visit_count = cust.visit_count or 0
+            total_spent = float(cust.total_spent or 0)
+            last_visit = cust.last_visit
+            first_visit = cust.first_visit
 
-        if last_visit and last_visit.tzinfo is None:
-            last_visit = last_visit.replace(tzinfo=timezone.utc)
-        if first_visit and first_visit.tzinfo is None:
-            first_visit = first_visit.replace(tzinfo=timezone.utc)
+            if last_visit and last_visit.tzinfo is None:
+                last_visit = last_visit.replace(tzinfo=timezone.utc)
+            if first_visit and first_visit.tzinfo is None:
+                first_visit = first_visit.replace(tzinfo=timezone.utc)
 
-        # ── CLV ──
-        freq_factor = 1.0
-        recency_factor = 0.1
-        avg_gap = None
+            # ── CLV ──
+            freq_factor = 1.0
+            recency_factor = 0.1
+            avg_gap = None
 
-        if visit_count >= 2 and first_visit and last_visit:
-            span_days = max((last_visit - first_visit).total_seconds() / 86400, 1)
-            freq_factor = min(visit_count / (span_days / 30), 10)
-            avg_gap = span_days / (visit_count - 1)
+            if visit_count >= 2 and first_visit and last_visit:
+                span_days = max((last_visit - first_visit).total_seconds() / 86400, 1)
+                freq_factor = min(visit_count / (span_days / 30), 10)
+                avg_gap = span_days / (visit_count - 1)
 
-        if last_visit:
-            days_since = (now - last_visit).total_seconds() / 86400
-            if days_since <= 7:
-                recency_factor = 1.0
-            elif days_since <= 30:
-                recency_factor = 0.8
-            elif days_since <= 60:
-                recency_factor = 0.5
-            elif days_since <= 90:
-                recency_factor = 0.3
-            else:
-                recency_factor = 0.1
+            if last_visit:
+                days_since = (now - last_visit).total_seconds() / 86400
+                if days_since <= 7:
+                    recency_factor = 1.0
+                elif days_since <= 30:
+                    recency_factor = 0.8
+                elif days_since <= 60:
+                    recency_factor = 0.5
+                elif days_since <= 90:
+                    recency_factor = 0.3
+                else:
+                    recency_factor = 0.1
 
-        clv_score = round(total_spent * freq_factor * recency_factor, 2)
-        all_scores.append((cid, clv_score))
+            clv_score = round(total_spent * freq_factor * recency_factor, 2)
+            all_scores.append((cid, clv_score))
 
-        # ── Health ──
-        health_status = "new"
-        health_score_val = 50
-
-        if visit_count < 3:
+            # ── Health ──
             health_status = "new"
             health_score_val = 50
-        elif avg_gap and last_visit:
-            days_since = (now - last_visit).total_seconds() / 86400
-            ratio = days_since / avg_gap if avg_gap > 0 else 0
-            if ratio <= 1.2:
-                health_status = "healthy"
-                health_score_val = 90
-            elif ratio <= 1.8:
-                health_status = "cooling"
-                health_score_val = 65
-            elif ratio <= 2.5:
-                health_status = "declining"
-                health_score_val = 35
-            else:
-                health_status = "churn_risk"
-                health_score_val = 10
 
-        # ── Spend trend ──
-        spend_trend = "stable"
-        if visit_count >= 4 and last_visit:
-            mid = first_visit + (last_visit - first_visit) / 2 if first_visit else now
-            early = float(db.query(func.avg(Visit.amount)).filter(
-                Visit.customer_id == cid, Visit.visited_at < mid
-            ).scalar() or 0)
-            late = float(db.query(func.avg(Visit.amount)).filter(
-                Visit.customer_id == cid, Visit.visited_at >= mid
-            ).scalar() or 0)
-            if late > early * 1.15:
-                spend_trend = "growing"
-            elif late < early * 0.85:
-                spend_trend = "declining"
+            if visit_count < 3:
+                health_status = "new"
+                health_score_val = 50
+            elif avg_gap and last_visit:
+                days_since = (now - last_visit).total_seconds() / 86400
+                ratio = days_since / avg_gap if avg_gap > 0 else 0
+                if ratio <= 1.2:
+                    health_status = "healthy"
+                    health_score_val = 90
+                elif ratio <= 1.8:
+                    health_status = "cooling"
+                    health_score_val = 65
+                elif ratio <= 2.5:
+                    health_status = "declining"
+                    health_score_val = 35
+                else:
+                    health_status = "churn_risk"
+                    health_score_val = 10
 
-        # ── Upsert ──
-        intel = db.query(CustomerIntelligence).filter(
-            CustomerIntelligence.customer_id == cid
-        ).first()
-        if not intel:
-            intel = CustomerIntelligence(customer_id=cid)
-            db.add(intel)
+            # ── Spend trend ──
+            spend_trend = "stable"
+            if visit_count >= 4 and last_visit:
+                mid = first_visit + (last_visit - first_visit) / 2 if first_visit else now
+                early = float(db.query(func.avg(Visit.amount)).filter(
+                    Visit.customer_id == cid, Visit.visited_at < mid
+                ).scalar() or 0)
+                late = float(db.query(func.avg(Visit.amount)).filter(
+                    Visit.customer_id == cid, Visit.visited_at >= mid
+                ).scalar() or 0)
+                if late > early * 1.15:
+                    spend_trend = "growing"
+                elif late < early * 0.85:
+                    spend_trend = "declining"
 
-        intel.clv_score = clv_score
-        intel.total_spent = total_spent
-        intel.visit_count = visit_count
-        intel.avg_visit_gap_days = avg_gap
-        intel.last_visit_at = last_visit
-        intel.health_status = health_status
-        intel.health_score = health_score_val
-        intel.spend_trend = spend_trend
-        intel.computed_at = now
-        updated += 1
+            # ── Upsert ──
+            intel = db.query(CustomerIntelligence).filter(
+                CustomerIntelligence.customer_id == cid
+            ).first()
+            if not intel:
+                intel = CustomerIntelligence(customer_id=cid)
+                db.add(intel)
+
+            intel.clv_score = clv_score
+            intel.total_spent = total_spent
+            intel.visit_count = visit_count
+            intel.avg_visit_gap_days = avg_gap
+            intel.last_visit_at = last_visit
+            intel.health_status = health_status
+            intel.health_score = health_score_val
+            intel.spend_trend = spend_trend
+            intel.computed_at = now
+            updated += 1
+        except Exception as e:
+            logger.error(f"Failed to compute intelligence for customer {cust[0]}: {str(e)}", exc_info=True)
+            db.rollback()
 
     # ── Assign CLV tiers ──
     all_scores.sort(key=lambda x: x[1], reverse=True)
@@ -164,41 +168,45 @@ def compute_campaign_summaries(db: Session):
     count = 0
 
     for camp in campaigns:
-        msgs = db.query(Message).filter(
-            Message.status == "sent",
-            (Message.campaign_id == camp.id) | 
-            ((Message.campaign_id == None) & (Message.type == "campaign") & (Message.message_text.contains(camp.message_template[:30]) if camp.message_template else True))
-        ).all()
+        try:
+            msgs = db.query(Message).filter(
+                Message.status == "sent",
+                (Message.campaign_id == camp.id) | 
+                ((Message.campaign_id == None) & (Message.type == "campaign") & (Message.message_text.contains(camp.message_template[:30]) if camp.message_template else True))
+            ).all()
 
-        total_sent = len(msgs)
-        converted = 0
-        revenue = 0.0
+            total_sent = len(msgs)
+            converted = 0
+            revenue = 0.0
 
-        for msg in msgs:
-            visit = db.query(Visit).filter(
-                Visit.customer_id == msg.customer_id,
-                Visit.visited_at >= msg.sent_at,
-                Visit.visited_at <= msg.sent_at + timedelta(days=7),
+            for msg in msgs:
+                visit = db.query(Visit).filter(
+                    Visit.customer_id == msg.customer_id,
+                    Visit.visited_at >= msg.sent_at,
+                    Visit.visited_at <= msg.sent_at + timedelta(days=7),
+                ).first()
+                if visit:
+                    converted += 1
+                    revenue += float(visit.amount or 0)
+
+            rate = (converted / total_sent * 100) if total_sent > 0 else 0
+
+            summary = db.query(CampaignSummary).filter(
+                CampaignSummary.campaign_id == camp.id
             ).first()
-            if visit:
-                converted += 1
-                revenue += float(visit.amount or 0)
+            if not summary:
+                summary = CampaignSummary(campaign_id=camp.id)
+                db.add(summary)
 
-        rate = (converted / total_sent * 100) if total_sent > 0 else 0
-
-        summary = db.query(CampaignSummary).filter(
-            CampaignSummary.campaign_id == camp.id
-        ).first()
-        if not summary:
-            summary = CampaignSummary(campaign_id=camp.id)
-            db.add(summary)
-
-        summary.total_sent = total_sent
-        summary.total_converted = converted
-        summary.conversion_rate = round(rate, 1)
-        summary.revenue_attributed = round(revenue, 2)
-        summary.computed_at = now
-        count += 1
+            summary.total_sent = total_sent
+            summary.total_converted = converted
+            summary.conversion_rate = round(rate, 1)
+            summary.revenue_attributed = round(revenue, 2)
+            summary.computed_at = now
+            count += 1
+        except Exception as e:
+            logger.error(f"Failed to compute summary for campaign {camp.id}: {str(e)}", exc_info=True)
+            db.rollback()
 
     db.commit()
     logger.info(f"Campaign summaries: updated {count}")
@@ -215,47 +223,51 @@ def compute_reward_effectiveness(db: Session):
     count = 0
 
     for reward in rewards:
-        redeemed = db.query(RewardRedemption).filter(
-            RewardRedemption.reward_id == reward.id
-        ).all()
-        total_redeemed = len(redeemed)
+        try:
+            redeemed = db.query(RewardRedemption).filter(
+                RewardRedemption.reward_id == reward.id
+            ).all()
+            total_redeemed = len(redeemed)
 
-        eligible_count = 0
-        if reward.reward_type == "milestone":
-            eligible_count = db.query(LoyaltyProgress).filter(
-                LoyaltyProgress.lifetime_visits >= reward.required_visits
-            ).count()
+            eligible_count = 0
+            if reward.reward_type == "milestone":
+                eligible_count = db.query(LoyaltyProgress).filter(
+                    LoyaltyProgress.lifetime_visits >= reward.required_visits
+                ).count()
 
-        redemption_rate = (total_redeemed / eligible_count * 100) if eligible_count > 0 else 0
+            redemption_rate = (total_redeemed / eligible_count * 100) if eligible_count > 0 else 0
 
-        revisit_count = 0
-        influenced_revenue = 0.0
-        for red in redeemed:
-            post_visit = db.query(Visit).filter(
-                Visit.customer_id == red.customer_id,
-                Visit.visited_at > red.redeemed_at,
-                Visit.visited_at <= red.redeemed_at + timedelta(days=30),
+            revisit_count = 0
+            influenced_revenue = 0.0
+            for red in redeemed:
+                post_visit = db.query(Visit).filter(
+                    Visit.customer_id == red.customer_id,
+                    Visit.visited_at > red.redeemed_at,
+                    Visit.visited_at <= red.redeemed_at + timedelta(days=30),
+                ).first()
+                if post_visit:
+                    revisit_count += 1
+                    influenced_revenue += float(post_visit.amount or 0)
+
+            revisit_rate = (revisit_count / total_redeemed * 100) if total_redeemed > 0 else 0
+
+            summary = db.query(RewardSummary).filter(
+                RewardSummary.reward_id == reward.id
             ).first()
-            if post_visit:
-                revisit_count += 1
-                influenced_revenue += float(post_visit.amount or 0)
+            if not summary:
+                summary = RewardSummary(reward_id=reward.id)
+                db.add(summary)
 
-        revisit_rate = (revisit_count / total_redeemed * 100) if total_redeemed > 0 else 0
-
-        summary = db.query(RewardSummary).filter(
-            RewardSummary.reward_id == reward.id
-        ).first()
-        if not summary:
-            summary = RewardSummary(reward_id=reward.id)
-            db.add(summary)
-
-        summary.total_redeemed = total_redeemed
-        summary.eligible_count = eligible_count
-        summary.redemption_rate = round(redemption_rate, 1)
-        summary.post_reward_revisit_rate = round(revisit_rate, 1)
-        summary.reward_influenced_revenue = round(influenced_revenue, 2)
-        summary.computed_at = now
-        count += 1
+            summary.total_redeemed = total_redeemed
+            summary.eligible_count = eligible_count
+            summary.redemption_rate = round(redemption_rate, 1)
+            summary.post_reward_revisit_rate = round(revisit_rate, 1)
+            summary.reward_influenced_revenue = round(influenced_revenue, 2)
+            summary.computed_at = now
+            count += 1
+        except Exception as e:
+            logger.error(f"Failed to compute effectiveness for reward {reward.id}: {str(e)}", exc_info=True)
+            db.rollback()
 
     db.commit()
     logger.info(f"Reward effectiveness: updated {count}")
@@ -275,48 +287,52 @@ def compute_automation_effectiveness(db: Session):
     count = 0
 
     for (atype,) in auto_types:
-        msgs = db.query(Message).filter(
-            Message.type == "automation",
-            Message.status == "sent",
-            Message.sent_at >= month_start,
-        ).join(
-            AutomationHistory,
-            and_(
-                AutomationHistory.customer_id == Message.customer_id,
-                AutomationHistory.automation_type == atype,
-            )
-        ).all()
+        try:
+            msgs = db.query(Message).filter(
+                Message.type == "automation",
+                Message.status == "sent",
+                Message.sent_at >= month_start,
+            ).join(
+                AutomationHistory,
+                and_(
+                    AutomationHistory.customer_id == Message.customer_id,
+                    AutomationHistory.automation_type == atype,
+                )
+            ).all()
 
-        sent_count = len(msgs)
-        revisits = 0
-        revenue = 0.0
+            sent_count = len(msgs)
+            revisits = 0
+            revenue = 0.0
 
-        for msg in msgs:
-            visit = db.query(Visit).filter(
-                Visit.customer_id == msg.customer_id,
-                Visit.visited_at >= msg.sent_at,
-                Visit.visited_at <= msg.sent_at + timedelta(days=7),
+            for msg in msgs:
+                visit = db.query(Visit).filter(
+                    Visit.customer_id == msg.customer_id,
+                    Visit.visited_at >= msg.sent_at,
+                    Visit.visited_at <= msg.sent_at + timedelta(days=7),
+                ).first()
+                if visit:
+                    revisits += 1
+                    revenue += float(visit.amount or 0)
+
+            rate = (revisits / sent_count * 100) if sent_count > 0 else 0
+
+            summary = db.query(AutomationSummary).filter(
+                AutomationSummary.automation_type == atype,
+                AutomationSummary.period_month == current_month,
             ).first()
-            if visit:
-                revisits += 1
-                revenue += float(visit.amount or 0)
+            if not summary:
+                summary = AutomationSummary(automation_type=atype, period_month=current_month)
+                db.add(summary)
 
-        rate = (revisits / sent_count * 100) if sent_count > 0 else 0
-
-        summary = db.query(AutomationSummary).filter(
-            AutomationSummary.automation_type == atype,
-            AutomationSummary.period_month == current_month,
-        ).first()
-        if not summary:
-            summary = AutomationSummary(automation_type=atype, period_month=current_month)
-            db.add(summary)
-
-        summary.messages_sent = sent_count
-        summary.revisit_count = revisits
-        summary.revisit_rate = round(rate, 1)
-        summary.revenue_attributed = round(revenue, 2)
-        summary.computed_at = now
-        count += 1
+            summary.messages_sent = sent_count
+            summary.revisit_count = revisits
+            summary.revisit_rate = round(rate, 1)
+            summary.revenue_attributed = round(revenue, 2)
+            summary.computed_at = now
+            count += 1
+        except Exception as e:
+            logger.error(f"Failed to compute effectiveness for automation {atype}: {str(e)}", exc_info=True)
+            db.rollback()
 
     db.commit()
     logger.info(f"Automation effectiveness: updated {count}")

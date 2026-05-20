@@ -87,6 +87,27 @@ const api = axios.create({
   withCredentials: true,
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
+    
+    // If it's a normalized TableBoost backend error
+    if (error.response?.data?.error === true && error.response?.data?.message) {
+      const tbError = new Error(error.response.data.message);
+      (tbError as any).status = error.response.status;
+      (tbError as any).type = error.response.data.type;
+      (tbError as any).payload = error.response.data.payload;
+      return Promise.reject(tbError);
+    }
+    
+    // Fallback for standard Axios network errors
+    return Promise.reject(error);
+  }
+);
+
 export const addVisit = async (payload: AddVisitPayload): Promise<AddVisitResponse> => {
   const response = await api.post<AddVisitResponse>('/api/visits/', payload);
   return response.data;
@@ -453,8 +474,8 @@ export const getAuditLogs = async (params: {
   end_date?: string;
   sort_by?: string;
   sort_dir?: string;
-}): Promise<PaginatedAuditLogs> => {
-  const response = await api.get<PaginatedAuditLogs>('/api/governance/audit', { params });
+}, signal?: AbortSignal): Promise<PaginatedAuditLogs> => {
+  const response = await api.get<PaginatedAuditLogs>('/api/governance/audit', { params, signal });
   return response.data;
 };
 
@@ -470,8 +491,7 @@ export const getOperationalLogs = async (params: {
   end_date?: string;
   sort_by?: string;
   sort_dir?: string;
-}): Promise<PaginatedOperationalLogs> => {
-  const response = await api.get<PaginatedOperationalLogs>('/api/governance/operational', { params });
+}, signal?: AbortSignal): Promise<PaginatedOperationalLogs> => {
+  const response = await api.get<PaginatedOperationalLogs>('/api/governance/operational', { params, signal });
   return response.data;
 };
-

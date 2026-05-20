@@ -52,8 +52,12 @@ def process_daily_automations(db: Session):
         
         logger.info(f"Found {len(customers)} customers with birthdays today.")
         for customer in customers:
-            logger.debug(f"Processing birthday for customer ID: {customer.id}, Name: {customer.name}")
-            send_automation_message(db, customer, birthday_cfg, str(today.year))
+            try:
+                logger.debug(f"Processing birthday for customer ID: {customer.id}, Name: {customer.name}")
+                send_automation_message(db, customer, birthday_cfg, str(today.year))
+            except Exception as e:
+                logger.error(f"Failed to process birthday for customer {customer.id}: {str(e)}", exc_info=True)
+                db.rollback()
     else:
         logger.info("Birthday automation is disabled or not configured.")
 
@@ -69,8 +73,12 @@ def process_daily_automations(db: Session):
         
         logger.info(f"Found {len(customers)} customers with anniversaries today.")
         for customer in customers:
-            logger.debug(f"Processing anniversary for customer ID: {customer.id}, Name: {customer.name}")
-            send_automation_message(db, customer, anniversary_cfg, str(today.year))
+            try:
+                logger.debug(f"Processing anniversary for customer ID: {customer.id}, Name: {customer.name}")
+                send_automation_message(db, customer, anniversary_cfg, str(today.year))
+            except Exception as e:
+                logger.error(f"Failed to process anniversary for customer {customer.id}: {str(e)}", exc_info=True)
+                db.rollback()
     else:
         logger.info("Anniversary automation is disabled or not configured.")
 
@@ -90,9 +98,13 @@ def process_daily_automations(db: Session):
         
         logger.info(f"Found {len(target_customers)} inactive customers.")
         for customer in target_customers:
-            logger.debug(f"Processing inactivity for customer ID: {customer.id}, Name: {customer.name}")
-            # For inactivity, we only send once per month to avoid spam
-            send_automation_message(db, customer, inactivity_cfg, f"{today.year}-{today.month}")
+            try:
+                logger.debug(f"Processing inactivity for customer ID: {customer.id}, Name: {customer.name}")
+                # For inactivity, we only send once per month to avoid spam
+                send_automation_message(db, customer, inactivity_cfg, f"{today.year}-{today.month}")
+            except Exception as e:
+                logger.error(f"Failed to process inactivity for customer {customer.id}: {str(e)}", exc_info=True)
+                db.rollback()
     else:
         logger.info("Inactivity automation is disabled or not configured.")
     
@@ -235,6 +247,9 @@ def sync_scheduler(scheduler, db: Session):
             
     logger.info("Completed sync_scheduler")
 
+from core.decorators import resilient_job
+
+@resilient_job("Process Specific Automation")
 def process_specific_automation(automation_type: str):
     """Wrapper for scheduler to run a specific automation type"""
     logger.info(f"==================================================")
@@ -300,8 +315,12 @@ def process_specific_automation(automation_type: str):
             ).all()
             logger.info(f"Found {len(customers)} customers.")
             for customer in customers:
-                logger.debug(f"Customer ID: {customer.id}, Name: {customer.name}")
-                send_automation_message(db, customer, cfg, str(today.year))
+                try:
+                    logger.debug(f"Customer ID: {customer.id}, Name: {customer.name}")
+                    send_automation_message(db, customer, cfg, str(today.year))
+                except Exception as e:
+                    logger.error(f"Failed to process birthday for customer {customer.id}: {str(e)}", exc_info=True)
+                    db.rollback()
         
         elif automation_type == 'anniversary':
             logger.info(f"Querying customers with anniversary on {today.month}-{today.day}")
@@ -311,8 +330,12 @@ def process_specific_automation(automation_type: str):
             ).all()
             logger.info(f"Found {len(customers)} customers.")
             for customer in customers:
-                logger.debug(f"Customer ID: {customer.id}, Name: {customer.name}")
-                send_automation_message(db, customer, cfg, str(today.year))
+                try:
+                    logger.debug(f"Customer ID: {customer.id}, Name: {customer.name}")
+                    send_automation_message(db, customer, cfg, str(today.year))
+                except Exception as e:
+                    logger.error(f"Failed to process anniversary for customer {customer.id}: {str(e)}", exc_info=True)
+                    db.rollback()
                 
         elif automation_type == 'inactivity':
             days = cfg.settings.get('days', 30) if cfg.settings else 30
@@ -325,8 +348,12 @@ def process_specific_automation(automation_type: str):
                                  
             logger.info(f"Found {len(target_customers)} customers.")
             for customer in target_customers:
-                logger.debug(f"Customer ID: {customer.id}, Name: {customer.name}")
-                send_automation_message(db, customer, cfg, f"{today.year}-{today.month}")
+                try:
+                    logger.debug(f"Customer ID: {customer.id}, Name: {customer.name}")
+                    send_automation_message(db, customer, cfg, f"{today.year}-{today.month}")
+                except Exception as e:
+                    logger.error(f"Failed to process inactivity for customer {customer.id}: {str(e)}", exc_info=True)
+                    db.rollback()
         
         elif automation_type == 'daily_intelligence':
             from modules.intelligence import service as intel_service

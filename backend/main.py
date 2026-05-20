@@ -25,7 +25,36 @@ logger = logging.getLogger(__name__)
 # Ensure the automation service logger is also at INFO level
 logging.getLogger('modules.automation.service').setLevel(logging.INFO)
 
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from core.errors import TableBoostError
+
 app = FastAPI(title="TableBoost API", version="1.0.0")
+
+@app.exception_handler(TableBoostError)
+async def tableboost_exception_handler(request: Request, exc: TableBoostError):
+    logger.error(f"TableBoostError [{exc.status_code}]: {exc.message}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": True,
+            "message": exc.message,
+            "payload": exc.payload,
+            "type": exc.__class__.__name__
+        }
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled Exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": True,
+            "message": "An internal operational error occurred.",
+            "type": "InternalServerError"
+        }
+    )
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,6 +75,14 @@ app.include_router(intelligence_router)
 app.include_router(auth_router)
 app.include_router(governance_router)
 
+@app.get("/api/health")
+def health_check():
+    # Basic check to ensure the scheduler is running and the app is up
+    return {
+        "status": "ok",
+        "scheduler_running": scheduler.running,
+        "scheduler_jobs": len(scheduler.get_jobs())
+    }
 # Initial job registration
 
 # Initial job registration

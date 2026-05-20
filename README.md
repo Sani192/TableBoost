@@ -106,6 +106,16 @@ TableBoost features a robust governance and audit module to ensure operational c
 - **Strict Role-Based Filtering**: Only users with the `OWNER` role can view audit trails or access the governance dashboards.
 - **Organized Storage Isolation**: Database logs are isolated under dedicated `gov_audit_logs` and `gov_operational_logs` tables.
 
+### 10. Production Reliability & Operational Stability
+
+A dedicated suite of production-grade safeguards protects the platform from cascading failures and provides deep operational visibility.
+
+- **Centralized Error Governance**: Global API exception handlers normalize all backend errors into predictable frontend responses.
+- **Resilient Scheduler Execution**: Background automation jobs (like SMS sending and intelligence computation) are wrapped in `@resilient_job` decorators with transaction safety (`db.rollback()`) to prevent isolated errors from crashing the global task scheduler.
+- **Health Monitoring Foundations**: A dedicated `/api/health` heartbeat endpoint provides system health status for uptime monitoring tools.
+- **Frontend Error Boundaries**: Global React `ErrorBoundary` catch-alls prevent the UI from white-screening during unhandled client-side render exceptions.
+- **Network Deduplication**: Core data-fetching pipelines use strict parameter-based cache references to eliminate redundant API calls and optimize bandwidth.
+
 ### Customer Intelligence Tags
 
 The system uses a combination of backend calculations and frontend heuristics to tag customers:
@@ -371,6 +381,7 @@ TableBoost currently includes the major building blocks for:
 - Revenue analytics
 - Customer intelligence
 - Growth recommendations
+- Production reliability & operational stability (Error boundaries, resilient schedulers, health monitoring)
 
 The codebase is structured to continue evolving into a broader restaurant growth optimization platform.
 

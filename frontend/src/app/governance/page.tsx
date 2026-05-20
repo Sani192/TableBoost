@@ -63,6 +63,8 @@ export default function GovernancePage() {
   const [totalCount, setTotalCount] = useState(0);
   
   const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  
   const [statusFilter, setStatusFilter] = useState('');
   const [actionFilter, setActionFilter] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -92,10 +94,14 @@ export default function GovernancePage() {
       .join(' ');
   };
 
-  // Reset page when tab, any filter, or sorting changes
+  // Debounce search text
   useEffect(() => {
-    setPage(1);
-  }, [activeTab, statusFilter, actionFilter, startDate, endDate, sortBy, sortDir]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText);
+      setPage(1);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [searchText]);
 
   // Reset raw JSON accordion state when item selection changes
   useEffect(() => {
@@ -103,15 +109,25 @@ export default function GovernancePage() {
     setCopied(false);
   }, [selectedItem]);
 
-  const fetchLogs = useCallback(async () => {
+  // Use a ref to deduplicate identical network requests
+  const lastFetchRef = React.useRef<string>('');
+
+  const fetchLogs = useCallback(async (force: boolean = false) => {
     if (!hasAccess) return;
+
+    const paramsKey = JSON.stringify({ activeTab, page, debouncedSearch, statusFilter, actionFilter, startDate, endDate, pageSize, sortBy, sortDir });
+    
+    // Prevent duplicate calls for the exact same parameters unless forced
+    if (!force && lastFetchRef.current === paramsKey) return;
+    lastFetchRef.current = paramsKey;
+
     setLoading(true);
     setError('');
     try {
       const params = {
         page,
         limit: pageSize,
-        search: searchText.trim() || undefined,
+        search: debouncedSearch.trim() || undefined,
         status: statusFilter || undefined,
         start_date: startDate ? `${startDate}T00:00:00` : undefined,
         end_date: endDate ? `${endDate}T23:59:59` : undefined,
@@ -137,30 +153,19 @@ export default function GovernancePage() {
         setTotalCount(data.total);
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to fetch logs. Please verify permissions.');
+      setError(err.response?.data?.detail || err.message || 'Failed to fetch logs. Please verify permissions.');
     } finally {
       setLoading(false);
     }
-  }, [activeTab, page, searchText, statusFilter, actionFilter, startDate, endDate, pageSize, hasAccess, sortBy, sortDir]);
+  }, [activeTab, page, debouncedSearch, statusFilter, actionFilter, startDate, endDate, pageSize, hasAccess, sortBy, sortDir]);
 
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
 
-  // Debounced search trigger (similar to Visits page)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (page === 1) {
-        fetchLogs();
-      } else {
-        setPage(1);
-      }
-    }, 450);
-    return () => clearTimeout(timer);
-  }, [searchText]);
-
   const clearFilters = () => {
     setSearchText('');
+    setDebouncedSearch('');
     setStatusFilter('');
     setActionFilter('');
     setStartDate('');
@@ -177,6 +182,7 @@ export default function GovernancePage() {
       setSortBy(field);
       setSortDir('desc');
     }
+    setPage(1);
   };
 
   const activeFiltersCount = [statusFilter, actionFilter, startDate, endDate].filter(Boolean).length;
@@ -317,7 +323,7 @@ export default function GovernancePage() {
         
         <div className="flex items-center gap-2">
           <button
-            onClick={fetchLogs}
+            onClick={() => fetchLogs(true)}
             disabled={loading}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 shadow-soft transition-all hover:bg-stone-50 hover:text-stone-700 active:scale-95 disabled:opacity-50"
             aria-label="Refresh logs"
@@ -348,7 +354,7 @@ export default function GovernancePage() {
       <div className="flex gap-1 p-1 bg-stone-150 rounded-2xl w-full max-w-md">
         {isOwner && (
           <button
-            onClick={() => { setActiveTab('audit'); setActionFilter(''); setSortBy('timestamp'); setSortDir('desc'); }}
+            onClick={() => { setActiveTab('audit'); setActionFilter(''); setSortBy('timestamp'); setSortDir('desc'); setPage(1); }}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${
               activeTab === 'audit' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
             }`}
@@ -357,7 +363,7 @@ export default function GovernancePage() {
           </button>
         )}
         <button
-          onClick={() => { setActiveTab('operational'); setActionFilter(''); setSortBy('timestamp'); setSortDir('desc'); }}
+          onClick={() => { setActiveTab('operational'); setActionFilter(''); setSortBy('timestamp'); setSortDir('desc'); setPage(1); }}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${
             activeTab === 'operational' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
           }`}
@@ -384,7 +390,7 @@ export default function GovernancePage() {
               </label>
               <select
                 value={actionFilter}
-                onChange={(e) => setActionFilter(e.target.value)}
+                onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
                 className="w-full rounded-xl border border-stone-200 bg-white py-2 px-3 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-700"
               >
                 <option value="">All Categories</option>
@@ -422,7 +428,7 @@ export default function GovernancePage() {
               <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Status</label>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
                 className="w-full rounded-xl border border-stone-200 bg-white py-2 px-3 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-700"
               >
                 <option value="">All Statuses</option>
@@ -440,7 +446,7 @@ export default function GovernancePage() {
                 <input
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
                   className="w-full rounded-xl border border-stone-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 />
               </div>
@@ -454,7 +460,7 @@ export default function GovernancePage() {
                 <input
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
                   className="w-full rounded-xl border border-stone-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 />
               </div>
