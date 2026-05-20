@@ -119,6 +119,35 @@ The system uses a combination of backend calculations and frontend heuristics to
 
 ---
 
+## Subscription Tiers & Feature Gating
+
+TableBoost incorporates a role-aware subscription plan model to gate access to premium CRM, loyalty, marketing, and intelligence features.
+
+### 1. Subscription Tiers & Pricing
+*   **Starter**: Core customer tracking and basic features.
+    *   *Included Features*: `visits` (capture logs), `customers` (basic directory), `review_sms` (checkout feedback texts).
+*   **Growth**: Customer retention programs and scheduled messaging campaigns.
+    *   *Included Features*: `loyalty` (milestone rewards), `segments` (VIP, Healthy, New tags), `campaigns` (scheduled SMS broadcasts).
+*   **Pro**: Automated workflows, churn prevention, and deep intelligence insights.
+    *   *Included Features*: `automation` (birthday, anniversary, and inactivity SMS pilots), `intelligence` (analytics tab, CLV tiers, ROI trackers).
+*   **Enterprise**: Large scale multitenancy and priority assistance.
+
+### 2. Multi-User Plan Inheritance
+In a multi-user layout (e.g., Owner + Manager + Staff), the active subscription is attached to the workspace **OWNER**. 
+*   All employee/staff accounts automatically inherit the active plan and feature-access configuration of the OWNER.
+*   Upgrading the OWNER's plan database record instantly updates the capability permissions for all linked employee accounts under that venue.
+
+### 3. Role-Based Plan Management
+*   **Owner Access Only**: Only the account with the `OWNER` role is permitted to see subscription statuses, browse available plan tiers, or trigger upgrade request inquiries in the User Profile Drawer.
+*   **Staff/Manager Hiding**: For accounts with the `MANAGER` or `STAFF` roles, the entire subscription card section is completely omitted from the profile drawer layout.
+
+### 4. API & Background Job Constraints
+*   **FastAPI Routing Layer**: Premium API routes verify the active plan's features. If a restricted endpoint is accessed by a user on a lower tier, the system returns a `403 Forbidden` response prompting the user to contact support at `[EMAIL_ADDRESS]` to upgrade.
+*   **Background Jobs (SMS Gating)**: Background APScheduler tasks that send marketing texts or trigger automated birthday/anniversary/inactivity recovery messages check the workspace subscription first and skip delivery if the respective features (`campaigns` or `automation`) are inactive.
+*   **System Calculation Exception**: Core background computations (CLV scores, churn risk predictions, daily/weekly metrics summaries) run globally for all venues regardless of subscription status. This ensures analytics are fully pre-calculated and instantly visible the moment a venue upgrades to a higher plan.
+
+---
+
 ## Application Screens
 
 | Screen | Purpose |
