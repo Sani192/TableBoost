@@ -1,6 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import { CustomerListResponse } from '@/lib/api';
 import { Trophy, UserCheck, UserX, Star } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 interface CustomerListItemProps {
   customer: CustomerListResponse | any;
@@ -8,6 +11,7 @@ interface CustomerListItemProps {
 }
 
 export default function CustomerListItem({ customer, showTags = true }: CustomerListItemProps) {
+  const { hasFeatureAccess } = useAuth();
   // Use API-provided intelligence tags if available, fallback to basic heuristics only if completely missing
   const healthStatus = customer.health_status;
   const clvTier = customer.clv_tier;
@@ -35,55 +39,59 @@ export default function CustomerListItem({ customer, showTags = true }: Customer
           </p>
           {showTags && (
             <div className="flex flex-wrap items-center gap-1 shrink-0">
-              {isVip && (
+              {isVip && hasFeatureAccess('smart_segments') && (
                 <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
                   <Star className="w-2.5 h-2.5" /> VIP
                 </span>
               )}
-              {clvTier === 'high' && (
-                <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-purple-100 text-purple-700 border border-purple-200">
-                  HIGH CLV
-                </span>
-              )}
-              {clvTier === 'medium' && (
-                <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200">
-                  MEDIUM CLV
-                </span>
-              )}
-              {clvTier === 'low' && (
-                <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-stone-100 text-stone-700 border border-stone-200">
-                  LOW CLV
-                </span>
-              )}
-              {isNew && (
-                <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
-                  <Star className="w-2.5 h-2.5" /> NEW
-                </span>
-              )}
-              {isHealthy && (
-                <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                  <UserCheck className="w-2.5 h-2.5" /> HEALTHY
-                </span>
-              )}
-              {isCooling && (
-                <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
-                  COOLING
-                </span>
-              )}
-              {isDeclining && (
-                <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-yellow-100 text-yellow-700 border border-yellow-200">
-                  DECLINING
-                </span>
-              )}
-              {isAtRisk && (
-                <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-orange-100 text-orange-700 border border-orange-200">
-                  <UserCheck className="w-2.5 h-2.5" /> AT RISK
-                </span>
-              )}
-              {isLost && (
-                <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-red-100 text-red-700 border border-red-200">
-                  <UserX className="w-2.5 h-2.5" /> LOST
-                </span>
+              {hasFeatureAccess('intelligence') && (
+                <>
+                  {clvTier === 'high' && (
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-purple-100 text-purple-700 border border-purple-200">
+                      HIGH CLV
+                    </span>
+                  )}
+                  {clvTier === 'medium' && (
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200">
+                      MEDIUM CLV
+                    </span>
+                  )}
+                  {clvTier === 'low' && (
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-stone-100 text-stone-700 border border-stone-200">
+                      LOW CLV
+                    </span>
+                  )}
+                  {isNew && (
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                      <Star className="w-2.5 h-2.5" /> NEW
+                    </span>
+                  )}
+                  {isHealthy && (
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                      <UserCheck className="w-2.5 h-2.5" /> HEALTHY
+                    </span>
+                  )}
+                  {isCooling && (
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                      COOLING
+                    </span>
+                  )}
+                  {isDeclining && (
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-yellow-100 text-yellow-700 border border-yellow-200">
+                      DECLINING
+                    </span>
+                  )}
+                  {isAtRisk && (
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-orange-100 text-orange-700 border border-orange-200">
+                      <UserCheck className="w-2.5 h-2.5" /> AT RISK
+                    </span>
+                  )}
+                  {isLost && (
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-red-100 text-red-700 border border-red-200">
+                      <UserX className="w-2.5 h-2.5" /> LOST
+                    </span>
+                  )}
+                </>
               )}
             </div>
           )}

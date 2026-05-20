@@ -3,9 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List
 from core.database import get_db
 from modules.loyalty import schemas, service
-from modules.auth.router import get_current_user, check_role
+from modules.auth.router import get_current_user, check_role, check_feature
+from fastapi import Depends
 
-router = APIRouter(prefix="/api/loyalty", tags=["Loyalty"])
+router = APIRouter(
+    prefix="/api/loyalty", 
+    tags=["Loyalty"],
+    dependencies=[Depends(check_feature("loyalty"))]
+)
 
 # Reward Management
 @router.get("/rewards", response_model=List[schemas.LoyaltyRewardResponse], dependencies=[Depends(get_current_user)])

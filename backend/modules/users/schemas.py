@@ -11,6 +11,8 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: int
+    plan: str
+    features: list[str]
     created_at: datetime
 
     class Config:

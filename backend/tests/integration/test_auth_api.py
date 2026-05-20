@@ -72,3 +72,31 @@ def test_update_profile(client, db):
     
     # Clean up override
     app.dependency_overrides.pop(get_current_user, None)
+
+def test_update_subscription(client, db):
+    # 1. Create a user
+    user = User(
+        username="testuser3",
+        password_hash=get_password_hash("password"),
+        role="OWNER",
+        is_active=True
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    # 2. Override get_current_user
+    from modules.auth.router import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: user
+    
+    # 3. Call POST /api/auth/subscription
+    response = client.post("/api/auth/subscription", json={
+        "plan_name": "PRO"
+    })
+    assert response.status_code == 200
+    data = response.json()
+    assert data["plan"] == "PRO"
+    assert "automation" in data["features"]
+    
+    # Clean up override
+    app.dependency_overrides.pop(get_current_user, None)

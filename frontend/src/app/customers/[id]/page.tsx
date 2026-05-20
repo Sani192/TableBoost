@@ -24,12 +24,14 @@ import { Utensils, DollarSign, RefreshCw, Trophy, History, Gift, CheckCircle2, L
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Modal from '@/components/ui/Modal';
+import { useAuth } from '@/context/AuthContext';
 
 const PAGE_SIZE = 20;
 
 export default function CustomerDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const { hasFeatureAccess } = useAuth();
   const [customer, setCustomer] = useState<CustomerDetailResponse | null>(null);
   const [visits, setVisits] = useState<VisitDetail[]>([]);
   const [loyalty, setLoyalty] = useState<LoyaltyStatusResponse | null>(null);
@@ -52,15 +54,18 @@ export default function CustomerDetailPage() {
   const fetchData = async () => {
     if (!id) return;
     try {
+      const hasLoyalty = hasFeatureAccess('loyalty');
+      const hasIntel = hasFeatureAccess('intelligence');
+
       const [custData, visitsData, loyaltyData, historyData, intelData] = await Promise.all([
         getCustomerDetail(Number(id)),
         getCustomerVisits(Number(id), { skip: 0, limit: PAGE_SIZE }),
-        getLoyaltyStatus(Number(id)),
-        getRedemptionHistory(Number(id)),
-        getCustomerIntelligence(Number(id)).catch(err => {
+        hasLoyalty ? getLoyaltyStatus(Number(id)) : Promise.resolve(null),
+        hasLoyalty ? getRedemptionHistory(Number(id)) : Promise.resolve([]),
+        hasIntel ? getCustomerIntelligence(Number(id)).catch(err => {
           console.log('No intelligence data yet');
           return null;
-        })
+        }) : Promise.resolve(null)
       ]);
       setCustomer(custData);
       setVisits(visitsData);
@@ -171,11 +176,17 @@ export default function CustomerDetailPage() {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-extrabold text-stone-900">{customer.name || customer.phone_number}</h1>
-              {intelligence && (
+              {intelligence ? (
                 <div className="flex gap-1.5">
                   <CustomerHealthBadge status={intelligence.health_status} />
                   <CLVBadge tier={intelligence.clv_tier} />
                 </div>
+              ) : (
+                !hasFeatureAccess('intelligence') && (
+                  <div className="flex items-center gap-1 text-[10px] font-extrabold text-stone-400 uppercase tracking-wider bg-stone-100 px-2 py-0.5 rounded-md">
+                    <Lock className="h-3 w-3" /> Churn Risk Gated
+                  </div>
+                )
               )}
             </div>
             <p className="text-stone-500 font-medium">{customer.phone_number}</p>
@@ -202,12 +213,14 @@ export default function CustomerDetailPage() {
             <Edit2 className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex items-center gap-2">
-           <div className="px-4 py-2 bg-brand-50 border border-brand-100 rounded-2xl flex items-center gap-2">
-              <Activity className="h-4 w-4 text-brand-600" />
-              <span className="text-sm font-bold text-brand-900">{loyalty?.lifetime_visits || 0} Lifetime Visits</span>
-           </div>
-        </div>
+        {hasFeatureAccess('loyalty') && (
+          <div className="flex items-center gap-2">
+             <div className="px-4 py-2 bg-brand-50 border border-brand-100 rounded-2xl flex items-center gap-2">
+                <Activity className="h-4 w-4 text-brand-600" />
+                <span className="text-sm font-bold text-brand-900">{loyalty?.lifetime_visits || 0} Lifetime Visits</span>
+             </div>
+          </div>
+        )}
       </header>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -222,7 +235,7 @@ export default function CustomerDetailPage() {
             <Trophy className="h-5 w-5 text-brand-600" />
             Loyalty Rewards Track
           </h2>
-          {redeemSuccess && (
+          {hasFeatureAccess('loyalty') && redeemSuccess && (
             <div className="flex items-center gap-1.5 text-green-600 animate-bounce">
               <CheckCircle2 className="h-4 w-4" />
               <span className="text-sm font-bold">Reward Redeemed!</span>
@@ -230,101 +243,113 @@ export default function CustomerDetailPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {loyalty?.rewards.length ? (
-            loyalty.rewards.map(reward => (
-              <Card 
-                key={reward.reward_id} 
-                className={`p-5 transition-all ${
-                  reward.is_redeemed ? 'bg-stone-50 opacity-70' : 
-                  reward.is_eligible ? 'border-brand-200 bg-brand-50/20 ring-1 ring-brand-500/10' : 
-                  'bg-white'
-                }`}
-              >
-                <div className="flex flex-col h-full justify-between gap-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                       <div className={`h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                         reward.is_redeemed ? 'bg-stone-200 text-stone-500' : 
-                         reward.is_eligible ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/30' : 
-                         'bg-stone-100 text-stone-400'
-                       }`}>
-                         {reward.is_redeemed ? <CheckCircle2 className="h-6 w-6" /> : (
-                           reward.reward_type === 'birthday' ? <Cake className="h-6 w-6" /> :
-                           reward.reward_type === 'anniversary' ? <Heart className="h-6 w-6" /> :
-                           <Trophy className="h-6 w-6" />
-                         )}
-                       </div>
-                       <div>
-                         <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-stone-900">{reward.name}</h3>
-                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-600 uppercase">
-                              {reward.reward_type === 'milestone' ? `${reward.required_visits}V` : reward.reward_type}
-                            </span>
-                         </div>
-                         <p className="text-xs text-stone-500 font-medium leading-snug mt-0.5">{reward.description}</p>
-                       </div>
-                    </div>
-                  </div>
-
-                  {!reward.is_redeemed && (
-                    <div className="space-y-3">
-                      {reward.reward_type === 'milestone' ? (
-                        <div className="h-1.5 w-full bg-stone-100 rounded-full overflow-hidden border border-stone-200/50">
-                          <div 
-                            className={`h-full transition-all duration-1000 ease-out ${reward.is_eligible ? 'bg-brand-600' : 'bg-brand-500/40'}`}
-                            style={{ width: `${Math.min((loyalty.lifetime_visits / reward.required_visits) * 100, 100)}%` }}
-                          />
-                        </div>
-                      ) : (
-                        <div className="h-1.5 w-full bg-stone-50 rounded-full overflow-hidden">
-                           <div className={`h-full ${reward.is_eligible ? 'bg-brand-600 animate-pulse' : 'bg-stone-100'}`} style={{ width: reward.is_eligible ? '100%' : '0%' }} />
-                        </div>
-                      )}
-                      
-                      {reward.is_eligible ? (
-                        <Button 
-                          fullWidth 
-                          className="gap-2 h-10 shadow-md shadow-brand-600/10"
-                          onClick={() => handleRedeemClick(reward.reward_id, reward.name)}
-                          disabled={redeemingId === reward.reward_id}
-                        >
-                          {redeemingId === reward.reward_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
-                          Redeem Now
-                        </Button>
-                      ) : (
-                        <div className="flex items-center justify-center gap-1.5 py-2 text-stone-400 text-xs font-bold uppercase tracking-wider">
-                           {reward.reward_type === 'milestone' ? (
-                             <>
-                               <Lock className="h-3 w-3" />
-                               {reward.required_visits - loyalty.lifetime_visits} visits more
-                             </>
-                           ) : (
-                             <>
-                               <Calendar className="h-3 w-3" />
-                               Available on {reward.reward_type === 'birthday' ? 'Birthday' : 'Anniversary'}
-                             </>
+        {hasFeatureAccess('loyalty') ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {loyalty?.rewards.length ? (
+              loyalty.rewards.map(reward => (
+                <Card 
+                  key={reward.reward_id} 
+                  className={`p-5 transition-all ${
+                    reward.is_redeemed ? 'bg-stone-50 opacity-70' : 
+                    reward.is_eligible ? 'border-brand-200 bg-brand-50/20 ring-1 ring-brand-500/10' : 
+                    'bg-white'
+                  }`}
+                >
+                  <div className="flex flex-col h-full justify-between gap-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                         <div className={`h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                           reward.is_redeemed ? 'bg-stone-200 text-stone-500' : 
+                           reward.is_eligible ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/30' : 
+                           'bg-stone-100 text-stone-400'
+                         }`}>
+                           {reward.is_redeemed ? <CheckCircle2 className="h-6 w-6" /> : (
+                             reward.reward_type === 'birthday' ? <Cake className="h-6 w-6" /> :
+                             reward.reward_type === 'anniversary' ? <Heart className="h-6 w-6" /> :
+                             <Trophy className="h-6 w-6" />
                            )}
-                        </div>
-                      )}
+                         </div>
+                         <div>
+                           <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-stone-900">{reward.name}</h3>
+                              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-600 uppercase">
+                                {reward.reward_type === 'milestone' ? `${reward.required_visits}V` : reward.reward_type}
+                              </span>
+                           </div>
+                           <p className="text-xs text-stone-500 font-medium leading-snug mt-0.5">{reward.description}</p>
+                         </div>
+                      </div>
                     </div>
-                  )}
 
-                  {reward.is_redeemed && (
-                    <div className="flex items-center justify-center gap-1.5 py-2 text-emerald-600 text-xs font-bold uppercase tracking-wider bg-emerald-50 rounded-xl">
-                       <CheckCircle2 className="h-3 w-3" />
-                       Claimed
-                    </div>
-                  )}
-                </div>
-              </Card>
-            ))
-          ) : (
-            <div className="col-span-full py-8 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-200">
-               <p className="text-sm font-bold text-stone-500">No active loyalty milestones.</p>
-            </div>
-          )}
-        </div>
+                    {!reward.is_redeemed && (
+                      <div className="space-y-3">
+                        {reward.reward_type === 'milestone' ? (
+                          <div className="h-1.5 w-full bg-stone-100 rounded-full overflow-hidden border border-stone-200/50">
+                            <div 
+                              className={`h-full transition-all duration-1000 ease-out ${reward.is_eligible ? 'bg-brand-600' : 'bg-brand-500/40'}`}
+                              style={{ width: `${Math.min((loyalty.lifetime_visits / reward.required_visits) * 100, 100)}%` }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-1.5 w-full bg-stone-55 rounded-full overflow-hidden">
+                             <div className={`h-full ${reward.is_eligible ? 'bg-brand-600 animate-pulse' : 'bg-stone-100'}`} style={{ width: reward.is_eligible ? '100%' : '0%' }} />
+                          </div>
+                        )}
+                        
+                        {reward.is_eligible ? (
+                          <Button 
+                            fullWidth 
+                            className="gap-2 h-10 shadow-md shadow-brand-600/10"
+                            onClick={() => handleRedeemClick(reward.reward_id, reward.name)}
+                            disabled={redeemingId === reward.reward_id}
+                          >
+                            {redeemingId === reward.reward_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
+                            Redeem Now
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-2 text-stone-400 text-xs font-bold uppercase tracking-wider">
+                             {reward.reward_type === 'milestone' ? (
+                               <>
+                                 <Lock className="h-3 w-3" />
+                                 {reward.required_visits - loyalty.lifetime_visits} visits more
+                               </>
+                             ) : (
+                               <>
+                                 <Calendar className="h-3 w-3" />
+                                 Available on {reward.reward_type === 'birthday' ? 'Birthday' : 'Anniversary'}
+                               </>
+                             )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {reward.is_redeemed && (
+                      <div className="flex items-center justify-center gap-1.5 py-2 text-emerald-600 text-xs font-bold uppercase tracking-wider bg-emerald-50 rounded-xl">
+                         <CheckCircle2 className="h-3 w-3" />
+                         Claimed
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full py-8 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+                 <p className="text-sm font-bold text-stone-500">No active loyalty milestones.</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-stone-50 rounded-2xl border border-stone-200 flex flex-col items-center justify-center gap-3">
+             <div className="h-10 w-10 bg-brand-50 rounded-full flex items-center justify-center text-brand-600">
+               <Lock className="h-5 w-5" />
+             </div>
+             <div>
+               <h3 className="font-bold text-stone-900 text-sm">Loyalty Milestones Gated</h3>
+               <p className="text-xs text-stone-500 font-medium mt-1">Upgrade to the Growth or Pro plan to launch customer loyalty campaigns and rewards.</p>
+             </div>
+          </div>
+        )}
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -382,29 +407,36 @@ export default function CustomerDetailPage() {
             <Gift className="h-5 w-5 text-stone-400" />
             Redemption History
           </h2>
-          {redemptions.length > 0 ? (
-            <div className="space-y-3">
-              {redemptions.map(r => (
-                <div key={r.id} className="flex items-center justify-between p-4 border-b border-stone-100 last:border-0 hover:bg-stone-50 transition-colors rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 bg-brand-50 text-brand-600 rounded-lg flex items-center justify-center shrink-0">
-                        <Gift className="h-4 w-4" />
+          {hasFeatureAccess('loyalty') ? (
+            redemptions.length > 0 ? (
+              <div className="space-y-3">
+                {redemptions.map(r => (
+                  <div key={r.id} className="flex items-center justify-between p-4 border-b border-stone-100 last:border-0 hover:bg-stone-50 transition-colors rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 bg-brand-50 text-brand-600 rounded-lg flex items-center justify-center shrink-0">
+                          <Gift className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-stone-900 text-sm">{r.reward_name}</p>
+                          <p className="text-[10px] text-stone-400 uppercase font-bold tracking-tight"> Milestone: {r.visits_threshold}V</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-stone-900 text-sm">{r.reward_name}</p>
-                        <p className="text-[10px] text-stone-400 uppercase font-bold tracking-tight"> Milestone: {r.visits_threshold}V</p>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-stone-700">
+                          {new Date(r.redeemed_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-stone-700">
-                        {new Date(r.redeemed_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                    </div>
-                </div>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-stone-500 bg-stone-50 p-4 rounded-xl">No rewards redeemed yet.</p>
+            )
           ) : (
-            <p className="text-sm text-stone-500 bg-stone-50 p-4 rounded-xl">No rewards redeemed yet.</p>
+            <div className="p-6 text-center bg-stone-50 rounded-xl border border-stone-200 flex flex-col items-center justify-center gap-2">
+              <Lock className="h-4 w-4 text-stone-400" />
+              <p className="text-xs text-stone-500 font-bold uppercase tracking-wider">Locked under Growth Plan</p>
+            </div>
           )}
         </section>
       </div>

@@ -24,6 +24,7 @@ from modules.messaging.models import Message  # noqa: F401
 from modules.settings.models import Setting  # noqa: F401
 from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedemption  # noqa: F401
 from modules.users.models import User, UserProfile  # noqa: F401
+from modules.subscriptions.models import Subscription, Plan, PlanFeature, Feature  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
@@ -57,6 +58,12 @@ def _enable_sqlite_fks(dbapi_connection, connection_record):
 def setup_tables():
     """Create all tables before each test, drop after."""
     Base.metadata.create_all(bind=test_engine)
+    from modules.subscriptions.registry import seed_plans
+    db = TestingSessionLocal()
+    try:
+        seed_plans(db)
+    finally:
+        db.close()
     yield
     Base.metadata.drop_all(bind=test_engine)
 

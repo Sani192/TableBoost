@@ -83,7 +83,8 @@ def get_visits(
     min_amount: Optional[float] = None,
     max_amount: Optional[float] = None,
     sort_by: str = "visited_at",
-    sort_order: str = "desc"
+    sort_order: str = "desc",
+    has_intel: bool = True
 ):
     query = db.query(Visit, Customer, CustomerIntelligence).select_from(Visit).join(Customer, Visit.customer_id == Customer.id).outerjoin(CustomerIntelligence, Customer.id == CustomerIntelligence.customer_id)
 
@@ -97,8 +98,6 @@ def get_visits(
     if start_date:
         query = query.filter(Visit.visited_at >= start_date)
     if end_date:
-        # Make end_date inclusive of the full day if no time is provided
-        # or just ensure it covers up to the end of that specific datetime
         if end_date.hour == 0 and end_date.minute == 0:
             from datetime import timedelta
             end_date = end_date + timedelta(days=1) - timedelta(seconds=1)
@@ -109,7 +108,6 @@ def get_visits(
     if max_amount is not None:
         query = query.filter(Visit.amount <= max_amount)
 
-    # Sorting
     model_attr = None
     if sort_by == "amount":
         model_attr = Visit.amount
@@ -127,7 +125,6 @@ def get_visits(
     
     visits = []
     for visit, customer, intel in results:
-        # Fetch total visits and spent for fallback heuristics
         total_visits = db.query(func.count(Visit.id)).filter(Visit.customer_id == customer.id).scalar() or 0
         total_spent = db.query(func.sum(Visit.amount)).filter(Visit.customer_id == customer.id).scalar() or 0
         last_visit = db.query(func.max(Visit.visited_at)).filter(Visit.customer_id == customer.id).scalar()
@@ -140,9 +137,9 @@ def get_visits(
             "amount": visit.amount,
             "visited_at": visit.visited_at,
             "sms_status": getattr(visit, 'sms_status', None),
-            "health_status": intel.health_status if intel else None,
-            "clv_tier": intel.clv_tier if intel else None,
-            "spend_trend": intel.spend_trend if intel else None,
+            "health_status": (intel.health_status if intel else None) if has_intel else None,
+            "clv_tier": (intel.clv_tier if intel else None) if has_intel else None,
+            "spend_trend": (intel.spend_trend if intel else None) if has_intel else None,
             "total_visits": total_visits,
             "total_spent": float(total_spent),
             "last_visit": last_visit

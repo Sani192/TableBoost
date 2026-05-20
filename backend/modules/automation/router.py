@@ -4,9 +4,14 @@ from core.database import get_db
 from modules.automation import service
 from typing import List, Optional
 from pydantic import BaseModel
-from modules.auth.router import get_current_user, check_role
+from modules.auth.router import get_current_user, check_role, check_feature
+from fastapi import Depends
 
-router = APIRouter(prefix="/api/automation", tags=["Automation"])
+router = APIRouter(
+    prefix="/api/automation", 
+    tags=["Automation"],
+    dependencies=[Depends(check_feature("automation"))]
+)
 
 class AutomationConfigBase(BaseModel):
     automation_type: str

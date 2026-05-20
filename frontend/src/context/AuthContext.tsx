@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 interface User {
   username: string;
   role: string;
+  plan: string;
+  features: string[];
 }
 
 interface AuthContextType {
@@ -15,6 +17,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
+  hasFeatureAccess: (feature: string) => boolean;
+  updateSubscription: (planName: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,7 +61,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (res.ok) {
         const data = await res.json();
-        setUser({ username: data.username, role: data.role });
+        setUser({
+          username: data.username,
+          role: data.role,
+          plan: data.plan || 'STARTER',
+          features: data.features || []
+        });
         window.location.href = '/';
         return true;
       }
@@ -90,8 +99,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res;
   };
 
+  const hasFeatureAccess = (feature: string) => {
+    if (!user) return false;
+    // Database-driven check: feature list is returned by backend auth context
+    return user.features ? user.features.includes(feature) : false;
+  };
+
+  const updateSubscription = async (planName: string) => {
+    try {
+      const res = await fetch('/api/auth/subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_name: planName }),
+        credentials: 'include',
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUser({
+          username: data.username,
+          role: data.role,
+          plan: data.plan || 'STARTER',
+          features: data.features || []
+        });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Subscription update failed:', error);
+      return false;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth, authFetch }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth, authFetch, hasFeatureAccess, updateSubscription }}>
       {children}
     </AuthContext.Provider>
   );

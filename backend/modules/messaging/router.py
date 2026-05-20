@@ -3,9 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List
 from core.database import get_db
 from modules.messaging import schemas, service
-from modules.auth.router import get_current_user, check_role
+from modules.auth.router import get_current_user, check_role, check_feature
+from fastapi import Depends
 
-router = APIRouter(prefix="/api/messages", tags=["Messaging"])
+router = APIRouter(
+    prefix="/api/messages", 
+    tags=["Messaging"],
+    dependencies=[Depends(check_feature("campaigns"))]
+)
 
 from typing import Optional
 from datetime import datetime

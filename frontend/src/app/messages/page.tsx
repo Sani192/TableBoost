@@ -1,14 +1,16 @@
 'use client';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getMessageLogs, MessageLogResponse } from '@/lib/api';
-import { Star, Megaphone, Search, SlidersHorizontal, RefreshCw, X, Calendar } from 'lucide-react';
+import { Star, Megaphone, Search, SlidersHorizontal, RefreshCw, X, Calendar, Lock } from 'lucide-react';
 import Card from '@/components/ui/Card';
+import { useAuth } from '@/context/AuthContext';
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 const PAGE_SIZE = 20;
 
 export default function MessagesPage() {
+  const { hasFeatureAccess } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -50,6 +52,11 @@ export default function MessagesPage() {
 
 
   const fetchLogs = useCallback(async (isLoadMore = false) => {
+    if (!hasFeatureAccess('campaigns')) {
+      setLoading(false);
+      setLoadingMore(false);
+      return;
+    }
     if (isLoadMore) setLoadingMore(true);
     else setLoading(true);
 
@@ -79,7 +86,7 @@ export default function MessagesPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [search, type, status, startDate, endDate, skip]);
+  }, [search, type, status, startDate, endDate, skip, hasFeatureAccess]);
 
   useEffect(() => {
     const timer = setTimeout(() => fetchLogs(false), 400);
@@ -118,6 +125,20 @@ export default function MessagesPage() {
     setSearch('');
     setShowFilters(false);
   };
+
+  if (!hasFeatureAccess('campaigns')) {
+    return (
+      <div className="py-12 text-center bg-white rounded-3xl border border-stone-200/60 shadow-card p-6 flex flex-col items-center justify-center gap-4 animate-fade-in">
+        <div className="h-14 w-14 bg-stone-50 text-stone-400 rounded-2xl flex items-center justify-center border border-stone-200/60 shadow-sm animate-bounce">
+          <Lock className="h-6 w-6" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-stone-900">Message Campaigns & Logs are Gated</h3>
+          <p className="text-sm text-stone-500 max-w-sm mt-1 mx-auto">Upgrade to the Growth plan to unlock manual text campaigns and full conversation history log features.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in space-y-6 pb-6">

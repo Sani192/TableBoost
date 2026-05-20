@@ -41,7 +41,13 @@ def login(login_data: LoginRequest, response: Response, db: Session = Depends(ge
         path="/",
     )
     
-    return {"message": "Login successful", "role": user.role, "username": user.username}
+    return {
+        "message": "Login successful",
+        "role": user.role,
+        "username": user.username,
+        "plan": user.plan,
+        "features": user.features
+    }
 
 @router.post("/logout")
 def logout(response: Response):
@@ -159,3 +165,44 @@ def check_role(allowed_roles: list):
             )
         return current_user
     return role_checker
+
+def check_feature(feature_name: str):
+    from modules.subscriptions.registry import has_feature_access_db
+    def feature_checker(current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+        plan_name = current_user.plan
+        if not has_feature_access_db(db, plan_name, feature_name):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Feature '{feature_name}' requires a higher subscription plan.",
+            )
+        return current_user
+    return feature_checker
+
+class UpgradeSubscriptionRequest(BaseModel):
+    plan_name: str
+
+@router.post("/subscription", response_model=UserResponse)
+def update_subscription(
+    req: UpgradeSubscriptionRequest, 
+    current_user = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    from modules.subscriptions.models import Subscription, Plan
+    
+    plan = db.query(Plan).filter(Plan.name == req.plan_name).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+        
+    sub = db.query(Subscription).filter(Subscription.user_id == current_user.id).first()
+    if not sub:
+        sub = Subscription(user_id=current_user.id, plan_id=plan.id, status="ACTIVE")
+        db.add(sub)
+    else:
+        sub.plan_id = plan.id
+        sub.status = "ACTIVE"
+        
+    db.commit()
+    db.refresh(sub)
+    db.refresh(current_user)
+    
+    return current_user

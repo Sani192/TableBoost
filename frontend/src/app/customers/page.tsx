@@ -1,10 +1,11 @@
 'use client';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getCustomers, CustomerListResponse } from '@/lib/api';
-import { Search, SlidersHorizontal, RefreshCw, X, Cake, Heart } from 'lucide-react';
+import { Search, SlidersHorizontal, RefreshCw, X, Cake, Heart, Lock } from 'lucide-react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import CustomerListItem from '@/components/ui/CustomerListItem';
+import { useAuth } from '@/context/AuthContext';
 
 const PAGE_SIZE = 20;
 
@@ -12,6 +13,7 @@ export default function CustomersPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { hasFeatureAccess } = useAuth();
 
   const [customers, setCustomers] = useState<CustomerListResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -258,24 +260,60 @@ export default function CustomersPage() {
           <div className="pt-3 border-t border-stone-200">
              <label className="text-xs font-bold text-stone-500 uppercase tracking-wider block mb-2">Smart Segments</label>
              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setIsVip(!isVip)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isVip ? 'bg-orange-600 border-orange-600 text-white shadow-sm' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'}`}
-                >
-                  VIP Customers
-                </button>
-                <button
-                  onClick={() => setIsAtRisk(!isAtRisk)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isAtRisk ? 'bg-red-600 border-red-600 text-white shadow-sm' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'}`}
-                >
-                  At Risk
-                </button>
-                <button
-                  onClick={() => setIsRewardNear(!isRewardNear)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isRewardNear ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'}`}
-                >
-                  Near Reward
-                </button>
+                {hasFeatureAccess('smart_segments') ? (
+                  <button
+                    onClick={() => setIsVip(!isVip)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isVip ? 'bg-orange-600 border-orange-600 text-white shadow-sm' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'}`}
+                  >
+                    VIP Customers
+                  </button>
+                ) : (
+                  <div className="relative group">
+                    <div className="px-3 py-1.5 rounded-lg text-xs font-bold border bg-stone-50 border-stone-200 text-stone-400 flex items-center gap-1 cursor-not-allowed opacity-60">
+                      <Lock className="h-3.5 w-3.5 text-stone-400" /> VIP Customers
+                    </div>
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-stone-900 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-md whitespace-nowrap z-50 pointer-events-none">
+                      Upgrade to Growth Plan to unlock
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-stone-900"></div>
+                    </div>
+                  </div>
+                )}
+                {hasFeatureAccess('intelligence') ? (
+                  <button
+                    onClick={() => setIsAtRisk(!isAtRisk)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isAtRisk ? 'bg-red-600 border-red-600 text-white shadow-sm' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'}`}
+                  >
+                    At Risk
+                  </button>
+                ) : (
+                  <div className="relative group">
+                    <div className="px-3 py-1.5 rounded-lg text-xs font-bold border bg-stone-50 border-stone-200 text-stone-400 flex items-center gap-1 cursor-not-allowed opacity-60">
+                      <Lock className="h-3.5 w-3.5 text-stone-400" /> At Risk
+                    </div>
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-stone-900 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-md whitespace-nowrap z-50 pointer-events-none">
+                      Upgrade to Pro Plan to unlock
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-stone-900"></div>
+                    </div>
+                  </div>
+                )}
+                {hasFeatureAccess('loyalty') ? (
+                  <button
+                    onClick={() => setIsRewardNear(!isRewardNear)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isRewardNear ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'}`}
+                  >
+                    Near Reward
+                  </button>
+                ) : (
+                  <div className="relative group">
+                    <div className="px-3 py-1.5 rounded-lg text-xs font-bold border bg-stone-50 border-stone-200 text-stone-400 flex items-center gap-1 cursor-not-allowed opacity-60">
+                      <Lock className="h-3.5 w-3.5 text-stone-400" /> Near Reward
+                    </div>
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-stone-900 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-md whitespace-nowrap z-50 pointer-events-none">
+                      Upgrade to Growth Plan to unlock
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-stone-900"></div>
+                    </div>
+                  </div>
+                )}
                 <button
                   onClick={() => setIsCelebrating(!isCelebrating)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isCelebrating ? 'bg-brand-600 border-brand-600 text-white shadow-sm' : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'}`}

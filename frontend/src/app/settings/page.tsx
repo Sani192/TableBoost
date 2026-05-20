@@ -31,10 +31,13 @@ import {
   Calendar,
   Sparkles,
   Lightbulb,
-  Target
+  Target,
+  Lock
 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import { useAuth } from '@/context/AuthContext';
+
 
 const AUTOMATION_METADATA: Record<string, { label: string; icon: any; description: string }> = {
   birthday: {
@@ -80,6 +83,7 @@ const AUTOMATION_METADATA: Record<string, { label: string; icon: any; descriptio
 };
 
 export default function SettingsPage() {
+  const { hasFeatureAccess } = useAuth();
   const [template, setTemplate] = useState('');
   
   const [automations, setAutomations] = useState<AutomationConfig[]>([]);
@@ -108,11 +112,21 @@ export default function SettingsPage() {
 
   const fetchData = async () => {
     try {
-      const [settingsData, rewardsData, automationData] = await Promise.all([
-        getSettings(),
-        getLoyaltyRewards(),
-        getAutomationConfigs()
-      ]);
+      const promises: Promise<any>[] = [getSettings()];
+      
+      if (hasFeatureAccess('loyalty')) {
+        promises.push(getLoyaltyRewards());
+      } else {
+        promises.push(Promise.resolve([]));
+      }
+
+      if (hasFeatureAccess('automation')) {
+        promises.push(getAutomationConfigs());
+      } else {
+        promises.push(Promise.resolve([]));
+      }
+
+      const [settingsData, rewardsData, automationData] = await Promise.all(promises);
       setTemplate(settingsData.review_message_template);
       setRewards(rewardsData);
       setAutomations(automationData);
@@ -246,87 +260,96 @@ export default function SettingsPage() {
           <h2 className="text-lg font-bold text-stone-900">Automation Pilots</h2>
         </div>
         
-        <div className="grid grid-cols-1 gap-3">
-          {automations
-            .filter(a => a.automation_type !== 'campaign_scheduler')
-            .map(auto => {
-              const meta = AUTOMATION_METADATA[auto.automation_type] || { label: auto.automation_type, icon: Rocket, description: 'Auto-pilot engagement' };
-              const Icon = meta.icon;
-              
-              return (
-                <Card key={auto.automation_type} className={`p-4 transition-all ${!auto.is_enabled ? 'opacity-60 bg-stone-50' : 'hover:border-brand-200 shadow-sm'}`}>
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${auto.is_enabled ? 'bg-brand-50 text-brand-600' : 'bg-stone-200 text-stone-500'}`}>
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-stone-900">{meta.label}</h3>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs text-stone-500 font-medium">{meta.description}</p>
-                          {auto.is_enabled && auto.schedule && (
-                            <span className="text-[9px] font-extrabold bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded uppercase tracking-tighter">
-                              {auto.schedule.replace('cron:', '').replace('interval:', 'Every ' + (auto.schedule.split(':')[1] === '1' ? 'Hour' : auto.schedule.split(':')[1] + ' Hours'))}
-                            </span>
-                          )}
+        {hasFeatureAccess('automation') ? (
+          <div className="grid grid-cols-1 gap-3">
+            {automations
+              .filter(a => a.automation_type !== 'campaign_scheduler')
+              .map(auto => {
+                const meta = AUTOMATION_METADATA[auto.automation_type] || { label: auto.automation_type, icon: Rocket, description: 'Auto-pilot engagement' };
+                const Icon = meta.icon;
+                
+                return (
+                  <Card key={auto.automation_type} className={`p-4 transition-all ${!auto.is_enabled ? 'opacity-60 bg-stone-50' : 'hover:border-brand-200 shadow-sm'}`}>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${auto.is_enabled ? 'bg-brand-50 text-brand-600' : 'bg-stone-200 text-stone-500'}`}>
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-stone-900">{meta.label}</h3>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-stone-500 font-medium">{meta.description}</p>
+                            {auto.is_enabled && auto.schedule && (
+                              <span className="text-[9px] font-extrabold bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                                {auto.schedule.replace('cron:', '').replace('interval:', 'Every ' + (auto.schedule.split(':')[1] === '1' ? 'Hour' : auto.schedule.split(':')[1] + ' Hours'))}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <button 
+                        onClick={() => toggleAutomation(auto.automation_type, auto.is_enabled)}
+                        className={`p-2 rounded-lg transition-colors ${auto.is_enabled ? 'text-brand-600 hover:bg-brand-50' : 'text-stone-400 hover:bg-stone-100'}`}
+                      >
+                        {auto.is_enabled ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => toggleAutomation(auto.automation_type, auto.is_enabled)}
-                      className={`p-2 rounded-lg transition-colors ${auto.is_enabled ? 'text-brand-600 hover:bg-brand-50' : 'text-stone-400 hover:bg-stone-100'}`}
-                    >
-                      {auto.is_enabled ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
-                    </button>
-                  </div>
 
-                  {auto.is_enabled && (
-                    <div className="mt-3 pt-3 border-t border-stone-100 flex flex-col gap-3">
-                      <div className="flex items-center justify-between">
-                         <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Active Template</p>
-                         <button 
-                            onClick={() => {
-                               if (editingAuto === auto.automation_type) {
-                                  setEditingAuto(null);
-                               } else {
-                                  setEditingAuto(auto.automation_type);
-                                  setEditTemplate(auto.message_template);
-                               }
-                            }}
-                            className="text-xs font-bold text-brand-600 hover:underline"
-                         >
-                            {editingAuto === auto.automation_type ? 'Cancel' : 'Customize'}
-                         </button>
+                    {auto.is_enabled && (
+                      <div className="mt-3 pt-3 border-t border-stone-100 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                           <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Active Template</p>
+                           <button 
+                              onClick={() => {
+                                 if (editingAuto === auto.automation_type) {
+                                    setEditingAuto(null);
+                                 } else {
+                                    setEditingAuto(auto.automation_type);
+                                    setEditTemplate(auto.message_template);
+                                 }
+                              }}
+                              className="text-xs font-bold text-brand-600 hover:underline"
+                           >
+                              {editingAuto === auto.automation_type ? 'Cancel' : 'Customize'}
+                           </button>
+                        </div>
+                        
+                        {editingAuto === auto.automation_type ? (
+                           <div className="space-y-3">
+                              <textarea
+                                 value={editTemplate}
+                                 onChange={e => setEditTemplate(e.target.value)}
+                                 className="w-full rounded-xl border border-stone-200 p-3 text-xs font-medium outline-none focus:border-brand-500 transition-all bg-stone-50"
+                                 rows={3}
+                              />
+                              <Button onClick={() => handleUpdateAutoTemplate(auto.automation_type)} fullWidth>
+                                 Save Template
+                              </Button>
+                           </div>
+                        ) : (
+                           <p className="text-xs text-stone-600 font-medium italic">&quot;{auto.message_template}&quot;</p>
+                        )}
                       </div>
-                      
-                      {editingAuto === auto.automation_type ? (
-                         <div className="space-y-3">
-                            <textarea
-                               value={editTemplate}
-                               onChange={e => setEditTemplate(e.target.value)}
-                               className="w-full rounded-xl border border-stone-200 p-3 text-xs font-medium outline-none focus:border-brand-500 transition-all bg-stone-50"
-                               rows={3}
-                            />
-                            <Button onClick={() => handleUpdateAutoTemplate(auto.automation_type)} fullWidth>
-                               Save Template
-                            </Button>
-                         </div>
-                      ) : (
-                         <p className="text-xs text-stone-600 font-medium italic">&quot;{auto.message_template}&quot;</p>
-                      )}
-                    </div>
-                  )}
-                </Card>
-              );
-            })
-          }
-          {automations.length === 0 && (
-            <div className="text-center py-6 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
-               <p className="text-xs font-bold text-stone-400">Initialize automations to begin.</p>
-            </div>
-          )}
-        </div>
+                    )}
+                  </Card>
+                );
+              })
+            }
+            {automations.length === 0 && (
+              <div className="text-center py-6 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+                 <p className="text-xs font-bold text-stone-400">Initialize automations to begin.</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-6 text-center bg-stone-50 rounded-2xl border border-stone-200 flex flex-col items-center justify-center gap-2">
+            <Lock className="h-6 w-6 text-stone-400" />
+            <h3 className="text-sm font-bold text-stone-900">Automation Engine is Gated</h3>
+            <p className="text-xs text-stone-500 max-w-sm">Upgrade to the Pro plan to configure birthday SMS, anniversary SMS, and inactivity recovery campaigns.</p>
+          </div>
+        )}
       </section>
+
 
       {/* Multi-Reward Loyalty Management */}
       <section className="space-y-4">
@@ -335,105 +358,118 @@ export default function SettingsPage() {
             <Trophy className="h-5 w-5 text-brand-600" />
             <h2 className="text-lg font-bold text-stone-900">Loyalty Rewards Hub</h2>
           </div>
-          <Button onClick={() => setShowAddReward(!showAddReward)} variant={showAddReward ? 'secondary' : 'primary'}>
-            {showAddReward ? 'Cancel' : <><Plus className="h-4 w-4 mr-1.5" /> Add Reward</>}
-          </Button>
-        </div>
-
-        {showAddReward && (
-          <Card className="p-5 border-brand-200 bg-brand-50/10 animate-in fade-in slide-in-from-top-2">
-            <form onSubmit={handleAddReward} className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-stone-700 mb-1.5">Reward Name</label>
-                <input
-                  type="text"
-                  required
-                  value={newReward.name}
-                  onChange={e => setNewReward({...newReward, name: e.target.value})}
-                  placeholder="e.g. Free Drink"
-                  className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-medium outline-none focus:border-brand-500"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-stone-700 mb-1.5">Reward Type</label>
-                  <select
-                    value={newReward.reward_type}
-                    onChange={e => setNewReward({...newReward, reward_type: e.target.value})}
-                    className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-medium outline-none focus:border-brand-500 bg-white"
-                  >
-                    <option value="milestone">Visit Milestone</option>
-                    <option value="birthday">Birthday Reward</option>
-                    <option value="anniversary">Anniversary Reward</option>
-                  </select>
-                </div>
-                {newReward.reward_type === 'milestone' && (
-                  <div>
-                    <label className="block text-sm font-bold text-stone-700 mb-1.5">Required Visits</label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
-                      value={newReward.required_visits}
-                      onChange={e => setNewReward({...newReward, required_visits: e.target.value})}
-                      className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-brand-500"
-                    />
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-stone-700 mb-1.5">Description</label>
-                <input
-                  type="text"
-                  value={newReward.description}
-                  onChange={e => setNewReward({...newReward, description: e.target.value})}
-                  placeholder="e.g. Claim after 5 lifetime visits"
-                  className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-medium outline-none focus:border-brand-500"
-                />
-              </div>
-              <Button type="submit" fullWidth>Create Milestone Reward</Button>
-            </form>
-          </Card>
-        )}
-
-        <div className="space-y-3">
-          {rewards.length > 0 ? (
-            rewards.map(reward => (
-              <Card key={reward.id} className={`p-4 transition-all ${!reward.is_active ? 'opacity-60 bg-stone-50' : 'hover:border-brand-200 shadow-sm'}`}>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${reward.is_active ? 'bg-brand-50 text-brand-600' : 'bg-stone-200 text-stone-500'}`}>
-                      <Trophy className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-stone-900">{reward.name}</h3>
-                        <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-stone-100 text-stone-500">
-                          {reward.reward_type === 'milestone' ? `${reward.required_visits} Visits` : reward.reward_type}
-                        </span>
-                      </div>
-                      <p className="text-xs text-stone-500 font-medium">{reward.description || 'Milestone reward'}</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => toggleRewardStatus(reward.id, reward.is_active)}
-                    className={`p-2 rounded-lg transition-colors ${reward.is_active ? 'text-brand-600 hover:bg-brand-50' : 'text-stone-400 hover:bg-stone-100'}`}
-                    title={reward.is_active ? 'Deactivate' : 'Activate'}
-                  >
-                    {reward.is_active ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
-                  </button>
-                </div>
-              </Card>
-            ))
-          ) : (
-            <div className="text-center py-10 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
-              <Trophy className="h-10 w-10 text-stone-300 mx-auto mb-3" />
-              <p className="text-sm font-bold text-stone-500">No loyalty rewards configured yet.</p>
-              <p className="text-xs text-stone-400 mt-1">Add your first milestone reward above.</p>
-            </div>
+          {hasFeatureAccess('loyalty') && (
+            <Button onClick={() => setShowAddReward(!showAddReward)} variant={showAddReward ? 'secondary' : 'primary'}>
+              {showAddReward ? 'Cancel' : <><Plus className="h-4 w-4 mr-1.5" /> Add Reward</>}
+            </Button>
           )}
         </div>
+
+        {hasFeatureAccess('loyalty') ? (
+          <>
+            {showAddReward && (
+              <Card className="p-5 border-brand-200 bg-brand-50/10 animate-in fade-in slide-in-from-top-2">
+                <form onSubmit={handleAddReward} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-stone-700 mb-1.5">Reward Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={newReward.name}
+                      onChange={e => setNewReward({...newReward, name: e.target.value})}
+                      placeholder="e.g. Free Drink"
+                      className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-medium outline-none focus:border-brand-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-stone-700 mb-1.5">Reward Type</label>
+                      <select
+                        value={newReward.reward_type}
+                        onChange={e => setNewReward({...newReward, reward_type: e.target.value})}
+                        className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-medium outline-none focus:border-brand-500 bg-white"
+                      >
+                        <option value="milestone">Visit Milestone</option>
+                        <option value="birthday">Birthday Reward</option>
+                        <option value="anniversary">Anniversary Reward</option>
+                      </select>
+                    </div>
+                    {newReward.reward_type === 'milestone' && (
+                      <div>
+                        <label className="block text-sm font-bold text-stone-700 mb-1.5">Required Visits</label>
+                        <input
+                          type="number"
+                          min="1"
+                          required
+                          value={newReward.required_visits}
+                          onChange={e => setNewReward({...newReward, required_visits: e.target.value})}
+                          className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-brand-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-stone-700 mb-1.5">Description</label>
+                    <input
+                      type="text"
+                      value={newReward.description}
+                      onChange={e => setNewReward({...newReward, description: e.target.value})}
+                      placeholder="e.g. Claim after 5 lifetime visits"
+                      className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-medium outline-none focus:border-brand-500"
+                    />
+                  </div>
+                  <Button type="submit" fullWidth>Create Milestone Reward</Button>
+                </form>
+              </Card>
+            )}
+
+            <div className="space-y-3">
+              {rewards.length > 0 ? (
+                rewards.map(reward => (
+                  <Card key={reward.id} className={`p-4 transition-all ${!reward.is_active ? 'opacity-60 bg-stone-50' : 'hover:border-brand-200 shadow-sm'}`}>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${reward.is_active ? 'bg-brand-50 text-brand-600' : 'bg-stone-200 text-stone-500'}`}>
+                          <Trophy className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-stone-900">{reward.name}</h3>
+                            <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-stone-100 text-stone-500">
+                              {reward.reward_type === 'milestone' ? `${reward.required_visits} Visits` : reward.reward_type}
+                            </span>
+                          </div>
+                          <p className="text-xs text-stone-500 font-medium">{reward.description || 'Milestone reward'}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => toggleRewardStatus(reward.id, reward.is_active)}
+                        className={`p-2 rounded-lg transition-colors ${reward.is_active ? 'text-brand-600 hover:bg-brand-50' : 'text-stone-400 hover:bg-stone-100'}`}
+                        title={reward.is_active ? 'Deactivate' : 'Activate'}
+                      >
+                        {reward.is_active ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
+                      </button>
+                    </div>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-10 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+                  <Trophy className="h-10 w-10 text-stone-300 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-stone-500">No loyalty rewards configured yet.</p>
+                  <p className="text-xs text-stone-400 mt-1">Add your first milestone reward above.</p>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="p-6 text-center bg-stone-50 rounded-2xl border border-stone-200 flex flex-col items-center justify-center gap-2">
+            <Lock className="h-6 w-6 text-stone-400" />
+            <h3 className="text-sm font-bold text-stone-900">Loyalty Engine is Gated</h3>
+            <p className="text-xs text-stone-500 max-w-sm">Upgrade to the Growth plan to unlock milestone rewards, birthday rewards, and customer redemption tracking.</p>
+          </div>
+        )}
       </section>
+
 
       {success && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg animate-in fade-in slide-in-from-bottom-4">

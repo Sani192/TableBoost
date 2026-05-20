@@ -7,7 +7,7 @@ from modules.auth.router import get_current_user, check_role
 
 router = APIRouter(prefix="/api/customers", tags=["Customers"])
 
-@router.get("/", response_model=List[schemas.CustomerListResponse], dependencies=[Depends(check_role(["OWNER", "MANAGER"]))])
+@router.get("/", response_model=List[schemas.CustomerListResponse])
 def list_customers(
     skip: int = 0,
     limit: int = 100,
@@ -26,8 +26,22 @@ def list_customers(
     is_reward_near: Optional[bool] = None,
     is_lost: Optional[bool] = None,
     is_new: Optional[bool] = None,
+    current_user = Depends(check_role(["OWNER", "MANAGER"])),
     db: Session = Depends(get_db)
 ):
+    if is_vip and "smart_segments" not in current_user.features:
+        raise HTTPException(status_code=403, detail="Filtering by VIP Customers requires the smart_segments feature.")
+    if is_reward_near and "loyalty" not in current_user.features:
+        raise HTTPException(status_code=403, detail="Filtering by Near Reward requires the loyalty feature.")
+    if is_at_risk and "intelligence" not in current_user.features:
+        raise HTTPException(status_code=403, detail="Filtering by At Risk requires the intelligence feature.")
+    if is_lost and "intelligence" not in current_user.features:
+        raise HTTPException(status_code=403, detail="Filtering by Lost requires the intelligence feature.")
+    if is_new and "intelligence" not in current_user.features:
+        raise HTTPException(status_code=403, detail="Filtering by New Customers requires the intelligence feature.")
+
+    has_intel = "intelligence" in current_user.features
+    has_loyalty = "loyalty" in current_user.features
     return service.get_customers(
         db, skip=skip, limit=limit, search=search,
         min_visits=min_visits, max_visits=max_visits,
@@ -36,7 +50,8 @@ def list_customers(
         anniversary_month=anniversary_month, anniversary_day=anniversary_day,
         is_celebrating_today=is_celebrating_today,
         is_vip=is_vip, is_at_risk=is_at_risk, is_reward_near=is_reward_near,
-        is_lost=is_lost, is_new=is_new
+        is_lost=is_lost, is_new=is_new,
+        has_intel=has_intel, has_loyalty=has_loyalty
     )
 
 @router.get("/{customer_id}", response_model=schemas.CustomerDetailResponse, dependencies=[Depends(get_current_user)])

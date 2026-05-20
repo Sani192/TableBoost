@@ -25,7 +25,9 @@ def get_customers(
     is_at_risk: Optional[bool] = None,
     is_reward_near: Optional[bool] = None,
     is_lost: Optional[bool] = None,
-    is_new: Optional[bool] = None
+    is_new: Optional[bool] = None,
+    has_intel: bool = True,
+    has_loyalty: bool = True
 ):
     query = db.query(
         Customer,
@@ -77,7 +79,7 @@ def get_customers(
             ((func.extract('month', CustomerProfile.anniversary) == today.month) & (func.extract('day', CustomerProfile.anniversary) == today.day))
         )
         
-    if is_at_risk:
+    if is_at_risk and has_intel:
         thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
         ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
         query = query.having(and_(
@@ -99,7 +101,7 @@ def get_customers(
         
         query = query.filter(Customer.id.in_(vip_ids_sub))
 
-    if is_reward_near:
+    if is_reward_near and has_loyalty:
         # Customers within 2 visits of any active milestone reward (including boundary)
         query = query.outerjoin(LoyaltyProgress, Customer.id == LoyaltyProgress.customer_id)\
                      .filter(exists().where(
@@ -148,9 +150,9 @@ def get_customers(
             "total_visits": total_visits or 0,
             "last_visit": last_visit,
             "total_spent": float(total_spent) if total_spent else 0.0,
-            "health_status": health_status,
-            "clv_tier": clv_tier,
-            "spend_trend": spend_trend
+            "health_status": health_status if has_intel else None,
+            "clv_tier": clv_tier if has_intel else None,
+            "spend_trend": spend_trend if has_intel else None
         }
         for cust, total_visits, last_visit, total_spent, health_status, clv_tier, spend_trend in results
     ]

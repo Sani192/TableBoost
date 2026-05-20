@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/visits", tags=["Visits"])
 
-@router.get("/", response_model=List[VisitDetail], dependencies=[Depends(check_role(["OWNER", "MANAGER"]))])
+@router.get("/", response_model=List[VisitDetail])
 def list_visits(
     skip: int = 0,
     limit: int = 100,
@@ -23,8 +23,10 @@ def list_visits(
     max_amount: Optional[float] = None,
     sort_by: str = "visited_at",
     sort_order: str = "desc",
+    current_user = Depends(check_role(["OWNER", "MANAGER"])),
     db: Session = Depends(get_db)
 ):
+    has_intel = "intelligence" in current_user.features
     return service.get_visits(
         db, 
         skip=skip, 
@@ -35,7 +37,8 @@ def list_visits(
         min_amount=min_amount, 
         max_amount=max_amount,
         sort_by=sort_by,
-        sort_order=sort_order
+        sort_order=sort_order,
+        has_intel=has_intel
     )
 
 @router.post("/", response_model=VisitResponse, dependencies=[Depends(get_current_user)])

@@ -2,13 +2,15 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createCampaign, getSettings, updateSettings } from '@/lib/api';
-import { Megaphone, Users, Send, CheckCircle2, Settings as SettingsIcon } from 'lucide-react';
+import { Megaphone, Users, Send, CheckCircle2, Settings as SettingsIcon, Lock } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
+import { useAuth } from '@/context/AuthContext';
 
 type Feedback = { type: 'success' | 'error', text: string } | null;
 
 export default function CampaignsPage() {
+  const { hasFeatureAccess } = useAuth();
   const [audience, setAudience] = useState('inactive');
   const [inactiveDays, setInactiveDays] = useState<number | string>(30);
   const [message, setMessage] = useState('');
@@ -62,6 +64,20 @@ export default function CampaignsPage() {
       setLoading(false);
     }
   };
+
+  if (!hasFeatureAccess('campaigns')) {
+    return (
+      <div className="py-12 text-center bg-white rounded-3xl border border-stone-200/60 shadow-card p-6 flex flex-col items-center justify-center gap-4 animate-fade-in max-w-2xl mx-auto">
+        <div className="h-14 w-14 bg-stone-50 text-stone-400 rounded-2xl flex items-center justify-center border border-stone-200/60 shadow-sm animate-bounce">
+          <Lock className="h-6 w-6" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-stone-900">SMS Campaigns are Gated</h3>
+          <p className="text-sm text-stone-500 max-w-sm mt-1 mx-auto">Upgrade to the Growth plan to unlock manual text campaigns, VIP segmentation, and custom SMS templates.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">

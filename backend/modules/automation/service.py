@@ -149,6 +149,13 @@ def send_automation_message(db: Session, customer, config, period_ref: str):
 def trigger_event_automation(db: Session, customer_id: int, event_type: str, context: dict = None):
     """Triggered by system events (e.g. reward_unlocked)"""
     logger.info(f"Event triggered: {event_type} for customer ID: {customer_id}")
+    
+    # Gate under 'automation' subscription feature
+    from modules.subscriptions.registry import check_job_feature_access
+    if not check_job_feature_access(db, "automation"):
+        logger.warning(f"Skipping event automation '{event_type}' - subscription plan does not allow automation.")
+        return
+
     if context:
         logger.debug(f"Event context: {context}")
         
@@ -246,6 +253,13 @@ def process_specific_automation(automation_type: str):
         if not cfg:
             logger.info(f"No enabled config found for {automation_type}. Exiting job.")
             return
+
+        # Gate automated SMS-sending pilots under 'automation' subscription
+        if automation_type in ['birthday', 'anniversary', 'inactivity']:
+            from modules.subscriptions.registry import check_job_feature_access
+            if not check_job_feature_access(db, "automation"):
+                logger.warning(f"Skipping SMS automation pilot '{automation_type}' - subscription plan does not allow automation.")
+                return
 
         logger.info(f"Config found. Message template: '{cfg.message_template}'")
 

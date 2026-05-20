@@ -164,6 +164,15 @@ def process_scheduled_campaigns(db: Session):
         Campaign.scheduled_at <= now
     ).all()
     
+    if not campaigns:
+        return
+        
+    # Gate under 'campaigns' subscription feature
+    from modules.subscriptions.registry import check_job_feature_access
+    if not check_job_feature_access(db, "campaigns"):
+        logger.warning("Skipping scheduled campaigns processing - subscription plan does not allow campaigns.")
+        return
+        
     for camp in campaigns:
         try:
             results = execute_campaign(db, camp.message_template, camp.audience_type)
