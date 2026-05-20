@@ -6,6 +6,7 @@ from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedempt
 from modules.automation.models import AutomationConfig, AutomationHistory
 from modules.intelligence.models import CustomerIntelligence, CampaignSummary, RewardSummary, AutomationSummary, BusinessSummary, Recommendation
 from modules.users.models import User
+from modules.governance.models import AuditLog, OperationalLog
 from modules.subscriptions.models import Subscription, Feature, Plan, PlanFeature
 from modules.subscriptions.registry import seed_plans
 from modules.automation import service as automation_service

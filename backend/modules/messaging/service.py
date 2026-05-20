@@ -173,14 +173,33 @@ def process_scheduled_campaigns(db: Session):
         logger.warning("Skipping scheduled campaigns processing - subscription plan does not allow campaigns.")
         return
         
+    from modules.governance.service import log_operational_event
     for camp in campaigns:
         try:
             results = execute_campaign(db, camp.message_template, camp.audience_type)
             camp.status = 'completed'
             logger.info(f"Campaign {camp.id} completed: {results}")
+            log_operational_event(
+                db,
+                log_type="CAMPAIGN",
+                event_name="CAMPAIGN_EXECUTE",
+                job_id=f"campaign_{camp.id}",
+                status="SUCCESS",
+                message=f"Successfully sent scheduled campaign {camp.id} to {results.get('sent_count', 0)} users.",
+                metadata_json=results
+            )
         except Exception as e:
             camp.status = 'failed'
             logger.error(f"Campaign {camp.id} failed: {e}")
+            log_operational_event(
+                db,
+                log_type="CAMPAIGN",
+                event_name="CAMPAIGN_EXECUTE",
+                job_id=f"campaign_{camp.id}",
+                status="FAILED",
+                message=f"Failed scheduled campaign {camp.id}: {str(e)}",
+                metadata_json={"error": str(e)}
+            )
             
     db.commit()
 

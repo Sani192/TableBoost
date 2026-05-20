@@ -50,6 +50,11 @@ export default function CustomerDetailPage() {
   const [editData, setEditData] = useState({ name: '', birthday: '', anniversary: '' });
   const [pendingRedeem, setPendingRedeem] = useState<{ id: number; name: string } | null>(null);
   const [updatingProfile, setUpdatingProfile] = useState(false);
+  const isUnchanged = customer ? (
+    editData.name.trim() === (customer.name || '').trim() &&
+    (editData.birthday || '') === (customer.birthday || '') &&
+    (editData.anniversary || '') === (customer.anniversary || '')
+  ) : true;
 
   const fetchData = async () => {
     if (!id) return;
@@ -480,7 +485,7 @@ export default function CustomerDetailPage() {
             <Button variant="secondary" onClick={() => setShowEditModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateProfile} disabled={updatingProfile}>
+            <Button onClick={handleUpdateProfile} disabled={updatingProfile || isUnchanged}>
               {updatingProfile ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save Profile'}
             </Button>
           </>

@@ -41,11 +41,38 @@ def list_visits(
         has_intel=has_intel
     )
 
-@router.post("/", response_model=VisitResponse, dependencies=[Depends(get_current_user)])
-def create_visit(visit_data: VisitCreate, db: Session = Depends(get_db)):
+from modules.governance.service import log_audit_event
+
+@router.post("/", response_model=VisitResponse)
+def create_visit(
+    visit_data: VisitCreate, 
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     try:
-        return service.add_visit(db, visit_data)
+        visit = service.add_visit(db, visit_data)
+        log_audit_event(
+            db,
+            actor_id=current_user.id,
+            actor_username=current_user.username,
+            action="CREATE_VISIT",
+            entity_type="Visit",
+            entity_id=str(visit.id),
+            status="SUCCESS",
+            metadata_json={"phone_number": visit_data.phone_number, "amount": visit_data.amount}
+        )
+        return visit
     except Exception as e:
         logger.error(f"Failed to create visit: {e}", exc_info=True)
+        log_audit_event(
+            db,
+            actor_id=current_user.id,
+            actor_username=current_user.username,
+            action="CREATE_VISIT",
+            entity_type="Visit",
+            entity_id=None,
+            status="FAILED",
+            metadata_json={"phone_number": visit_data.phone_number, "amount": visit_data.amount, "error": str(e)}
+        )
         raise HTTPException(status_code=500, detail="An unexpected error occurred while saving the visit.")
 

@@ -5,6 +5,7 @@ from modules.users.service import get_user_by_username, verify_password
 from modules.users.schemas import UserResponse, UserProfileResponse, UserProfileUpdate
 from .service import create_access_token, decode_access_token
 from pydantic import BaseModel
+from modules.governance.service import log_audit_event
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -13,15 +14,35 @@ class LoginRequest(BaseModel):
     password: str
 
 @router.post("/login")
-def login(login_data: LoginRequest, response: Response, db: Session = Depends(get_db)):
+def login(login_data: LoginRequest, response: Response, request: Request, db: Session = Depends(get_db)):
     user = get_user_by_username(db, login_data.username)
     if not user or not verify_password(login_data.password, user.password_hash):
+        log_audit_event(
+            db,
+            actor_id=None,
+            actor_username=login_data.username,
+            action="LOGIN",
+            entity_type="User",
+            entity_id=None,
+            status="FAILED",
+            metadata_json={"ip": request.client.host if request.client else None, "reason": "Incorrect username or password"}
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
     
     if not user.is_active:
+        log_audit_event(
+            db,
+            actor_id=user.id,
+            actor_username=user.username,
+            action="LOGIN",
+            entity_type="User",
+            entity_id=str(user.id),
+            status="FAILED",
+            metadata_json={"ip": request.client.host if request.client else None, "reason": "User account is inactive"}
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User account is inactive",
@@ -41,6 +62,17 @@ def login(login_data: LoginRequest, response: Response, db: Session = Depends(ge
         path="/",
     )
     
+    log_audit_event(
+        db,
+        actor_id=user.id,
+        actor_username=user.username,
+        action="LOGIN",
+        entity_type="User",
+        entity_id=str(user.id),
+        status="SUCCESS",
+        metadata_json={"ip": request.client.host if request.client else None}
+    )
+    
     return {
         "message": "Login successful",
         "role": user.role,
@@ -48,11 +80,6 @@ def login(login_data: LoginRequest, response: Response, db: Session = Depends(ge
         "plan": user.plan,
         "features": user.features
     }
-
-@router.post("/logout")
-def logout(response: Response):
-    response.delete_cookie("tableboost_token", path="/")
-    return {"message": "Logout successful"}
 
 # Dependency to get current user
 def get_current_user(request: Request, db: Session = Depends(get_db)):
@@ -84,6 +111,21 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
             detail="User not found",
         )
     return user
+
+@router.post("/logout")
+def logout(response: Response, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    response.delete_cookie("tableboost_token", path="/")
+    log_audit_event(
+        db,
+        actor_id=current_user.id,
+        actor_username=current_user.username,
+        action="LOGOUT",
+        entity_type="User",
+        entity_id=str(current_user.id),
+        status="SUCCESS"
+    )
+    return {"message": "Logout successful"}
+
 
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user = Depends(get_current_user)):
@@ -127,6 +169,9 @@ def update_profile(profile_data: UserProfileUpdate, current_user = Depends(get_c
             detail="Profile not found",
         )
         
+    old_first_name = profile.first_name
+    old_last_name = profile.last_name
+    
     if profile_data.first_name is not None:
         profile.first_name = profile_data.first_name
     if profile_data.last_name is not None:
@@ -134,6 +179,25 @@ def update_profile(profile_data: UserProfileUpdate, current_user = Depends(get_c
         
     db.commit()
     db.refresh(profile)
+    
+    changed_fields = {}
+    if old_first_name != profile.first_name:
+        changed_fields["first_name"] = {"old": old_first_name, "new": profile.first_name}
+    if old_last_name != profile.last_name:
+        changed_fields["last_name"] = {"old": old_last_name, "new": profile.last_name}
+
+    log_audit_event(
+        db,
+        actor_id=current_user.id,
+        actor_username=current_user.username,
+        action="UPDATE_PROFILE",
+        entity_type="UserProfile",
+        entity_id=str(profile.id),
+        status="SUCCESS",
+        metadata_json={
+            "changed_fields": changed_fields
+        }
+    )
     
     return profile
 
@@ -144,6 +208,16 @@ class ChangePasswordRequest(BaseModel):
 @router.post("/change-password")
 def change_password(data: ChangePasswordRequest, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
     if not verify_password(data.current_password, current_user.password_hash):
+        log_audit_event(
+            db,
+            actor_id=current_user.id,
+            actor_username=current_user.username,
+            action="CHANGE_PASSWORD",
+            entity_type="User",
+            entity_id=str(current_user.id),
+            status="FAILED",
+            metadata_json={"reason": "Incorrect current password"}
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect current password",
@@ -152,6 +226,16 @@ def change_password(data: ChangePasswordRequest, current_user = Depends(get_curr
     from modules.users.service import get_password_hash
     current_user.password_hash = get_password_hash(data.new_password)
     db.commit()
+    
+    log_audit_event(
+        db,
+        actor_id=current_user.id,
+        actor_username=current_user.username,
+        action="CHANGE_PASSWORD",
+        entity_type="User",
+        entity_id=str(current_user.id),
+        status="SUCCESS"
+    )
     
     return {"message": "Password changed successfully"}
 
@@ -204,5 +288,16 @@ def update_subscription(
     db.commit()
     db.refresh(sub)
     db.refresh(current_user)
+    
+    log_audit_event(
+        db,
+        actor_id=current_user.id,
+        actor_username=current_user.username,
+        action="CHANGE_SUBSCRIPTION",
+        entity_type="Subscription",
+        entity_id=str(sub.id),
+        status="SUCCESS",
+        metadata_json={"plan_name": req.plan_name}
+    )
     
     return current_user

@@ -96,6 +96,16 @@ TableBoost includes a production-safe authentication system with role-based acce
   - **MANAGER**: Access to operations, analytics, and limited settings.
   - **STAFF**: Operational access only (Add Visit). Cannot access sensitive analytics or settings.
 
+### 9. Audit Logging & Governance
+
+TableBoost features a robust governance and audit module to ensure operational compliance and traceability.
+
+- **User Activity Audit Trails**: Logs user activities like login success/failure, profile updates, change passwords, and visit capture.
+- **Marketing & Engagement Audits**: Track campaign broadcasts, reward creation, edits, and redemptions, settings changes, and automation pilot updates.
+- **Operational & Scheduler Traceability**: Logs automation background runs, scheduler event states (run success, errors, missed runs) for background jobs.
+- **Strict Role-Based Filtering**: Only users with the `OWNER` role can view audit trails or access the governance dashboards.
+- **Organized Storage Isolation**: Database logs are isolated under dedicated `gov_audit_logs` and `gov_operational_logs` tables.
+
 ### Customer Intelligence Tags
 
 The system uses a combination of backend calculations and frontend heuristics to tag customers:
@@ -129,7 +139,7 @@ TableBoost incorporates a role-aware subscription plan model to gate access to p
 *   **Growth**: Customer retention programs and scheduled messaging campaigns.
     *   *Included Features*: `loyalty` (milestone rewards), `segments` (VIP, Healthy, New tags), `campaigns` (scheduled SMS broadcasts).
 *   **Pro**: Automated workflows, churn prevention, and deep intelligence insights.
-    *   *Included Features*: `automation` (birthday, anniversary, and inactivity SMS pilots), `intelligence` (analytics tab, CLV tiers, ROI trackers).
+    *   *Included Features*: `automation` (birthday, anniversary, and inactivity SMS pilots), `intelligence` (analytics tab, CLV tiers, ROI trackers), `governance` (audit logging & operational governance dashboard).
 *   **Enterprise**: Large scale multitenancy and priority assistance.
 
 ### 2. Multi-User Plan Inheritance
@@ -161,6 +171,8 @@ In a multi-user layout (e.g., Owner + Manager + Staff), the active subscription 
 | `/campaigns` | Manual campaign creation for targeted audiences. |
 | `/messages` | Message log review and filtering. |
 | `/settings` | Engagement settings, automation pilots, and loyalty reward management. |
+| `/governance` | Security, audit, and operational tracking dashboard (Owner only). |
+
 
 ---
 
@@ -179,6 +191,8 @@ The FastAPI backend exposes modular APIs under `/api`:
 | Loyalty | `/api/loyalty` | Manage rewards, calculate customer reward status, redeem rewards, and view redemption history. |
 | Automation | `/api/automation` | Read/update automation configs and resync scheduled jobs. |
 | Intelligence | `/api/intelligence` | Growth dashboard, customer intelligence, campaign ROI, reward effectiveness, automation summaries, business summaries, and recommendations. |
+| Governance | `/api/governance` | Retrieve paginated and filtered audit and operational logs (restricted to Owner). |
+
 
 ---
 
@@ -225,6 +239,7 @@ TableBoost/
 │   │   ├── loyalty/          # Rewards, progress, redemptions
 │   │   ├── messaging/        # Message logs and campaigns
 │   │   ├── settings/         # Engagement settings
+│   │   ├── governance/       # Audit and operational logs management
 │   │   ├── users/            # User models and schemas
 │   │   └── visits/           # Visit capture and history
 │   ├── tests/                # Backend unit and integration tests

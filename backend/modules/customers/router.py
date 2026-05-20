@@ -66,12 +66,33 @@ def get_customer(customer_id: int, db: Session = Depends(get_db)):
 def get_customer_visits(customer_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     return service.get_customer_visits(db, customer_id, skip=skip, limit=limit)
 
-@router.patch("/{customer_id}", response_model=schemas.CustomerResponse, dependencies=[Depends(get_current_user)])
-def update_customer(customer_id: int, customer_data: schemas.CustomerUpdate, db: Session = Depends(get_db)):
+from modules.governance.service import log_audit_event
+
+@router.patch("/{customer_id}", response_model=schemas.CustomerResponse)
+def update_customer(
+    customer_id: int, 
+    customer_data: schemas.CustomerUpdate, 
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     customer = db.query(service.Customer).filter(service.Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
         
+    def format_date(d):
+        if not d:
+            return None
+        if hasattr(d, "isoformat"):
+            return d.isoformat()
+        return str(d)
+
+    old_values = {
+        "name": customer.name,
+        "phone_number": customer.phone_number,
+        "birthday": format_date(customer.profile.birthday) if customer.profile else None,
+        "anniversary": format_date(customer.profile.anniversary) if customer.profile else None
+    }
+
     data = customer_data.model_dump(exclude_unset=True)
     
     # Handle core customer fields
@@ -92,4 +113,33 @@ def update_customer(customer_id: int, customer_data: schemas.CustomerUpdate, db:
         
     db.commit()
     db.refresh(customer)
+    
+    new_values = {
+        "name": customer.name,
+        "phone_number": customer.phone_number,
+        "birthday": format_date(customer.profile.birthday) if customer.profile else None,
+        "anniversary": format_date(customer.profile.anniversary) if customer.profile else None
+    }
+    
+    changed_fields = {}
+    for key in old_values:
+        if old_values[key] != new_values[key]:
+            changed_fields[key] = {
+                "old": old_values[key],
+                "new": new_values[key]
+            }
+
+    log_audit_event(
+        db,
+        actor_id=current_user.id,
+        actor_username=current_user.username,
+        action="UPDATE_CUSTOMER",
+        entity_type="Customer",
+        entity_id=str(customer.id),
+        status="SUCCESS",
+        metadata_json={
+            "changed_fields": changed_fields
+        }
+    )
+    
     return customer

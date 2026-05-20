@@ -10,7 +10,8 @@ ALL_FEATURES = {
     "smart_segments": "Smart Customer Segmentation",
     "intelligence": "Business Intelligence & Insights",
     "automation": "Marketing & Operational Automation",
-    "advanced_analytics": "Advanced Analytics Reports"
+    "advanced_analytics": "Advanced Analytics Reports",
+    "governance": "Audit Logging & Operational Governance"
 }
 
 DEFAULT_PLANS = {
@@ -24,11 +25,11 @@ DEFAULT_PLANS = {
     },
     "PRO": {
         "tier": 3,
-        "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments", "intelligence", "automation", "advanced_analytics"]
+        "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments", "intelligence", "automation", "advanced_analytics", "governance"]
     },
     "ENTERPRISE_READY": {
         "tier": 4,
-        "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments", "intelligence", "automation", "advanced_analytics"]
+        "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments", "intelligence", "automation", "advanced_analytics", "governance"]
     }
 }
 

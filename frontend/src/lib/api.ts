@@ -403,3 +403,75 @@ export const updateProfile = async (payload: UserProfileUpdate): Promise<UserPro
   return response.data;
 };
 
+export interface AuditLogItem {
+  id: number;
+  timestamp: string;
+  actor_id: number | null;
+  actor_username: string | null;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  status: string;
+  metadata_json: any | null;
+}
+
+export interface PaginatedAuditLogs {
+  items: AuditLogItem[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+export interface OperationalLogItem {
+  id: number;
+  timestamp: string;
+  log_type: string;
+  event_name: string;
+  job_id: string | null;
+  status: string;
+  message: string | null;
+  duration_ms: number | null;
+  metadata_json: any | null;
+}
+
+export interface PaginatedOperationalLogs {
+  items: OperationalLogItem[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+export const getAuditLogs = async (params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  actor_username?: string;
+  action?: string;
+  entity_type?: string;
+  status?: string;
+  start_date?: string;
+  end_date?: string;
+  sort_by?: string;
+  sort_dir?: string;
+}): Promise<PaginatedAuditLogs> => {
+  const response = await api.get<PaginatedAuditLogs>('/api/governance/audit', { params });
+  return response.data;
+};
+
+export const getOperationalLogs = async (params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  log_type?: string;
+  event_name?: string;
+  job_id?: string;
+  status?: string;
+  start_date?: string;
+  end_date?: string;
+  sort_by?: string;
+  sort_dir?: string;
+}): Promise<PaginatedOperationalLogs> => {
+  const response = await api.get<PaginatedOperationalLogs>('/api/governance/operational', { params });
+  return response.data;
+};
+

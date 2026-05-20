@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, MessageSquare, Send, Settings, Plus, LogOut, User } from 'lucide-react';
+import { Home, Users, MessageSquare, Send, Settings, Plus, LogOut, User, Shield } from 'lucide-react';
 import Drawer from '@/components/ui/Drawer';
 import AddVisitForm from '@/components/AddVisitForm';
 import { useAuth } from '@/context/AuthContext';
@@ -42,6 +42,7 @@ export default function Navigation() {
     { name: 'Campaigns', href: '/campaigns', icon: Send, roles: ['OWNER', 'MANAGER'], feature: 'campaigns' },
     { name: 'Logs', href: '/messages', icon: MessageSquare, roles: ['OWNER', 'MANAGER'], feature: 'campaigns' },
     { name: 'Settings', href: '/settings', icon: Settings, roles: ['OWNER'] },
+    { name: 'Governance', href: '/governance', icon: Shield, roles: ['OWNER', 'MANAGER'], feature: 'governance' },
     { name: 'Add Visit', href: '/add-visit', icon: Plus, roles: ['STAFF'], feature: 'visits' },
   ];
 

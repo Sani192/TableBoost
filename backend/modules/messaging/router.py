@@ -37,10 +37,45 @@ def get_message_logs(
         end_date=end_date
     )
 
-@router.post("/campaign", dependencies=[Depends(check_role(["OWNER", "MANAGER"]))])
-def create_campaign(campaign: schemas.CampaignCreateRequest, db: Session = Depends(get_db)):
+from modules.governance.service import log_audit_event
+
+@router.post("/campaign")
+def create_campaign(
+    campaign: schemas.CampaignCreateRequest, 
+    current_user = Depends(check_role(["OWNER", "MANAGER"])),
+    db: Session = Depends(get_db)
+):
     try:
         result = service.execute_campaign(db, campaign.message, campaign.audience_type, campaign.inactive_days)
+        log_audit_event(
+            db,
+            actor_id=current_user.id,
+            actor_username=current_user.username,
+            action="SEND_CAMPAIGN",
+            entity_type="Campaign",
+            entity_id=None,
+            status="SUCCESS",
+            metadata_json={
+                "audience_type": campaign.audience_type,
+                "inactive_days": campaign.inactive_days,
+                "sent_count": result.get("sent_count", 0),
+                "failed_count": result.get("failed_count", 0)
+            }
+        )
         return result
     except Exception as e:
+        log_audit_event(
+            db,
+            actor_id=current_user.id,
+            actor_username=current_user.username,
+            action="SEND_CAMPAIGN",
+            entity_type="Campaign",
+            entity_id=None,
+            status="FAILED",
+            metadata_json={
+                "audience_type": campaign.audience_type,
+                "inactive_days": campaign.inactive_days,
+                "error": str(e)
+            }
+        )
         raise HTTPException(status_code=500, detail=str(e))

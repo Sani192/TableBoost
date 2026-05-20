@@ -240,7 +240,10 @@ def process_specific_automation(automation_type: str):
     logger.info(f"==================================================")
     logger.info(f"Job triggered for automation type: {automation_type}")
     from core.database import SessionLocal
+    from modules.governance.service import log_operational_event
+    from datetime import datetime
     db = SessionLocal()
+    start_time = datetime.now()
     try:
         today = date.today()
         logger.info(f"Current date: {today}")
@@ -252,6 +255,14 @@ def process_specific_automation(automation_type: str):
         
         if not cfg:
             logger.info(f"No enabled config found for {automation_type}. Exiting job.")
+            log_operational_event(
+                db,
+                log_type="AUTOMATION",
+                event_name="AUTOMATION_SKIP",
+                job_id=f"auto_{automation_type}",
+                status="SUCCESS",
+                message=f"No enabled config found for {automation_type}. Exiting job."
+            )
             return
 
         # Gate automated SMS-sending pilots under 'automation' subscription
@@ -259,7 +270,25 @@ def process_specific_automation(automation_type: str):
             from modules.subscriptions.registry import check_job_feature_access
             if not check_job_feature_access(db, "automation"):
                 logger.warning(f"Skipping SMS automation pilot '{automation_type}' - subscription plan does not allow automation.")
+                log_operational_event(
+                    db,
+                    log_type="AUTOMATION",
+                    event_name="AUTOMATION_SKIP",
+                    job_id=f"auto_{automation_type}",
+                    status="SUCCESS",
+                    message=f"Skipping SMS automation pilot '{automation_type}' - subscription plan does not allow automation."
+                )
                 return
+
+        # Log start
+        log_operational_event(
+            db,
+            log_type="AUTOMATION",
+            event_name="AUTOMATION_START",
+            job_id=f"auto_{automation_type}",
+            status="RUNNING",
+            message=f"Starting background automation run for {automation_type}."
+        )
 
         logger.info(f"Config found. Message template: '{cfg.message_template}'")
 
@@ -330,9 +359,32 @@ def process_specific_automation(automation_type: str):
         
         else:
             logger.warning(f"Unhandled automation type in process_specific_automation: {automation_type}")
+            
+        # Log success
+        duration = int((datetime.now() - start_time).total_seconds() * 1000)
+        log_operational_event(
+            db,
+            log_type="AUTOMATION",
+            event_name="AUTOMATION_SUCCESS",
+            job_id=f"auto_{automation_type}",
+            status="SUCCESS",
+            message=f"Successfully completed background automation run for {automation_type}.",
+            duration_ms=duration
+        )
                 
     except Exception as e:
         logger.error(f"Error processing automation {automation_type}: {e}", exc_info=True)
+        duration = int((datetime.now() - start_time).total_seconds() * 1000)
+        log_operational_event(
+            db,
+            log_type="AUTOMATION",
+            event_name="AUTOMATION_FAILURE",
+            job_id=f"auto_{automation_type}",
+            status="FAILED",
+            message=f"Failed background automation run for {automation_type}: {str(e)}",
+            duration_ms=duration,
+            metadata_json={"error": str(e)}
+        )
     finally:
         db.close()
         logger.info(f"Job completed for automation type: {automation_type}")
