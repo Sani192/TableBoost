@@ -9,6 +9,7 @@ import { getVisits, VisitDetail } from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import VisitListItem from '@/components/ui/VisitListItem';
+import { ListItemSkeleton } from '@/components/ui/Skeleton';
 import { useSearchParams, usePathname } from 'next/navigation';
 
 const PAGE_SIZE = 20;
@@ -192,7 +193,7 @@ export default function VisitsPage() {
 
       {/* Filters Panel */}
       {showFilters && (
-        <Card className="animate-slide-up space-y-4 bg-stone-50/50">
+        <Card className="animate-slide-up space-y-4 bg-stone-50/50 max-h-[70vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-900">Advanced Filters</h3>
             <button onClick={clearFilters} className="text-xs font-bold text-brand-600 hover:underline">
@@ -283,9 +284,8 @@ export default function VisitsPage() {
       {/* Visit List */}
       <div className="rounded-3xl border border-stone-200/60 bg-white shadow-card overflow-hidden">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <RefreshCw className="h-8 w-8 animate-spin text-brand-500" aria-hidden="true" />
-            <p className="mt-4 text-sm font-bold text-stone-500">Syncing with server...</p>
+          <div className="p-4 space-y-3">
+            {[1, 2, 3, 4, 5].map(i => <ListItemSkeleton key={i} />)}
           </div>
         ) : visits.length === 0 ? (
           <div className="px-5 py-16 text-center">

@@ -30,11 +30,11 @@ export default function CustomerListItem({ customer, showTags = true }: Customer
   return (
     <Link 
       href={`/customers/${customer.id}`} 
-      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border border-stone-200 shadow-sm hover:shadow-md hover:border-brand-300 transition-all cursor-pointer group"
+      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 shadow-sm hover:shadow-md hover:border-brand-300 transition-all cursor-pointer group"
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <p className="font-bold text-stone-900 group-hover:text-brand-600 transition-colors truncate">
+          <p className="font-bold text-stone-900 dark:text-stone-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors truncate">
             {customer.name || 'Unknown'}
           </p>
           {showTags && (
@@ -57,7 +57,7 @@ export default function CustomerListItem({ customer, showTags = true }: Customer
                     </span>
                   )}
                   {clvTier === 'low' && (
-                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-stone-100 text-stone-700 border border-stone-200">
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
                       LOW CLV
                     </span>
                   )}
@@ -96,12 +96,12 @@ export default function CustomerListItem({ customer, showTags = true }: Customer
             </div>
           )}
         </div>
-        <p className="text-xs text-stone-500 font-medium">{customer.phone_number}</p>
+        <p className="text-xs text-stone-500 dark:text-stone-400 font-medium">{customer.phone_number}</p>
       </div>
       
       <div className="flex items-center justify-between sm:justify-end gap-4 mt-3 sm:mt-0">
         <div className="text-left sm:text-right">
-          <p className="text-sm font-bold text-stone-900">{customer.total_visits || 0} visits</p>
+          <p className="text-sm font-bold text-stone-900 dark:text-stone-100">{customer.total_visits || 0} visits</p>
           {customer.total_spent !== undefined && customer.total_spent !== null && (
             <p className="text-xs font-bold text-emerald-600">${Number(customer.total_spent).toFixed(2)} spent</p>
           )}

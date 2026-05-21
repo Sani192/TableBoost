@@ -4,6 +4,8 @@ TableBoost is a mobile-first restaurant **Revenue Intelligence, Loyalty, and Aut
 
 The product is organized around a simple workflow: record a visit, enrich the customer profile over time, trigger the right engagement, measure the business impact, and surface the next best action for the restaurant owner.
 
+TableBoost features a **dark / light mode toggle**, a unified **design system** with shared components, a **subscription-governed UX**, and a **mobile-first** responsive layout.
+
 ---
 
 ## What TableBoost Offers
@@ -136,6 +138,25 @@ TableBoost is built to be resilient, recoverable, and simple to deploy in standa
 - **Scheduler Recovery**: Background automation and intelligence generation processes are strictly idempotent. If the server crashes mid-day, the scheduler will not duplicate intelligence metrics or resend the same SMS blasts for that period.
 - **Disaster Recovery Utilities**: Includes lightweight `pg_dump` based shell scripts (`scripts/backup.sh` and `scripts/restore.sh`) for rapid database backups and schema reconstruction. See the `docs/DEPLOYMENT_RUNBOOK.md` for full deployment and recovery procedures.
 
+### 13. Dark Mode & Theme System
+
+TableBoost includes a full dark / light mode experience with FOUC (Flash of Unstyled Content) prevention.
+
+- **Theme Toggle**: Available in both the desktop navigation bar and the mobile bottom nav bar.
+- **Persistence**: Theme preference is saved to `localStorage` and restored on page load via an inline blocking script.
+- **Implementation**: Uses Tailwind's `darkMode: 'class'` strategy with the `dark` class applied to the `<html>` element.
+- **Global CSS Overrides**: A comprehensive set of CSS-level dark mode rules automatically styles all light-mode-only elements (backgrounds, text, borders, shadows, form inputs, status badges, and hover states).
+- **Component-level support**: Core UI components (Card, Button, Drawer, Modal, Input, Badge, Tabs, StatCard, etc.) include inline `dark:` Tailwind variants for precise control.
+
+### 14. Design System & Shared Components
+
+TableBoost uses a unified component library that enforces design consistency across all pages.
+
+- **Shared UI Components**: `PageHeader`, `Skeleton`, `EmptyState`, `Badge`, `Tabs`, `FeatureGate`, `Pagination`, `ThemeToggle`, `PlanDetailsModal`.
+- **Design Tokens**: CSS custom properties for surfaces (`--color-surface`, `--color-surface-raised`), ink (`--color-ink`, `--color-ink-muted`), and borders (`--color-border`, `--color-border-muted`).
+- **Unified Palette**: Consistent `stone` color palette across all pages, replacing ad-hoc `slate`, `gray`, and `zinc` usage.
+- **Animation System**: `tailwindcss-animate` plugin for `fade-in`, `slide-in`, `zoom-in`, and `scale-in` transitions.
+
 ### Customer Intelligence Tags
 
 The system uses a combination of backend calculations and frontend heuristics to tag customers:
@@ -240,6 +261,7 @@ The FastAPI backend exposes modular APIs under `/api`:
 - Pytest
 - Passlib & Bcrypt (Password hashing)
 - Python-Jose (JWT)
+- Alembic (Database migrations)
 
 ### Frontend
 
@@ -247,6 +269,7 @@ The FastAPI backend exposes modular APIs under `/api`:
 - React 18
 - TypeScript
 - Tailwind CSS
+- tailwindcss-animate (transition & animation utilities)
 - Lucide React icons
 - Jest
 - React Testing Library
@@ -279,6 +302,12 @@ TableBoost/
 ├── frontend/
 │   ├── src/app/              # Next.js app routes
 │   ├── src/components/       # Reusable UI and feature components
+│   │   ├── ui/               # Core design system (Button, Card, Drawer, Modal, Input, Badge, Tabs, etc.)
+│   │   ├── dashboard/        # Dashboard-specific components (RecommendationCard, TrendSparkline)
+│   │   ├── intelligence/     # Intelligence badges (CLVBadge, CustomerHealthBadge)
+│   │   ├── Navigation.tsx    # Main navigation shell
+│   │   ├── ProfileDrawer.tsx  # User profile & subscription drawer
+│   │   └── PlanDetailsModal.tsx # Subscription plan details modal
 │   ├── src/context/          # React Context (Auth)
 │   ├── src/lib/api.ts        # Frontend API client and response types
 │   └── __tests__/            # Frontend tests

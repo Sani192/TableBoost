@@ -6,6 +6,11 @@ import { useAuth } from '@/context/AuthContext';
 import Drawer from '@/components/ui/Drawer';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import Badge from '@/components/ui/Badge';
+import Tabs from '@/components/ui/Tabs';
+import Pagination from '@/components/ui/Pagination';
+import EmptyState from '@/components/ui/EmptyState';
+import PageHeader from '@/components/ui/PageHeader';
 import { getAuditLogs, getOperationalLogs, AuditLogItem, OperationalLogItem } from '@/lib/api';
 import { 
   Shield, 
@@ -14,8 +19,6 @@ import {
   SlidersHorizontal, 
   Calendar, 
   RefreshCw, 
-  ChevronLeft, 
-  ChevronRight, 
   FileText, 
   CheckCircle2, 
   AlertTriangle, 
@@ -228,27 +231,15 @@ export default function GovernancePage() {
     }
   };
 
-  // Status Badge Component matching the clean design system
+  // Status Badge using shared Badge component
   const StatusBadge = ({ status }: { status: string }) => {
     const s = status.toUpperCase();
     if (s === 'SUCCESS') {
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-55 text-emerald-800 border border-emerald-200/60 shadow-sm">
-          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Success
-        </span>
-      );
+      return <Badge variant="success" icon={<CheckCircle2 />}>Success</Badge>;
     } else if (s === 'RUNNING' || s === 'PENDING') {
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-brand-50 text-brand-800 border border-brand-200/60 animate-pulse">
-          <Play className="w-3 h-3 text-brand-600" /> Running
-        </span>
-      );
+      return <Badge variant="premium" icon={<Play />} className="animate-pulse">Running</Badge>;
     } else {
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-200/60 shadow-sm">
-          <XCircle className="w-3 h-3 text-rose-600" /> Failed
-        </span>
-      );
+      return <Badge variant="danger" icon={<XCircle />}>Failed</Badge>;
     }
   };
 
@@ -317,67 +308,52 @@ export default function GovernancePage() {
 
   return (
     <div className="animate-fade-in space-y-5 pb-6 sm:space-y-6">
-      {/* Header matching Visit Records page, without back button */}
-      <header className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
-            Governance
-          </p>
-          <h1 className="text-xl font-extrabold tracking-tight text-stone-900 sm:text-2xl">
-            Security & System Logs
-          </h1>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => fetchLogs(true)}
-            disabled={loading}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 shadow-soft transition-all hover:bg-stone-50 hover:text-stone-700 active:scale-95 disabled:opacity-50"
-            aria-label="Refresh logs"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`relative flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-bold transition-all active:scale-95 ${
-              showFilters || activeFiltersCount > 0
-                ? 'border-brand-200 bg-brand-50 text-brand-700'
-                : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
-            }`}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            <span className="hidden sm:inline">Filters</span>
-            {activeFiltersCount > 0 && (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[10px] text-white">
-                {activeFiltersCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </header>
+      {/* Header */}
+      <PageHeader
+        eyebrow="Governance"
+        title="Security & System Logs"
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchLogs(true)}
+              disabled={loading}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-500 dark:text-stone-400 shadow-soft transition-all hover:bg-stone-50 dark:hover:bg-stone-700 hover:text-stone-700 dark:hover:text-stone-300 active:scale-95 disabled:opacity-50"
+              aria-label="Refresh logs"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`relative flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-bold transition-all active:scale-95 ${
+                showFilters || activeFiltersCount > 0
+                  ? 'border-brand-200 dark:border-brand-700 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400'
+                  : 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700'
+              }`}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              <span className="hidden sm:inline">Filters</span>
+              {activeFiltersCount > 0 && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[10px] text-white">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+          </div>
+        }
+      />
 
-      {/* Tabs matching Operations tab styling */}
-      <div className="flex gap-1 p-1 bg-stone-150 rounded-2xl w-full max-w-md">
-        {isOwner && (
-          <button
-            onClick={() => { setActiveTab('audit'); setActionFilter(''); setSortBy('timestamp'); setSortDir('desc'); setPage(1); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${
-              activeTab === 'audit' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
-            }`}
-          >
-            <Shield className="h-4 w-4" /> Audit Log
-          </button>
-        )}
-        <button
-          onClick={() => { setActiveTab('operational'); setActionFilter(''); setSortBy('timestamp'); setSortDir('desc'); setPage(1); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${
-            activeTab === 'operational' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
-          }`}
-        >
-          <Server className="h-4 w-4" /> System Events
-        </button>
-      </div>
+      {/* Tabs */}
+      <Tabs
+        tabs={[
+          ...(isOwner ? [{ key: 'audit', label: 'Audit Log', icon: <Shield className="h-4 w-4" /> }] : []),
+          { key: 'operational', label: 'System Events', icon: <Server className="h-4 w-4" /> },
+        ]}
+        activeTab={activeTab}
+        onTabChange={(key) => { setActiveTab(key as 'audit' | 'operational'); setActionFilter(''); setSortBy('timestamp'); setSortDir('desc'); setPage(1); }}
+        className="max-w-md"
+        fullWidth
+      />
 
       {/* Filters Panel matching visits page advanced filters */}
       {showFilters && (
@@ -514,20 +490,16 @@ export default function GovernancePage() {
             <p className="mt-1 text-sm text-stone-500 max-w-sm mx-auto">{error}</p>
           </div>
         ) : (activeTab === 'audit' ? auditLogs : operationalLogs).length === 0 ? (
-          <div className="px-5 py-16 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-stone-100 text-stone-300">
-              <FileText className="h-8 w-8" aria-hidden="true" />
-            </div>
-            <p className="mt-4 text-base font-bold text-stone-700">No records found</p>
-            <p className="mt-1 text-sm text-stone-500 max-w-xs mx-auto">
-              Try adjusting your filters or search criteria.
-            </p>
-            {activeFiltersCount > 0 && (
-              <Button variant="secondary" className="mt-6" onClick={clearFilters}>
-                Clear All Filters
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            icon={<FileText className="h-8 w-8" />}
+            title="No records found"
+            description="Try adjusting your filters or search criteria."
+            action={
+              activeFiltersCount > 0 ? (
+                <Button variant="secondary" onClick={clearFilters}>Clear All Filters</Button>
+              ) : undefined
+            }
+          />
         ) : (
           <>
             {/* Table Header — desktop only */}
@@ -561,29 +533,29 @@ export default function GovernancePage() {
                   <li 
                     key={log.id} 
                     onClick={() => setSelectedItem(log)}
-                    className="flex items-center gap-3 px-5 py-4 sm:px-6 hover:bg-stone-50/80 transition-colors group cursor-pointer animate-fade-in"
+                    className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-3 px-5 py-4 sm:px-6 hover:bg-stone-50/80 transition-colors group cursor-pointer animate-fade-in"
                   >
-                    {/* Icon block matching standard items */}
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 shadow-sm group-hover:scale-105 transition-transform">
-                      <Shield className="h-5 w-5" />
+                    {/* Top Row for Mobile (Icon + Main Details) */}
+                    <div className="flex items-center gap-3 w-full sm:w-auto sm:flex-1">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 shadow-sm group-hover:scale-105 transition-transform">
+                        <Shield className="h-5 w-5" />
+                      </div>
+
+                      <div className="hidden sm:block w-16 shrink-0 font-mono text-xs font-bold text-stone-400">
+                        #{log.id}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold text-stone-900 group-hover:text-brand-600 transition-colors">
+                          {log.actor_username || 'System / System Job'}
+                        </p>
+                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider sm:hidden mt-0.5">
+                          {formatOptionText(log.action)}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* ID Badge */}
-                    <div className="hidden sm:block w-16 shrink-0 font-mono text-xs font-bold text-stone-400">
-                      #{log.id}
-                    </div>
-
-                    {/* Actor Details */}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-stone-900 group-hover:text-brand-600 transition-colors">
-                        {log.actor_username || 'System / System Job'}
-                      </p>
-                      <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider sm:hidden mt-0.5">
-                        {formatOptionText(log.action)}
-                      </p>
-                    </div>
-
-                    {/* Desktop only columns */}
+                    {/* Desktop columns */}
                     <div className="hidden sm:block w-40 shrink-0">
                       <span className="inline-flex px-2.5 py-0.5 bg-stone-105 border border-stone-150 rounded-md text-[11px] font-bold text-stone-700">
                         {formatOptionText(log.action)}
@@ -598,19 +570,20 @@ export default function GovernancePage() {
                       )}
                     </div>
 
-                    {/* Status badge */}
-                    <div className="w-28 shrink-0 flex justify-center">
-                      <StatusBadge status={log.status} />
-                    </div>
+                    {/* Bottom Row for Mobile (Status + Time) */}
+                    <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto pl-12 sm:pl-0 mt-1 sm:mt-0">
+                      <div className="w-auto sm:w-28 shrink-0 flex justify-start sm:justify-center">
+                        <StatusBadge status={log.status} />
+                      </div>
 
-                    {/* Timestamp */}
-                    <div className="w-32 shrink-0 text-right">
-                      <p className="text-xs font-bold text-stone-500">
-                        {new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                      </p>
-                      <p className="text-[10px] font-medium text-stone-400">
-                        {new Date(log.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                      </p>
+                      <div className="w-auto sm:w-32 shrink-0 text-right">
+                        <p className="text-xs font-bold text-stone-500">
+                          {new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                        </p>
+                        <p className="text-[10px] font-medium text-stone-400">
+                          {new Date(log.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                        </p>
+                      </div>
                     </div>
                   </li>
                 ))
@@ -619,31 +592,31 @@ export default function GovernancePage() {
                   <li 
                     key={log.id} 
                     onClick={() => setSelectedItem(log)}
-                    className="flex items-center gap-3 px-5 py-4 sm:px-6 hover:bg-stone-50/80 transition-colors group cursor-pointer animate-fade-in"
+                    className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-3 px-5 py-4 sm:px-6 hover:bg-stone-50/80 transition-colors group cursor-pointer animate-fade-in"
                   >
-                    {/* Icon block */}
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-600 shadow-sm group-hover:scale-105 transition-transform">
-                      <Server className="h-5 w-5" />
-                    </div>
+                    {/* Top Row for Mobile (Icon + Main Details) */}
+                    <div className="flex items-center gap-3 w-full sm:w-auto sm:flex-1">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-400 shadow-sm group-hover:scale-105 transition-transform">
+                        <Server className="h-5 w-5" />
+                      </div>
 
-                    {/* ID Badge */}
-                    <div className="hidden sm:block w-16 shrink-0 font-mono text-xs font-bold text-stone-400">
-                      #{log.id}
-                    </div>
+                      <div className="hidden sm:block w-16 shrink-0 font-mono text-xs font-bold text-stone-400">
+                        #{log.id}
+                      </div>
 
-                    {/* Event name details */}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-stone-900 group-hover:text-brand-600 transition-colors">
-                        {log.event_name}
-                      </p>
-                      <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider sm:hidden mt-0.5">
-                        {formatOptionText(log.log_type)}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold text-stone-900 group-hover:text-brand-600 transition-colors">
+                          {log.event_name}
+                        </p>
+                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider sm:hidden mt-0.5">
+                          {formatOptionText(log.log_type)}
+                        </p>
+                      </div>
                     </div>
 
                     {/* Desktop columns */}
                     <div className="hidden sm:block w-36 shrink-0">
-                      <span className="inline-flex px-2 py-0.5 bg-slate-100 rounded-md text-[11px] font-bold text-slate-700">
+                      <span className="inline-flex px-2 py-0.5 bg-stone-100 dark:bg-stone-700 rounded-md text-[11px] font-bold text-stone-700 dark:text-stone-300">
                         {formatOptionText(log.log_type)}
                       </span>
                     </div>
@@ -657,19 +630,20 @@ export default function GovernancePage() {
                       )}
                     </div>
 
-                    {/* Status */}
-                    <div className="w-28 shrink-0 flex justify-center">
-                      <StatusBadge status={log.status} />
-                    </div>
+                    {/* Bottom Row for Mobile (Status + Time) */}
+                    <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto pl-12 sm:pl-0 mt-1 sm:mt-0">
+                      <div className="w-auto sm:w-28 shrink-0 flex justify-start sm:justify-center">
+                        <StatusBadge status={log.status} />
+                      </div>
 
-                    {/* Timestamp */}
-                    <div className="w-32 shrink-0 text-right">
-                      <p className="text-xs font-bold text-stone-500">
-                        {new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                      </p>
-                      <p className="text-[10px] font-medium text-stone-400">
-                        {new Date(log.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                      </p>
+                      <div className="w-auto sm:w-32 shrink-0 text-right">
+                        <p className="text-xs font-bold text-stone-500">
+                          {new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                        </p>
+                        <p className="text-[10px] font-medium text-stone-400">
+                          {new Date(log.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                        </p>
+                      </div>
                     </div>
                   </li>
                 ))
@@ -677,31 +651,13 @@ export default function GovernancePage() {
             </ul>
 
             {/* Pagination Footer */}
-            {totalPages > 1 && (
-              <div className="bg-stone-50/50 border-t border-stone-100 px-6 py-4 flex items-center justify-between">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">
-                  Showing {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, totalCount)} of {totalCount} records
-                </span>
-                
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPage(p => Math.max(p - 1, 1))}
-                    disabled={page === 1}
-                    className="p-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 disabled:opacity-50 transition-all shadow-sm active:scale-95"
-                  >
-                    <ChevronLeft className="w-4 h-4 text-stone-600" />
-                  </button>
-                  <span className="text-sm font-extrabold text-stone-700 px-2">{page} / {totalPages}</span>
-                  <button
-                    onClick={() => setPage(p => Math.min(p + 1, totalPages))}
-                    disabled={page === totalPages}
-                    className="p-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 disabled:opacity-50 transition-all shadow-sm active:scale-95"
-                  >
-                    <ChevronRight className="w-4 h-4 text-stone-600" />
-                  </button>
-                </div>
-              </div>
-            )}
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
           </>
         )}
       </div>
@@ -792,13 +748,13 @@ export default function GovernancePage() {
                 /* Operational Log Section Card */
                 <>
                   <div className="p-4 flex items-start gap-3">
-                    <div className="h-10 w-10 shrink-0 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl flex items-center justify-center">
+                    <div className="h-10 w-10 shrink-0 bg-stone-100 dark:bg-stone-700 border border-stone-200 dark:border-stone-600 text-stone-700 dark:text-stone-400 rounded-xl flex items-center justify-center">
                       <FileText className="w-5 h-5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">Category</span>
                       <div className="mt-1">
-                        <span className="inline-flex px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-700 tracking-tight">
+                        <span className="inline-flex px-2.5 py-1 bg-stone-100 dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-xl text-[11px] font-bold text-stone-700 dark:text-stone-300 tracking-tight">
                           {formatOptionText(selectedItem.log_type)}
                         </span>
                       </div>
@@ -806,7 +762,7 @@ export default function GovernancePage() {
                   </div>
 
                   <div className="p-4 flex items-start gap-3">
-                    <div className="h-10 w-10 shrink-0 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl flex items-center justify-center">
+                    <div className="h-10 w-10 shrink-0 bg-stone-100 dark:bg-stone-700 border border-stone-200 dark:border-stone-600 text-stone-700 dark:text-stone-400 rounded-xl flex items-center justify-center">
                       <Cpu className="w-5 h-5" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -819,7 +775,7 @@ export default function GovernancePage() {
 
                   {selectedItem.duration_ms !== null && (
                     <div className="p-4 flex items-start gap-3">
-                      <div className="h-10 w-10 shrink-0 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl flex items-center justify-center">
+                      <div className="h-10 w-10 shrink-0 bg-stone-100 dark:bg-stone-700 border border-stone-200 dark:border-stone-600 text-stone-700 dark:text-stone-400 rounded-xl flex items-center justify-center">
                         <Clock className="w-5 h-5" />
                       </div>
                       <div className="min-w-0 flex-1">

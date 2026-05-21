@@ -5,8 +5,41 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── Light Mode (default) ── */
   :root {
     color-scheme: light;
+
+    /* Surface tokens */
+    --color-surface: #fafaf9;
+    --color-surface-raised: #ffffff;
+    --color-surface-muted: #f5f5f4;
+    --color-surface-inset: #e7e5e4;
+
+    /* Ink (text) tokens */
+    --color-ink: #1c1917;
+    --color-ink-muted: #78716c;
+    --color-ink-faint: #a8a29e;
+
+    /* Border tokens */
+    --color-border: rgba(214, 211, 209, 0.6);
+    --color-border-muted: rgba(214, 211, 209, 0.35);
+  }
+
+  /* ── Dark Mode ── */
+  .dark {
+    color-scheme: dark;
+
+    --color-surface: #0c0a09;
+    --color-surface-raised: #1c1917;
+    --color-surface-muted: #292524;
+    --color-surface-inset: #44403c;
+
+    --color-ink: #fafaf9;
+    --color-ink-muted: #a8a29e;
+    --color-ink-faint: #78716c;
+
+    --color-border: rgba(120, 113, 108, 0.4);
+    --color-border-muted: rgba(120, 113, 108, 0.2);
   }
 
   * {
@@ -23,12 +56,19 @@
   body {
     min-height: 100vh;
     margin: 0;
-    background-color: #fafaf9;
+    background-color: var(--color-surface);
     background-image:
       radial-gradient(ellipse at top left, rgba(251, 146, 60, 0.08), transparent 50%),
       radial-gradient(ellipse at bottom right, rgba(249, 115, 22, 0.04), transparent 50%);
-    color: #1c1917;
+    color: var(--color-ink);
     font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(ellipse at top left, rgba(234, 88, 12, 0.06), transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(249, 115, 22, 0.03), transparent 50%);
   }
 
   button,
@@ -72,4 +112,176 @@
       padding-right: 2rem;
     }
   }
+
+  /* Skeleton shimmer effect */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-muted) 0%,
+      var(--color-surface-inset) 40%,
+      var(--color-surface-muted) 80%
+    );
+    background-size: 200% 100%;
+    animation: skeleton 1.8s ease-in-out infinite;
+  }
 }
+
+/* ══════════════════════════════════════════════
+   Global Dark Mode Overrides
+   Catch-all rules for pages that don't have
+   inline dark: Tailwind classes yet.
+   ══════════════════════════════════════════════ */
+@layer base {
+  /* ── Containers & Cards ── */
+  .dark .bg-white:not([class*="dark\:bg"]) {
+    background-color: #1c1917; /* stone-900 */
+  }
+  .dark .bg-stone-50:not([class*="dark\:bg"]) {
+    background-color: #292524; /* stone-800 */
+  }
+  .dark .bg-stone-100:not([class*="dark\:bg"]) {
+    background-color: #44403c; /* stone-700 */
+  }
+
+  /* ── Text ── */
+  .dark .text-stone-900:not([class*="dark\:text"]) {
+    color: #fafaf9; /* stone-50 */
+  }
+  .dark .text-stone-800:not([class*="dark\:text"]) {
+    color: #e7e5e4; /* stone-200 */
+  }
+  .dark .text-stone-700:not([class*="dark\:text"]) {
+    color: #d6d3d1; /* stone-300 */
+  }
+  .dark .text-stone-600:not([class*="dark\:text"]) {
+    color: #a8a29e; /* stone-400 */
+  }
+  .dark .text-stone-500:not([class*="dark\:text"]) {
+    color: #a8a29e; /* stone-400 */
+  }
+
+  /* ── Borders ── */
+  .dark .border-stone-200:not([class*="dark\:border"]) {
+    border-color: #44403c; /* stone-700 */
+  }
+  .dark .border-stone-100:not([class*="dark\:border"]) {
+    border-color: #292524; /* stone-800 */
+  }
+  .dark .divide-stone-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #292524; /* stone-800 */
+  }
+  .dark .border-stone-200\/60:not([class*="dark\:border"]) {
+    border-color: rgba(68, 64, 60, 0.6); /* stone-700/60 */
+  }
+
+  /* ── Shadows ── */
+  .dark .shadow-card {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(68, 64, 60, 0.2);
+  }
+  .dark .shadow-soft {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  /* ── Form elements ── */
+  .dark input:not([type="checkbox"]):not([type="radio"]),
+  .dark select,
+  .dark textarea {
+    background-color: #292524; /* stone-800 */
+    border-color: #44403c; /* stone-700 */
+    color: #fafaf9; /* stone-50 */
+  }
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #78716c; /* stone-500 */
+  }
+  .dark input:focus,
+  .dark select:focus,
+  .dark textarea:focus {
+    border-color: #ea580c; /* brand-600 */
+  }
+
+  /* ── Brand accent backgrounds in dark ── */
+  .dark .bg-brand-50:not([class*="dark\:bg"]) {
+    background-color: rgba(154, 52, 18, 0.2); /* brand-900/20 */
+  }
+  .dark .bg-brand-100:not([class*="dark\:bg"]) {
+    background-color: rgba(154, 52, 18, 0.3); /* brand-900/30 */
+  }
+
+  /* ── Status accent backgrounds in dark ── */
+  .dark .bg-emerald-100:not([class*="dark\:bg"]) {
+    background-color: rgba(6, 78, 59, 0.3);
+  }
+  .dark .bg-emerald-50:not([class*="dark\:bg"]) {
+    background-color: rgba(6, 78, 59, 0.2);
+  }
+  .dark .bg-blue-100:not([class*="dark\:bg"]) {
+    background-color: rgba(30, 58, 138, 0.3);
+  }
+  .dark .bg-blue-50:not([class*="dark\:bg"]) {
+    background-color: rgba(30, 58, 138, 0.2);
+  }
+  .dark .bg-orange-100:not([class*="dark\:bg"]) {
+    background-color: rgba(154, 52, 18, 0.3);
+  }
+  .dark .bg-red-50:not([class*="dark\:bg"]) {
+    background-color: rgba(127, 29, 29, 0.2);
+  }
+  .dark .bg-amber-100:not([class*="dark\:bg"]) {
+    background-color: rgba(120, 53, 15, 0.3);
+  }
+  .dark .bg-purple-100:not([class*="dark\:bg"]) {
+    background-color: rgba(88, 28, 135, 0.3);
+  }
+  .dark .bg-indigo-100:not([class*="dark\:bg"]) {
+    background-color: rgba(49, 46, 129, 0.3);
+  }
+  .dark .bg-yellow-100:not([class*="dark\:bg"]) {
+    background-color: rgba(113, 63, 18, 0.3);
+  }
+  .dark .bg-green-50\/50 {
+    background-color: rgba(6, 78, 59, 0.15);
+  }
+  .dark .bg-green-100,
+  .dark .border-green-100 {
+    background-color: rgba(6, 78, 59, 0.2);
+    border-color: rgba(6, 78, 59, 0.3);
+  }
+
+  /* ── Hover states ── */
+  .dark .hover\:bg-stone-50:hover {
+    background-color: #292524;
+  }
+  .dark .hover\:bg-stone-100:hover {
+    background-color: #44403c;
+  }
+
+  /* ── Brand text stays readable ── */
+  .dark .text-brand-900 {
+    color: #fed7aa; /* brand-200 */
+  }
+  .dark .text-brand-800 {
+    color: #fdba74; /* brand-300 */
+  }
+  .dark .text-brand-700\/80 {
+    color: rgba(251, 146, 60, 0.8); /* brand-400/80 */
+  }
+
+  /* ── Table & list specific ── */
+  .dark .bg-stone-50\/30 {
+    background-color: rgba(41, 37, 36, 0.3);
+  }
+  .dark .bg-stone-50\/50 {
+    background-color: rgba(41, 37, 36, 0.5);
+  }
+  .dark .bg-stone-50\/80 {
+    background-color: rgba(41, 37, 36, 0.8);
+  }
+
+  /* ── Code blocks in dark ── */
+  .dark code {
+    background-color: #292524;
+    color: #ea580c;
+  }
+}
+

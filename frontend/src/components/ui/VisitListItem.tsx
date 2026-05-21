@@ -35,19 +35,19 @@ export default function VisitListItem({ visit, showTags = true, isCard = false, 
     <Link 
       href={`/customers/${visit.customer_id || visit.id}`} 
       className={isCard 
-        ? "flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border border-stone-200 shadow-sm hover:shadow-md hover:border-brand-300 transition-all cursor-pointer group"
-        : "flex items-center gap-3 px-5 py-4 sm:px-6 hover:bg-stone-50/80 transition-colors group"
+        ? "flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 shadow-sm hover:shadow-md hover:border-brand-300 transition-all cursor-pointer group"
+        : "flex items-center gap-3 px-5 py-4 sm:px-6 hover:bg-stone-50/80 dark:hover:bg-stone-800/80 transition-colors group"
       }
     >
       {!isCard && (
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-sm font-bold text-brand-700 shadow-sm">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-900/40 text-sm font-bold text-brand-700 dark:text-brand-400 shadow-sm">
           {initial}
         </div>
       )}
       
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-0.5">
-          <p className="truncate text-sm font-bold text-stone-900 group-hover:text-brand-600 transition-colors">
+          <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
             {name}
           </p>
           {showTags && (
@@ -70,7 +70,7 @@ export default function VisitListItem({ visit, showTags = true, isCard = false, 
                     </span>
                   )}
                   {clvTier === 'low' && (
-                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-stone-100 text-stone-700 border border-stone-200">
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[9px] font-bold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
                       LOW CLV
                     </span>
                   )}
@@ -109,7 +109,7 @@ export default function VisitListItem({ visit, showTags = true, isCard = false, 
             </div>
           )}
         </div>
-        <p className="truncate text-xs font-medium text-stone-500 flex items-center gap-2">
+        <p className="truncate text-xs font-medium text-stone-500 dark:text-stone-400 flex items-center gap-2">
           <span>{visit.phone_number}</span>
           {visit.status && (
             <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
@@ -117,7 +117,7 @@ export default function VisitListItem({ visit, showTags = true, isCard = false, 
                 ? 'bg-emerald-100 text-emerald-700'
                 : visit.status === 'sent'
                 ? 'bg-blue-100 text-blue-700'
-                : 'bg-stone-100 text-stone-600'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
             }`}>
               {visit.status}
             </span>
@@ -132,7 +132,7 @@ export default function VisitListItem({ visit, showTags = true, isCard = false, 
         : "shrink-0 text-right ml-2"
       }>
         <div className={isCard ? "text-left sm:text-right" : isTable ? "w-32 text-right shrink-0" : ""}>
-          <p className="text-sm font-bold text-stone-900">
+          <p className="text-sm font-bold text-stone-900 dark:text-stone-100">
             {visit.amount !== null && visit.amount !== undefined ? `$${Number(visit.amount).toFixed(2)}` : '—'}
           </p>
           {visit.visited_at ? (

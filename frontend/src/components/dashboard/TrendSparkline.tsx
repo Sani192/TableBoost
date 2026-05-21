@@ -12,8 +12,8 @@ export default function TrendSparkline({ data, labels, title, prefix = '' }: Tre
   const max = Math.max(...data, 1);
   
   return (
-    <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-sm">
-      <h3 className="text-sm font-bold text-stone-500 uppercase tracking-wider mb-2">{title}</h3>
+    <div className="bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm">
+      <h3 className="text-sm font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-2">{title}</h3>
       <div className="h-16 flex items-end justify-between gap-1 mt-2">
         {data.map((val, i) => (
           <div key={i} className="flex-1 h-full flex flex-col justify-end items-center gap-1 group">

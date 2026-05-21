@@ -170,10 +170,10 @@ export default function AddVisitForm({ onSuccess, onCancel, customerId }: AddVis
         )}
 
         {/* SMS Toggle */}
-        <div className="flex items-center justify-between rounded-2xl border border-stone-100 bg-stone-50 px-4 py-3.5">
+        <div className="flex items-center justify-between rounded-2xl border border-stone-100 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-4 py-3.5">
           <div>
-            <p className="text-sm font-semibold text-stone-800">Send Review SMS</p>
-            <p className="text-xs font-medium text-stone-500">
+            <p className="text-sm font-semibold text-stone-800 dark:text-stone-200">Send Review SMS</p>
+            <p className="text-xs font-medium text-stone-500 dark:text-stone-400">
               Ask for a Google review after visit
             </p>
           </div>
@@ -184,7 +184,7 @@ export default function AddVisitForm({ onSuccess, onCancel, customerId }: AddVis
               checked={sendSms}
               onChange={(e) => setSendSms(e.target.checked)}
             />
-            <div className="peer h-6 w-11 rounded-full bg-stone-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-all after:content-[''] peer-checked:bg-brand-600 peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-500/30 peer-focus:ring-offset-2" />
+            <div className="peer h-6 w-11 rounded-full bg-stone-300 dark:bg-stone-600 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-all after:content-[''] peer-checked:bg-brand-600 peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-500/30 peer-focus:ring-offset-2 dark:peer-focus:ring-offset-stone-900" />
           </label>
         </div>
       </Card>
@@ -195,8 +195,8 @@ export default function AddVisitForm({ onSuccess, onCancel, customerId }: AddVis
           role="status"
           className={`animate-slide-up flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${
             feedback.type === 'success'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              : 'border-red-200 bg-red-50 text-red-700'
+              ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+              : 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
           }`}
         >
           {feedback.type === 'success' && (

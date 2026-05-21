@@ -5,6 +5,7 @@ import { Search, SlidersHorizontal, RefreshCw, X, Cake, Heart, Lock } from 'luci
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import CustomerListItem from '@/components/ui/CustomerListItem';
+import { ListItemSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
 
 const PAGE_SIZE = 20;
@@ -181,7 +182,7 @@ export default function CustomersPage() {
       </header>
 
       {showFilters && (
-        <Card className="animate-slide-up space-y-4 bg-stone-50/50">
+        <Card className="animate-slide-up space-y-4 bg-stone-50/50 max-h-[70vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-900">Advanced Filters</h3>
             <button onClick={clearFilters} className="text-xs font-bold text-brand-600 hover:underline">
@@ -344,8 +345,8 @@ export default function CustomersPage() {
       </div>
       
       {loading ? (
-        <div className="animate-pulse space-y-4">
-          {[1, 2, 3].map(i => <div key={i} className="h-20 bg-stone-100 rounded-xl"></div>)}
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map(i => <ListItemSkeleton key={i} />)}
         </div>
       ) : customers.length === 0 ? (
         <p className="text-sm font-bold text-stone-500 text-center py-10">No customers found.</p>
