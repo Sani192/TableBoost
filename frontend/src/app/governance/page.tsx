@@ -43,6 +43,13 @@ export default function GovernancePage() {
   const isManager = user?.role === 'MANAGER';
   const hasAccess = (isOwner || isManager) && hasFeatureAccess('governance');
   
+  // Secure route guard
+  useEffect(() => {
+    if (user && !hasAccess) {
+      router.replace('/');
+    }
+  }, [user, hasAccess, router]);
+  
   const [activeTab, setActiveTab] = useState<'audit' | 'operational'>(isOwner ? 'audit' : 'operational');
   
   // Data lists

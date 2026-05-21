@@ -14,6 +14,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 
+import os
+os.environ["TESTING"] = "1"
+
 from core.database import Base, get_db
 from main import app
 

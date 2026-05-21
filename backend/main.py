@@ -56,13 +56,53 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
+import os
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this in production
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+# Simple global rate limiter for general API abuse protection
+from collections import defaultdict
+import time
+from fastapi import HTTPException, status
+
+global_rate_limit = defaultdict(list)
+GLOBAL_RATE_LIMIT_MAX = 200 # requests
+GLOBAL_RATE_LIMIT_WINDOW = 60 # per minute
+
+@app.middleware("http")
+async def global_rate_limiter(request: Request, call_next):
+    # Exclude health check and static assets from rate limiting
+    if request.url.path.startswith("/api/health"):
+        return await call_next(request)
+        
+    ip = request.client.host if request.client else "unknown"
+    current_time = time.time()
+    
+    global_rate_limit[ip] = [t for t in global_rate_limit[ip] if current_time - t < GLOBAL_RATE_LIMIT_WINDOW]
+    
+    if len(global_rate_limit[ip]) >= GLOBAL_RATE_LIMIT_MAX:
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={"error": True, "message": "Too many requests. Please slow down."}
+        )
+        
+    global_rate_limit[ip].append(current_time)
+    return await call_next(request)
 
 app.include_router(visits_router)
 app.include_router(dashboard_router)

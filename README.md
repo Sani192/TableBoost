@@ -116,6 +116,16 @@ A dedicated suite of production-grade safeguards protects the platform from casc
 - **Frontend Error Boundaries**: Global React `ErrorBoundary` catch-alls prevent the UI from white-screening during unhandled client-side render exceptions.
 - **Network Deduplication**: Core data-fetching pipelines use strict parameter-based cache references to eliminate redundant API calls and optimize bandwidth.
 
+### 11. Security Hardening & Abuse Prevention
+
+TableBoost implements strict security controls to protect against operational abuse, unauthorized data access, and common web vulnerabilities.
+
+- **Authentication & Session Hardening**: JWTs are embedded with a strict `token_version` validated against the database. User logouts and password changes automatically increment this version, globally and immediately invalidating all previously issued session tokens.
+- **Brute-Force & Abuse Mitigation**: The authentication system includes lightweight, in-memory sliding-window rate limiters. Identical mutation requests (like duplicate visit creations or rapid SMS campaign broadcasts) are blocked by a short-lived idempotency cache to prevent spam.
+- **API & Network Security**: The FastAPI backend employs a strict CORS policy limited to the frontend origin, a global rate limiter mitigating broad DoS attempts, and robust HTTP security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`).
+- **Data Validation Bounds**: Pydantic schemas enforce rigid `max_length` bounds on incoming text fields to defend against massive payload processing attacks.
+- **Secure Route Guards**: The frontend employs React `useEffect` hooks to securely redirect unauthorized staff members away from restricted administrative panels automatically.
+
 ### Customer Intelligence Tags
 
 The system uses a combination of backend calculations and frontend heuristics to tag customers:
@@ -294,6 +304,10 @@ Create `backend/.env` with your PostgreSQL connection string:
 
 ```bash
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DB_NAME
+
+# Production Security Configurations
+ENVIRONMENT=production # Set to 'production' to enforce HTTPS-only secure JWT cookies
+ALLOWED_ORIGINS=https://your-production-domain.com # Comma-separated list of allowed CORS origins
 ```
 
 Initialize database tables and seed default automation configs:

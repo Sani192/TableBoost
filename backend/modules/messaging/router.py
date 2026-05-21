@@ -39,12 +39,53 @@ def get_message_logs(
 
 from modules.governance.service import log_audit_event
 
+import time
+import hashlib
+from collections import defaultdict
+
+# Cache to prevent duplicate campaign sends
+campaign_idempotency_cache = {}
+CAMPAIGN_IDEMPOTENCY_WINDOW = 30 # seconds
+
+# Rate limit campaign sends per user
+campaign_rate_limit = defaultdict(list)
+CAMPAIGN_RATE_MAX = 5 # max 5 campaigns
+CAMPAIGN_RATE_WINDOW = 300 # per 5 minutes
+
 @router.post("/campaign")
 def create_campaign(
     campaign: schemas.CampaignCreateRequest, 
     current_user = Depends(check_role(["OWNER", "MANAGER"])),
     db: Session = Depends(get_db)
 ):
+    current_time = time.time()
+    
+    # 1. Throttling
+    global campaign_rate_limit
+    campaign_rate_limit[current_user.id] = [t for t in campaign_rate_limit[current_user.id] if current_time - t < CAMPAIGN_RATE_WINDOW]
+    if len(campaign_rate_limit[current_user.id]) >= CAMPAIGN_RATE_MAX:
+        raise HTTPException(
+            status_code=429, 
+            detail="Too many campaigns sent recently. Please wait a few minutes."
+        )
+
+    # 2. Idempotency Check
+    payload_str = campaign.model_dump_json()
+    payload_hash = hashlib.sha256(payload_str.encode()).hexdigest()
+    cache_key = f"{current_user.id}:{payload_hash}"
+    
+    global campaign_idempotency_cache
+    campaign_idempotency_cache = {k: v for k, v in campaign_idempotency_cache.items() if current_time - v < CAMPAIGN_IDEMPOTENCY_WINDOW}
+    
+    if cache_key in campaign_idempotency_cache:
+        raise HTTPException(
+            status_code=409, 
+            detail="Duplicate campaign request detected. Please wait."
+        )
+        
+    campaign_idempotency_cache[cache_key] = current_time
+    campaign_rate_limit[current_user.id].append(current_time)
+
     try:
         result = service.execute_campaign(db, campaign.message, campaign.audience_type, campaign.inactive_days)
         log_audit_event(

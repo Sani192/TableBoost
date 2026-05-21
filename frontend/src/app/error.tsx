@@ -27,7 +27,7 @@ export default function GlobalError({
         
         <p className="text-slate-600 mb-8">
           TableBoost encountered an unexpected operational error. 
-          The issue has been logged and we're working to restore stability.
+          The issue has been logged and we&apos;re working to restore stability.
         </p>
 
         <div className="flex flex-col gap-3">

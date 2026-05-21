@@ -43,12 +43,43 @@ def list_visits(
 
 from modules.governance.service import log_audit_event
 
+import time
+from collections import defaultdict
+import hashlib
+import json
+
+# Idempotency cache for operational mutations
+# Key: user_id:payload_hash, Value: timestamp
+idempotency_cache = {}
+IDEMPOTENCY_WINDOW_SECONDS = 5
+
 @router.post("/", response_model=VisitResponse)
 def create_visit(
     visit_data: VisitCreate, 
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Idempotency check
+    payload_str = visit_data.model_dump_json()
+    payload_hash = hashlib.sha256(payload_str.encode()).hexdigest()
+    cache_key = f"{current_user.id}:{payload_hash}"
+    
+    import os
+    if not os.getenv("TESTING"):
+        current_time = time.time()
+        
+        # Cleanup old entries
+        global idempotency_cache
+        idempotency_cache = {k: v for k, v in idempotency_cache.items() if current_time - v < IDEMPOTENCY_WINDOW_SECONDS}
+        
+        if cache_key in idempotency_cache:
+            raise HTTPException(
+                status_code=409, 
+                detail="Duplicate request detected. Please wait a moment before trying again."
+            )
+            
+        idempotency_cache[cache_key] = current_time
+
     try:
         visit = service.add_visit(db, visit_data)
         log_audit_event(

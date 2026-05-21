@@ -25,6 +25,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     role = Column(String, nullable=False) # OWNER, MANAGER, STAFF
     is_active = Column(Boolean, default=True)
+    token_version = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

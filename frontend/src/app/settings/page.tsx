@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   getSettings, 
   updateSettings, 
@@ -83,7 +84,16 @@ const AUTOMATION_METADATA: Record<string, { label: string; icon: any; descriptio
 };
 
 export default function SettingsPage() {
-  const { hasFeatureAccess } = useAuth();
+  const { user, hasFeatureAccess } = useAuth();
+  const router = useRouter();
+  
+  // Secure route guard
+  useEffect(() => {
+    if (user && user.role === 'STAFF') {
+      router.replace('/');
+    }
+  }, [user, router]);
+
   const [template, setTemplate] = useState('');
   
   const [automations, setAutomations] = useState<AutomationConfig[]>([]);

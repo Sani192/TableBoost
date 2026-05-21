@@ -4,9 +4,11 @@ from typing import Optional
 from datetime import datetime, date
 from decimal import Decimal
 
+from pydantic import BaseModel, field_validator, Field
+
 class VisitCreate(BaseModel):
-    phone_number: str
-    name: Optional[str] = None
+    phone_number: str = Field(..., max_length=20)
+    name: Optional[str] = Field(None, max_length=100)
     amount: Optional[Decimal] = None
     send_sms: Optional[bool] = None  # Per-visit override; None = use global setting
     birthday: Optional[date] = None
