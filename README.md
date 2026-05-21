@@ -126,6 +126,16 @@ TableBoost implements strict security controls to protect against operational ab
 - **Data Validation Bounds**: Pydantic schemas enforce rigid `max_length` bounds on incoming text fields to defend against massive payload processing attacks.
 - **Secure Route Guards**: The frontend employs React `useEffect` hooks to securely redirect unauthorized staff members away from restricted administrative panels automatically.
 
+### 12. Deployment & Disaster Recovery
+
+TableBoost is built to be resilient, recoverable, and simple to deploy in standard VPS environments without enterprise cloud orchestration.
+
+- **Safe Migrations**: Uses Alembic for database migrations, enabling safe structural updates and clean rollbacks instead of destructive operations.
+- **Startup Governance**: The application mandates secure environment variables on startup. The API will refuse to boot in `production` mode if unsafe default keys are detected.
+- **Deep Health & Connectivity Backoffs**: The server implements exponential backoff to handle transient database unavailability during startup. A deep `/api/health` heartbeat performs live SQL verification and scheduler status checks.
+- **Scheduler Recovery**: Background automation and intelligence generation processes are strictly idempotent. If the server crashes mid-day, the scheduler will not duplicate intelligence metrics or resend the same SMS blasts for that period.
+- **Disaster Recovery Utilities**: Includes lightweight `pg_dump` based shell scripts (`scripts/backup.sh` and `scripts/restore.sh`) for rapid database backups and schema reconstruction. See the `docs/DEPLOYMENT_RUNBOOK.md` for full deployment and recovery procedures.
+
 ### Customer Intelligence Tags
 
 The system uses a combination of backend calculations and frontend heuristics to tag customers:

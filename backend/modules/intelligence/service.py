@@ -433,6 +433,16 @@ def generate_summary(db: Session, period_type: str):
     if rewards_redeemed > 0:
         highlights.append(f"{rewards_redeemed} rewards redeemed this period")
 
+    summary_exists = db.query(BusinessSummary).filter(
+        BusinessSummary.period_type == period_type,
+        BusinessSummary.period_start == period_start,
+        BusinessSummary.period_end == period_end
+    ).first()
+    
+    if summary_exists:
+        logger.info(f"Duplicate prevention: {period_type} summary for {period_start} already exists. Skipping.")
+        return metrics
+
     summary = BusinessSummary(
         period_type=period_type,
         period_start=period_start,

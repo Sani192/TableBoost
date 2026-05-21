@@ -115,14 +115,50 @@ app.include_router(intelligence_router)
 app.include_router(auth_router)
 app.include_router(governance_router)
 
+import os
+import sys
+
+def startup_validation():
+    # 1. Environment validation
+    if os.getenv("ENVIRONMENT") == "production":
+        from core.config import settings
+        if settings.SECRET_KEY == "your-super-secret-key-change-in-production":
+            logger.error("FATAL: Default SECRET_KEY is used in production. Halting startup.")
+            sys.exit(1)
+        if not os.getenv("ALLOWED_ORIGINS") or os.getenv("ALLOWED_ORIGINS") == "http://localhost:3000":
+            logger.warning("WARNING: ALLOWED_ORIGINS is not properly configured for production.")
+
+# Run startup validations before launching the application
+startup_validation()
+
 @app.get("/api/health")
 def health_check():
-    # Basic check to ensure the scheduler is running and the app is up
-    return {
-        "status": "ok",
-        "scheduler_running": scheduler.running,
-        "scheduler_jobs": len(scheduler.get_jobs())
-    }
+    """Deep health check for operational visibility."""
+    # Check DB Connectivity
+    db_status = "ok"
+    try:
+        from sqlalchemy import text
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+    except Exception as e:
+        logger.error(f"Health check DB error: {e}")
+        db_status = "error"
+    finally:
+        db.close()
+
+    # Scheduler Health
+    scheduler_status = "ok" if scheduler.running else "stopped"
+
+    is_healthy = db_status == "ok" and scheduler_status == "ok"
+    return JSONResponse(
+        status_code=200 if is_healthy else 503,
+        content={
+            "status": "ok" if is_healthy else "degraded",
+            "database": db_status,
+            "scheduler_running": scheduler_status,
+            "scheduler_jobs": len(scheduler.get_jobs())
+        }
+    )
 # Initial job registration
 
 # Initial job registration

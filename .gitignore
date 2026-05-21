@@ -243,3 +243,6 @@ Thumbs.db
 # Keep frontend application source helpers tracked despite the generic Python lib/ ignore.
 !frontend/src/lib/
 !frontend/src/lib/**
+
+# Backups
+backups/
