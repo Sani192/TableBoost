@@ -32,10 +32,11 @@ export default function RootLayout({
       </head>
       <body>
         <AuthProvider>
-          <Navigation />
-          <div className="container-app min-h-screen py-4 pb-20 sm:py-6 sm:pt-24 lg:py-8 lg:pt-28">
-            {children}
-          </div>
+          <Navigation>
+            <div className="container-app flex-1 py-4 pb-20 sm:py-6 lg:py-8">
+              {children}
+            </div>
+          </Navigation>
         </AuthProvider>
       </body>
     </html>

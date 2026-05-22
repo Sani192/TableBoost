@@ -5,9 +5,10 @@ import { Sun, Moon } from 'lucide-react';
 interface ThemeToggleProps {
   /** 'icon' = compact bordered button (desktop). 'nav' = nav-item style with label (mobile bottom bar). */
   variant?: 'icon' | 'nav';
+  className?: string;
 }
 
-export default function ThemeToggle({ variant = 'icon' }: ThemeToggleProps) {
+export default function ThemeToggle({ variant = 'icon', className = '' }: ThemeToggleProps) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function ThemeToggle({ variant = 'icon' }: ThemeToggleProps) {
   return (
     <button
       onClick={toggle}
-      className="flex h-9 w-9 items-center justify-center rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-500 dark:text-stone-400 shadow-soft transition-all hover:bg-stone-50 dark:hover:bg-stone-700 hover:text-stone-700 dark:hover:text-stone-300 active:scale-95"
+      className={`flex items-center justify-center rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-500 dark:text-stone-400 shadow-soft transition-all hover:bg-stone-50 dark:hover:bg-stone-700 hover:text-stone-700 dark:hover:text-stone-300 active:scale-95 ${className || 'h-9 w-9'}`}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >

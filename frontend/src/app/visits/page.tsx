@@ -156,13 +156,15 @@ export default function VisitsPage() {
       {/* Header */}
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 shadow-soft transition-all hover:bg-stone-50 hover:text-stone-700 active:scale-95"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          </button>
+          {searchParams.has('q') && (
+            <button
+              onClick={() => router.back()}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 shadow-soft transition-all hover:bg-stone-50 hover:text-stone-700 active:scale-95"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
               History

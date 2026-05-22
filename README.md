@@ -39,7 +39,7 @@ TableBoost features a **dark / light mode toggle**, a unified **design system** 
 
 ### 4. Loyalty Rewards Hub
 
-- Create and manage multiple rewards from the settings area.
+- Create and manage multiple rewards from the dedicated Loyalty Hub.
 - Support for reward types such as:
   - Visit milestone rewards
   - Birthday rewards
@@ -58,7 +58,7 @@ TableBoost features a **dark / light mode toggle**, a unified **design system** 
 
 ### 6. Automation Pilots
 
-TableBoost includes configurable automation records that can be enabled, disabled, and edited from the settings area. The backend syncs these records into a scheduler so background jobs can run without manual intervention.
+TableBoost includes configurable automation records that can be enabled, disabled, and edited from the dedicated Automations dashboard. The backend syncs these records into a scheduler so background jobs can run without manual intervention.
 
 Default automation/add-on types include:
 
@@ -221,7 +221,9 @@ In a multi-user layout (e.g., Owner + Manager + Staff), the active subscription 
 | `/customers/[id]` | Customer profile, visit history, loyalty status, reward redemption, and intelligence. |
 | `/campaigns` | Manual campaign creation for targeted audiences. |
 | `/messages` | Message log review and filtering. |
-| `/settings` | Engagement settings, automation pilots, and loyalty reward management. |
+| `/loyalty` | Manage milestone and event-based customer rewards. |
+| `/automations` | Manage auto-pilot campaigns and system operations. |
+| `/settings` | Global engagement settings and review message templates. |
 | `/governance` | Security, audit, and operational tracking dashboard (Owner only). |
 
 

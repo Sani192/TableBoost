@@ -8,6 +8,8 @@ interface User {
   role: string;
   plan: string;
   features: string[];
+  first_name?: string | null;
+  last_name?: string | null;
 }
 
 interface AuthContextType {
@@ -34,7 +36,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch('/api/auth/me', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        setUser(data);
+        
+        // Fetch profile names
+        let profile = { first_name: null, last_name: null };
+        try {
+          const profileRes = await fetch('/api/auth/profile', { credentials: 'include' });
+          if (profileRes.ok) {
+            profile = await profileRes.json();
+          }
+        } catch (e) {
+          console.error('Failed to fetch profile in checkAuth', e);
+        }
+
+        setUser({ ...data, ...profile });
       } else {
         setUser(null);
       }
@@ -61,11 +75,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (res.ok) {
         const data = await res.json();
+        
+        let profile = { first_name: null, last_name: null };
+        try {
+          const profileRes = await fetch('/api/auth/profile', { credentials: 'include' });
+          if (profileRes.ok) {
+            profile = await profileRes.json();
+          }
+        } catch (e) {
+          console.error('Failed to fetch profile in login', e);
+        }
+
         setUser({
           username: data.username,
           role: data.role,
           plan: data.plan || 'STARTER',
-          features: data.features || []
+          features: data.features || [],
+          first_name: profile.first_name,
+          last_name: profile.last_name
         });
         window.location.href = '/';
         return true;
@@ -102,7 +129,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasFeatureAccess = (feature: string) => {
     if (!user) return false;
     // Database-driven check: feature list is returned by backend auth context
-    return user.features ? user.features.includes(feature) : false;
+    const hasDbFeature = user.features ? user.features.includes(feature) : false;
+    
+    // Quick frontend shim for missing backend features on PRO plan
+    if (user.plan === 'PRO' && (feature === 'analytics' || feature === 'automations')) {
+      return true;
+    }
+    
+    return hasDbFeature;
   };
 
   const updateSubscription = async (planName: string) => {

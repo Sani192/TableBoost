@@ -4,7 +4,7 @@ import { LogOut, User, Sun, Moon } from 'lucide-react';
 import Drawer from '@/components/ui/Drawer';
 import { useAuth } from '@/context/AuthContext';
 import { changePassword, getProfile, updateProfile } from '@/lib/api';
-import PlanDetailsModal from '@/components/PlanDetailsModal';
+import SubscriptionPlansModal from '@/components/SubscriptionPlansModal';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 
 interface ProfileDrawerProps {
@@ -25,8 +25,7 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
   const [profileMessage, setProfileMessage] = useState('');
   const [profileError, setProfileError] = useState('');
 
-  const [isPlanOpen, setIsPlanOpen] = useState(false);
-  const [selectedPlanDetails, setSelectedPlanDetails] = useState<any | null>(null);
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -63,13 +62,6 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
     }
   };
 
-  const plans = [
-    { name: 'STARTER', price: '$49/mo', desc: 'Core visit entry & tracking', features: ['Quick visit entry', 'Customer logs'], tier: 1 },
-    { name: 'GROWTH', price: '$99 - $149/mo', desc: 'Loyalty programs & messaging campaigns', features: ['Loyalty Rewards', 'Smart Segments', 'SMS Campaigns'], tier: 2 },
-    { name: 'PRO', price: '$249 - $299/mo', desc: 'Predictive churn intelligence & automation', features: ['AI Recommendations', 'Churn Risk Scoring', 'Automation pilots'], tier: 3 },
-    { name: 'ENTERPRISE_READY', price: 'Custom', desc: 'Multi-location, fine-grained access control', features: ['Enterprise multitenancy', 'Priority support'], tier: 4 },
-  ];
-
   return (
     <>
       <Drawer isOpen={isOpen} onClose={onClose} title="User Profile">
@@ -87,15 +79,6 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
             </div>
           </div>
 
-          {/* Appearance */}
-          <div className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800 rounded-2xl">
-            <div>
-              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">Appearance</h3>
-              <p className="text-xs text-stone-500 dark:text-stone-400">Toggle dark/light mode</p>
-            </div>
-            <ThemeToggle />
-          </div>
-
           {user?.role === 'OWNER' && (
             <div className="border-b border-stone-100 dark:border-stone-700 pb-6 space-y-3">
               <div className="flex items-center justify-between">
@@ -104,52 +87,13 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
                   <p className="text-xs text-stone-500 dark:text-stone-400 font-semibold">Currently on <span className="font-extrabold text-brand-600 dark:text-brand-400 uppercase">{user?.plan || 'STARTER'}</span></p>
                 </div>
                 <button 
-                  onClick={() => setIsPlanOpen(!isPlanOpen)}
+                  onClick={() => setIsSubscriptionModalOpen(true)}
                   type="button"
                   className="text-xs font-bold text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-700 bg-brand-50 dark:bg-brand-900/30 px-2.5 py-1 rounded-lg hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-all active:scale-95"
                 >
-                  {isPlanOpen ? 'Hide Plans' : 'Change Plan'}
+                  Change Plan
                 </button>
               </div>
-
-              {isPlanOpen && (
-                <div className="space-y-3 pt-2 animate-slide-up">
-                  {plans.map((p) => {
-                    const isCurrent = (user?.plan || 'STARTER') === p.name;
-                    
-                    return (
-                      <div 
-                        key={p.name} 
-                        onClick={() => setSelectedPlanDetails(p)}
-                        className={`p-3.5 rounded-2xl border transition-all flex flex-col gap-2 relative overflow-hidden ${
-                          isCurrent 
-                            ? 'border-brand-500 bg-brand-50/30 dark:bg-brand-900/20 ring-2 ring-brand-500/10' 
-                            : 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 hover:border-brand-400 hover:shadow-soft active:scale-[0.98] cursor-pointer'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-black text-stone-900 dark:text-stone-100 uppercase tracking-wide">{p.name.replace('_', ' ')}</span>
-                              {isCurrent && (
-                                <span className="bg-brand-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full">Active</span>
-                              )}
-                            </div>
-                            <p className="text-[10px] text-stone-500 dark:text-stone-400 font-medium mt-0.5">{p.desc}</p>
-                          </div>
-                          <span className="text-xs font-black text-stone-900 dark:text-stone-100">{p.price}</span>
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 border-t border-dashed border-stone-150 dark:border-stone-700 pt-2">
-                          {p.features.map(f => (
-                            <span key={f} className="text-[9px] text-stone-400 dark:text-stone-500 font-bold flex items-center gap-0.5">• {f}</span>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           )}
 
@@ -222,35 +166,19 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
 
             <button
               type="submit"
-              className="w-full bg-brand-600 text-white py-2.5 rounded-xl font-bold hover:bg-brand-700 transition-colors active:scale-95"
+              className="w-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 py-2.5 rounded-xl font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors active:scale-95 text-sm"
             >
-              Update Password
+              Change Password
             </button>
           </form>
 
-          {/* Logout */}
-          <div className="border-t border-stone-100 dark:border-stone-700 pt-4">
-            <button
-              onClick={() => {
-                onClose();
-                logout();
-              }}
-              className="w-full flex items-center justify-center gap-2 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 py-2.5 rounded-xl font-bold hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors active:scale-95"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </button>
-          </div>
+
         </div>
       </Drawer>
 
-      {/* Plan Details Modal */}
-      {selectedPlanDetails && (
-        <PlanDetailsModal
-          plan={selectedPlanDetails}
-          currentPlan={user?.plan || 'STARTER'}
-          onClose={() => setSelectedPlanDetails(null)}
-        />
+      {/* Unified Subscription Plans Modal */}
+      {isSubscriptionModalOpen && (
+        <SubscriptionPlansModal onClose={() => setIsSubscriptionModalOpen(false)} />
       )}
     </>
   );

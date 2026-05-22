@@ -1,112 +1,400 @@
 'use client';
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Home, Users, MessageSquare, Send, Settings, Plus, User, Shield } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Home, Users, MessageSquare, Send, Settings, Plus, User, Shield, Menu, Lock, Crown, LayoutDashboard, ChevronRight, X, PanelLeftClose, PanelLeft, Search, Rocket, Trophy, LogOut } from 'lucide-react';
 import Drawer from '@/components/ui/Drawer';
 import AddVisitForm from '@/components/AddVisitForm';
 import ProfileDrawer from '@/components/ProfileDrawer';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import SubscriptionPlansModal from '@/components/SubscriptionPlansModal';
 import { useAuth } from '@/context/AuthContext';
+import Button from '@/components/ui/Button';
 
-export default function Navigation() {
+export default function Navigation({ children }: { children?: React.ReactNode }) {
   const pathname = usePathname();
+  const { user, hasFeatureAccess, logout } = useAuth();
+
   const [isAddVisitOpen, setIsAddVisitOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { user, hasFeatureAccess } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState<{name: string, desc: string} | null>(null);
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+  
+  // Sidebar state
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const isCustomerPage = pathname?.startsWith('/customers/');
   const customerIdStr = isCustomerPage ? pathname.split('/')[2] : null;
   const customerId = customerIdStr && !isNaN(Number(customerIdStr)) ? Number(customerIdStr) : undefined;
 
-  const allNavItems = [
-    { name: 'Home', href: '/', icon: Home, roles: ['OWNER', 'MANAGER'] },
-    { name: 'Customers', href: '/customers', icon: Users, roles: ['OWNER', 'MANAGER'], feature: 'customers' },
-    { name: 'Campaigns', href: '/campaigns', icon: Send, roles: ['OWNER', 'MANAGER'], feature: 'campaigns' },
-    { name: 'Messages', href: '/messages', icon: MessageSquare, roles: ['OWNER', 'MANAGER'], feature: 'campaigns' },
-    { name: 'Settings', href: '/settings', icon: Settings, roles: ['OWNER'] },
-    { name: 'Governance', href: '/governance', icon: Shield, roles: ['OWNER', 'MANAGER'], feature: 'governance' },
-    { name: 'Add Visit', href: '/add-visit', icon: Plus, roles: ['STAFF'], feature: 'visits' },
+  // Domain-driven Navigation Architecture
+  const domains = [
+    {
+      label: 'Core Operations',
+      items: [
+        { name: 'Dashboard', href: '/', icon: Home, roles: ['OWNER', 'MANAGER'] },
+        { name: 'Customers', href: '/customers', icon: Users, roles: ['OWNER', 'MANAGER'], feature: 'customers' },
+        { name: 'Visits', href: '/visits', icon: LayoutDashboard, roles: ['OWNER', 'MANAGER'], feature: 'visits' },
+      ]
+    },
+    {
+      label: 'Growth & Engagement',
+      items: [
+        { name: 'Campaigns', href: '/campaigns', icon: Send, roles: ['OWNER', 'MANAGER'], feature: 'campaigns' },
+        { name: 'Messages', href: '/messages', icon: MessageSquare, roles: ['OWNER', 'MANAGER'], feature: 'campaigns' },
+        { name: 'Loyalty Rewards', href: '/loyalty', icon: Trophy, roles: ['OWNER', 'MANAGER'], feature: 'loyalty' },
+      ]
+    },
+    {
+      label: 'Administration',
+      items: [
+        { name: 'Automations', href: '/automations', icon: Rocket, roles: ['OWNER'], feature: 'automation' },
+        { name: 'Settings', href: '/settings', icon: Settings, roles: ['OWNER'] },
+        { name: 'Governance', href: '/governance', icon: Shield, roles: ['OWNER', 'MANAGER'], feature: 'governance' },
+      ]
+    }
   ];
 
-  const navItems = allNavItems.filter(item => 
-    user && 
-    item.roles.includes(user.role) && 
-    (!item.feature || hasFeatureAccess(item.feature))
-  );
+  // Mobile Bottom Bar Primary Items
+  const mobilePrimaryItems = [
+    { name: 'Home', href: '/', icon: Home, roles: ['OWNER', 'MANAGER'] },
+    { name: 'Customers', href: '/customers', icon: Users, roles: ['OWNER', 'MANAGER'] },
+    { name: 'Add Visit', href: '/add-visit', icon: Plus, roles: ['STAFF'] },
+  ];
+
+  // Handler for navigation click
+  const handleNavClick = (e: React.MouseEvent, item: any) => {
+    if (item.feature && !hasFeatureAccess(item.feature)) {
+      e.preventDefault();
+      setUpgradeFeature({ name: item.name, desc: item.desc || 'Upgrade to unlock this premium module.' });
+      setIsMobileMenuOpen(false);
+    } else {
+      setIsMobileMenuOpen(false);
+    }
+  };
+
+  const NavItemRender = ({ item, isMobile = false }: { item: any, isMobile?: boolean }) => {
+    const isLocked = item.feature && !hasFeatureAccess(item.feature);
+    const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
+    
+    // Premium styling constants
+    const activeStyles = 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 font-bold shadow-sm';
+    const inactiveStyles = 'text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-white/5 hover:text-stone-900 dark:hover:text-stone-200 font-medium';
+    
+    return (
+      <Link
+        href={isLocked ? '#' : item.href}
+        onClick={(e) => handleNavClick(e, item)}
+        title={isCollapsed && !isMobile ? item.name : undefined}
+        className={`flex items-center gap-3 py-2 rounded-xl transition-all group relative ${isCollapsed && !isMobile ? 'px-0 justify-center mx-2' : 'px-3'} ${isActive ? activeStyles : inactiveStyles}`}
+      >
+        {/* Active Indicator Bar (Subtle left border) */}
+        {isActive && (!isCollapsed || isMobile) && (
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand-600 dark:bg-brand-400 rounded-r-full" />
+        )}
+        {isActive && isCollapsed && !isMobile && (
+          <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand-600 dark:bg-brand-400 rounded-full" />
+        )}
+
+        <div className={`flex items-center justify-center shrink-0 ${isActive ? 'text-brand-600 dark:text-brand-400' : 'text-stone-400 dark:text-stone-500 group-hover:text-stone-600 dark:group-hover:text-stone-300'}`}>
+          <item.icon className="h-[18px] w-[18px] stroke-[2.5px]" />
+        </div>
+        
+        {(!isCollapsed || isMobile) && (
+          <>
+            <span className="flex-1 truncate text-sm tracking-tight">{item.name}</span>
+            {isLocked && (
+              <div className="shrink-0 flex items-center justify-center bg-stone-100 dark:bg-stone-800 rounded-lg px-2 py-0.5 border border-stone-200 dark:border-stone-700 shadow-sm">
+                <Lock className="h-3 w-3 text-stone-500 dark:text-stone-400 mr-1" />
+                <span className="text-[9px] font-extrabold text-stone-600 dark:text-stone-400 tracking-wider">PRO</span>
+              </div>
+            )}
+          </>
+        )}
+      </Link>
+    );
+  };
+
+  const displayName = user?.first_name || user?.last_name 
+    ? `${user.first_name || ''} ${user.last_name || ''}`.trim() 
+    : 'My Profile';
+
+  if (pathname === '/login') {
+    return <>{children}</>;
+  }
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 pb-safe pt-1 shadow-[0_-4px_24px_-12px_rgba(0,0,0,0.1)] sm:top-0 sm:bottom-auto sm:border-b sm:border-t-0 sm:pt-0">
-        <div className="mx-auto flex h-14 max-w-lg items-center justify-around px-2 sm:h-16 sm:max-w-none sm:justify-between sm:px-6 lg:px-8">
-          <div className="flex items-center justify-around w-full sm:w-auto sm:justify-start sm:gap-6">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`flex flex-col items-center justify-center space-y-1 px-3 py-1 sm:flex-row sm:space-x-2 sm:space-y-0 sm:px-4 ${
-                    isActive ? 'text-brand-600 dark:text-brand-400' : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
-                  }`}
-                >
-                  <item.icon className={`h-5 w-5 sm:h-4 sm:w-4 ${isActive ? 'fill-brand-50 dark:fill-brand-900/40' : ''}`} />
-                  <span className={`text-[10px] font-medium sm:text-sm ${isActive ? 'font-bold' : ''}`}>
-                    {item.name}
-                  </span>
-                </Link>
-              );
-            })}
-            
-            {/* Profile Button */}
-            {user && (
+      {/* ======================================================== */}
+      {/* DESKTOP SIDEBAR NAVIGATION (Hidden on mobile)            */}
+      {/* ======================================================== */}
+      <aside className={`hidden sm:flex flex-col fixed left-0 top-0 bottom-0 ${isCollapsed ? 'w-20' : 'w-64'} border-r border-stone-200/60 dark:border-white/5 bg-white dark:bg-[#0a0a0a] z-40 transition-all duration-300`}>
+        
+        {/* Brand Header */}
+        <div className={`h-16 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-6'} shrink-0 relative`}>
+          <Link href="/" className="flex items-center gap-2 text-stone-900 dark:text-white overflow-hidden cursor-pointer" title="TableBoost">
+            <Crown className="h-6 w-6 shrink-0 fill-stone-900 dark:fill-white stroke-none" />
+            {!isCollapsed && <span className="text-lg font-black tracking-tight truncate">TableBoost</span>}
+          </Link>
+          
+          {/* Collapse/Expand Toggle (Absolute positioned for perfection) */}
+          <button 
+            onClick={() => setIsCollapsed(!isCollapsed)} 
+            className={`absolute top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 dark:hover:text-white transition-colors bg-white dark:bg-[#0a0a0a] hover:bg-stone-100 dark:hover:bg-stone-800 p-1.5 rounded-full border border-stone-200 dark:border-stone-800 shadow-sm z-50
+              ${isCollapsed ? 'right-[-14px]' : 'right-4'}
+            `}
+            title={isCollapsed ? 'Expand' : 'Collapse'}
+          >
+            {isCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </button>
+        </div>
+
+        {/* Global Action */}
+        {user && user.role !== 'STAFF' && (
+          <div className={`pt-6 pb-4 shrink-0 ${isCollapsed ? 'px-3' : 'px-4'}`}>
+            <button 
+              onClick={() => setIsAddVisitOpen(true)} 
+              title={isCollapsed ? "Add Visit" : undefined}
+              className={`w-full flex items-center justify-center gap-2 bg-brand-600 dark:bg-brand-600 text-white dark:text-white py-2.5 rounded-xl hover:bg-brand-700 dark:hover:bg-brand-500 transition-all shadow-sm active:scale-95 group ${isCollapsed ? 'px-0' : 'px-4'}`}
+            >
+              <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform shrink-0 stroke-[2.5px]" />
+              {!isCollapsed && <span className="text-sm font-bold truncate">Add Visit</span>}
+            </button>
+          </div>
+        )}
+
+        {/* Navigation Domains */}
+        <div className={`flex-1 overflow-y-auto py-2 space-y-6 custom-scrollbar ${isCollapsed ? 'px-0' : 'px-3'}`}>
+          {domains.map((domain, idx) => {
+            const visibleItems = domain.items.filter(item => user && item.roles.includes(user.role));
+            if (visibleItems.length === 0) return null;
+
+            return (
+              <div key={idx} className="space-y-1">
+                {!isCollapsed ? (
+                  <h3 className="px-4 text-[10px] font-black text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-2 truncate">
+                    {domain.label}
+                  </h3>
+                ) : (
+                  <div className="h-px bg-stone-100 dark:bg-stone-800/60 mb-2 w-8 mx-auto" />
+                )}
+                
+                <div className="space-y-0.5">
+                  {visibleItems.map(item => <NavItemRender key={item.name} item={item} />)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Bottom Actions (Theme + Profile) */}
+        {user && (
+          <div className={`shrink-0 border-t border-stone-100 dark:border-stone-800/60 flex flex-col ${isCollapsed ? 'p-2' : 'p-4'}`}>
+            <div className={`flex items-center mb-2 ${isCollapsed ? 'justify-center' : 'justify-between px-2'}`}>
+              {!isCollapsed && <span className="text-xs font-bold text-stone-500 dark:text-stone-400">Theme</span>}
+              <div>
+                <ThemeToggle className="h-8 w-8" />
+              </div>
+            </div>
+
+            <div className={`flex items-center gap-1 ${isCollapsed ? 'flex-col' : ''}`}>
               <button
                 onClick={() => setIsProfileOpen(true)}
-                className="flex flex-col items-center justify-center space-y-1 px-3 py-1 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 sm:flex-row sm:space-x-2 sm:space-y-0 sm:px-4"
+                className={`flex-1 flex items-center p-2 rounded-xl hover:bg-stone-50 dark:hover:bg-white/5 transition-colors text-left ${isCollapsed ? 'justify-center gap-0 w-full' : 'gap-3'}`}
+                title="Profile Settings"
               >
-                <User className="h-5 w-5 sm:h-4 sm:w-4" />
-                <span className="text-[10px] font-medium sm:text-sm">Profile</span>
+                <div className="h-8 w-8 shrink-0 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 rounded-full flex items-center justify-center font-bold text-sm">
+                  <User className="h-4 w-4" />
+                </div>
+                {!isCollapsed && (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-stone-900 dark:text-white truncate">{displayName}</p>
+                    <p className="text-[10px] text-stone-500 dark:text-stone-400 uppercase font-medium">{user.role}</p>
+                  </div>
+                )}
               </button>
-            )}
-
-          </div>
-
-          {/* Desktop Actions */}
-          <div className="hidden sm:flex items-center gap-3">
-            <ThemeToggle />
-            {user && user.role !== 'STAFF' && (
-              <button 
-                onClick={() => setIsAddVisitOpen(true)} 
-                className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-xl hover:bg-brand-700 transition-colors shadow-soft active:scale-95"
+              
+              <button
+                onClick={logout}
+                className={`flex shrink-0 items-center justify-center p-2 rounded-xl text-stone-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ${isCollapsed ? 'w-full' : ''}`}
+                title="Sign Out"
               >
-                <Plus className="h-4 w-4" />
-                <span className="text-sm font-bold">Add Visit</span>
+                <LogOut className="h-5 w-5" />
               </button>
-            )}
+            </div>
           </div>
+        )}
+      </aside>
+
+      {/* ======================================================== */}
+      {/* MAIN CONTENT WRAPPER                                     */}
+      {/* ======================================================== */}
+      <div className={`flex flex-col min-h-screen transition-all duration-300 ${isCollapsed ? 'sm:ml-20' : 'sm:ml-64'}`}>
+        {children}
+      </div>
+
+      {/* ======================================================== */}
+      {/* MOBILE BOTTOM APP BAR (Hidden on desktop)                */}
+      {/* ======================================================== */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-[#0a0a0a]/90 backdrop-blur-lg border-t border-stone-200/60 dark:border-white/5 pb-safe shadow-[0_-4px_24px_-12px_rgba(0,0,0,0.1)]">
+        <div className="flex items-center justify-around h-16 px-2 relative">
+          
+          {mobilePrimaryItems.map(item => {
+            if (user && !item.roles.includes(user.role)) return null;
+            const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex flex-col items-center justify-center space-y-1 w-16 h-full ${
+                  isActive ? 'text-brand-600 dark:text-brand-400' : 'text-stone-400 dark:text-stone-500'
+                }`}
+              >
+                <item.icon className={`h-5 w-5 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+                <span className={`text-[10px] ${isActive ? 'font-bold' : 'font-medium'}`}>{item.name}</span>
+              </Link>
+            );
+          })}
+
+          {user && user.role !== 'STAFF' && (
+            <div className="relative -top-5">
+              <button
+                onClick={() => setIsAddVisitOpen(true)}
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 dark:bg-brand-600 text-white dark:text-white shadow-xl active:scale-95 transition-transform border-4 border-white dark:border-[#0a0a0a]"
+              >
+                <Plus className="h-6 w-6 stroke-[2.5px]" />
+              </button>
+            </div>
+          )}
+
+          {user && user.role !== 'STAFF' && (
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="flex flex-col items-center justify-center space-y-1 w-16 h-full text-stone-400 dark:text-stone-500"
+            >
+              <Menu className="h-5 w-5" />
+              <span className="text-[10px] font-medium">Menu</span>
+            </button>
+          )}
+
+          {user && user.role === 'STAFF' && (
+            <button
+              onClick={() => setIsProfileOpen(true)}
+              className="flex flex-col items-center justify-center space-y-1 w-16 h-full text-stone-400 dark:text-stone-500"
+            >
+              <User className="h-5 w-5" />
+              <span className="text-[10px] font-medium">Profile</span>
+            </button>
+          )}
         </div>
       </nav>
 
-      {/* Mobile FAB (Hidden for Staff) */}
-      {user && user.role !== 'STAFF' && (
-        <button 
-          onClick={() => setIsAddVisitOpen(true)} 
-          className="fixed bottom-20 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 dark:bg-brand-500 text-white shadow-lg hover:bg-brand-700 dark:hover:bg-brand-600 transition-colors sm:hidden active:scale-95"
-          aria-label="Add Visit"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
-      )}
+      {/* ======================================================== */}
+      {/* MOBILE FULL MENU DRAWER                                  */}
+      {/* ======================================================== */}
+      <Drawer isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} title="Menu">
+        <div className="p-4 space-y-6 pb-24">
+          
+          {user && (
+            <div 
+              onClick={() => { setIsMobileMenuOpen(false); setIsProfileOpen(true); }}
+              className="flex items-center gap-4 p-4 bg-stone-50 dark:bg-stone-800 rounded-2xl border border-stone-100 dark:border-stone-700 active:scale-[0.98] transition-transform cursor-pointer"
+            >
+              <div className="h-12 w-12 bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-full flex items-center justify-center font-bold text-lg">
+                <User className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <p className="text-base font-bold text-stone-900 dark:text-stone-100 truncate">
+                  {displayName}
+                </p>
+                <p className="text-xs text-stone-500 dark:text-stone-400 uppercase font-semibold">{user.role} Account</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-stone-400" />
+            </div>
+          )}
 
-      {/* Add Visit Drawer */}
+          {/* Theme Toggle for Mobile */}
+          <div className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800 rounded-2xl border border-stone-100 dark:border-stone-700">
+            <div>
+              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">Theme</h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Toggle dark/light mode</p>
+            </div>
+            <ThemeToggle />
+          </div>
+
+          <div className="space-y-6">
+            {domains.map((domain, idx) => {
+              const visibleItems = domain.items.filter(item => user && item.roles.includes(user.role));
+              if (visibleItems.length === 0) return null;
+
+              return (
+                <div key={idx} className="space-y-2">
+                  <h3 className="text-[11px] font-black text-stone-400 dark:text-stone-500 uppercase tracking-widest pl-1">
+                    {domain.label}
+                  </h3>
+                  <div className="bg-white dark:bg-[#0a0a0a] border border-stone-200/60 dark:border-white/5 rounded-2xl overflow-hidden divide-y divide-stone-100 dark:divide-white/5">
+                    {visibleItems.map(item => (
+                      <NavItemRender key={item.name} item={item} isMobile />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </Drawer>
+
+      {/* ======================================================== */}
+      {/* SHARED DRAWERS & MODALS                                  */}
+      {/* ======================================================== */}
+      
       <Drawer isOpen={isAddVisitOpen} onClose={() => setIsAddVisitOpen(false)} title="Quick Add Visit">
         <div className="p-4">
           <AddVisitForm onSuccess={() => setIsAddVisitOpen(false)} onCancel={() => setIsAddVisitOpen(false)} customerId={customerId} />
         </div>
       </Drawer>
 
-      {/* Profile Drawer */}
       <ProfileDrawer isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+
+      {upgradeFeature && (
+        <Drawer isOpen={!!upgradeFeature} onClose={() => setUpgradeFeature(null)} title="Premium Feature">
+          <div className="p-6 flex flex-col items-center text-center animate-slide-up">
+            <div className="w-20 h-20 bg-stone-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6">
+              <Lock className="h-10 w-10 text-stone-900 dark:text-white" />
+            </div>
+            
+            <h3 className="text-2xl font-black text-stone-900 dark:text-white tracking-tight mb-2">
+              Unlock {upgradeFeature.name}
+            </h3>
+            
+            <p className="text-stone-500 dark:text-stone-400 font-medium mb-8 max-w-sm">
+              {upgradeFeature.desc} Upgrade your workspace to access this feature and supercharge your restaurant operations.
+            </p>
+            
+            <div className="w-full space-y-3">
+              <Button 
+                variant="primary" 
+                fullWidth 
+                onClick={() => {
+                  setUpgradeFeature(null);
+                  setIsSubscriptionModalOpen(true);
+                }}
+              >
+                View Subscription Plans
+              </Button>
+              <Button variant="secondary" fullWidth onClick={() => setUpgradeFeature(null)}>
+                Maybe Later
+              </Button>
+            </div>
+          </div>
+        </Drawer>
+      )}
+
+      {/* Unified Subscription Plans Modal */}
+      {isSubscriptionModalOpen && (
+        <SubscriptionPlansModal onClose={() => setIsSubscriptionModalOpen(false)} />
+      )}
     </>
   );
 }
