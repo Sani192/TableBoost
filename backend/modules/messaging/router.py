@@ -15,6 +15,15 @@ router = APIRouter(
 from typing import Optional
 from datetime import datetime
 
+@router.get("/campaign/audience-count", dependencies=[Depends(check_role(["OWNER", "MANAGER"]))])
+def get_campaign_audience_count(
+    audience_type: str,
+    inactive_days: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    count = service.get_audience_count(db, audience_type, inactive_days)
+    return {"count": count}
+
 @router.get("/", response_model=List[schemas.MessageLogResponse], dependencies=[Depends(check_role(["OWNER", "MANAGER"]))])
 def get_message_logs(
     skip: int = 0, 

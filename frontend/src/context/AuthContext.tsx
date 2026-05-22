@@ -129,14 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasFeatureAccess = (feature: string) => {
     if (!user) return false;
     // Database-driven check: feature list is returned by backend auth context
-    const hasDbFeature = user.features ? user.features.includes(feature) : false;
-    
-    // Quick frontend shim for missing backend features on PRO plan
-    if (user.plan === 'PRO' && (feature === 'analytics' || feature === 'automations')) {
-      return true;
-    }
-    
-    return hasDbFeature;
+    return user.features ? user.features.includes(feature) : false;
   };
 
   const updateSubscription = async (planName: string) => {

@@ -89,7 +89,7 @@ export default function SubscriptionPlansModal({ onClose }: SubscriptionPlansMod
                       ))}
                     </div>
                     
-                    <div className="mt-2 pt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="mt-2 pt-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button className="w-full text-[10px] font-black uppercase tracking-wider text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/30 py-2 rounded-xl">
                         View Plan Details
                       </button>

@@ -11,6 +11,7 @@ import Tabs from '@/components/ui/Tabs';
 import Pagination from '@/components/ui/Pagination';
 import EmptyState from '@/components/ui/EmptyState';
 import PageHeader from '@/components/ui/PageHeader';
+import SubscriptionPlansModal from '@/components/SubscriptionPlansModal';
 import { getAuditLogs, getOperationalLogs, AuditLogItem, OperationalLogItem } from '@/lib/api';
 import { 
   Shield, 
@@ -44,14 +45,16 @@ export default function GovernancePage() {
   // Tab control: 'audit' (OWNER only) or 'operational' (OWNER & MANAGER)
   const isOwner = user?.role === 'OWNER';
   const isManager = user?.role === 'MANAGER';
-  const hasAccess = (isOwner || isManager) && hasFeatureAccess('governance');
+  const hasRoleAccess = isOwner || isManager;
+  const hasAccess = hasRoleAccess && hasFeatureAccess('governance');
+  const [showPlans, setShowPlans] = useState(false);
   
   // Secure route guard
   useEffect(() => {
-    if (user && !hasAccess) {
+    if (user && !hasRoleAccess) {
       router.replace('/');
     }
-  }, [user, hasAccess, router]);
+  }, [user, hasRoleAccess, router]);
   
   const [activeTab, setActiveTab] = useState<'audit' | 'operational'>(isOwner ? 'audit' : 'operational');
   
@@ -207,16 +210,18 @@ export default function GovernancePage() {
 
   if (!hasAccess) {
     return (
-      <div className="max-w-xl mx-auto mt-20 p-8 bg-white rounded-3xl border border-stone-200/60 shadow-card text-center">
-        <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Shield className="w-8 h-8" />
+      <div className="py-12 text-center bg-white rounded-3xl border border-stone-200/60 shadow-card p-6 flex flex-col items-center justify-center gap-4 animate-fade-in max-w-2xl mx-auto mt-10">
+        <div className="h-14 w-14 bg-stone-50 text-stone-400 rounded-2xl flex items-center justify-center border border-stone-200/60 shadow-sm animate-bounce">
+          <Lock className="h-6 w-6" />
         </div>
-        <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight flex items-center justify-center gap-2">
-          <Lock className="w-5 h-5 text-stone-400" /> Access Restricted
-        </h2>
-        <p className="text-stone-500 mt-2 font-semibold">
-          Only venue owners and managers with a Pro subscription have access to the Governance and Audit logging portal.
-        </p>
+        <div>
+          <h3 className="text-lg font-bold text-stone-900">Governance & Audit is Gated</h3>
+          <p className="text-sm text-stone-500 max-w-sm mt-1 mx-auto">Upgrade to the Pro plan to access the Governance and Audit logging portal.</p>
+        </div>
+        <Button onClick={() => setShowPlans(true)} className="mt-2 shadow-sm shadow-brand-500/20">
+          View Subscription Plans
+        </Button>
+        {showPlans && <SubscriptionPlansModal onClose={() => setShowPlans(false)} />}
       </div>
     );
   }
@@ -334,7 +339,7 @@ export default function GovernancePage() {
               <SlidersHorizontal className="h-4 w-4" />
               <span className="hidden sm:inline">Filters</span>
               {activeFiltersCount > 0 && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[10px] text-white">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-xs text-white">
                   {activeFiltersCount}
                 </span>
               )}
@@ -549,7 +554,7 @@ export default function GovernancePage() {
                         <p className="truncate text-sm font-bold text-stone-900 group-hover:text-brand-600 transition-colors">
                           {log.actor_username || 'System / System Job'}
                         </p>
-                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider sm:hidden mt-0.5">
+                        <p className="text-xs font-bold text-stone-400 uppercase tracking-wider sm:hidden mt-0.5">
                           {formatOptionText(log.action)}
                         </p>
                       </div>
@@ -580,7 +585,7 @@ export default function GovernancePage() {
                         <p className="text-xs font-bold text-stone-500">
                           {new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                         </p>
-                        <p className="text-[10px] font-medium text-stone-400">
+                        <p className="text-xs font-medium text-stone-400">
                           {new Date(log.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                         </p>
                       </div>
@@ -608,7 +613,7 @@ export default function GovernancePage() {
                         <p className="truncate text-sm font-bold text-stone-900 group-hover:text-brand-600 transition-colors">
                           {log.event_name}
                         </p>
-                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider sm:hidden mt-0.5">
+                        <p className="text-xs font-bold text-stone-400 uppercase tracking-wider sm:hidden mt-0.5">
                           {formatOptionText(log.log_type)}
                         </p>
                       </div>
@@ -624,7 +629,7 @@ export default function GovernancePage() {
                     <div className="hidden sm:block w-56 shrink-0 text-xs font-medium text-stone-600 truncate">
                       {log.message || '—'}
                       {log.duration_ms !== null && (
-                        <span className="ml-1.5 font-bold text-[10px] text-brand-600">
+                        <span className="ml-1.5 font-bold text-xs text-brand-600">
                           ({log.duration_ms}ms)
                         </span>
                       )}
@@ -640,7 +645,7 @@ export default function GovernancePage() {
                         <p className="text-xs font-bold text-stone-500">
                           {new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                         </p>
-                        <p className="text-[10px] font-medium text-stone-400">
+                        <p className="text-xs font-medium text-stone-400">
                           {new Date(log.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                         </p>
                       </div>
@@ -683,13 +688,13 @@ export default function GovernancePage() {
             {/* Quick Metrics Header Grid */}
             <div className="grid grid-cols-2 gap-3.5">
               <div className="p-3.5 bg-stone-50 border border-stone-150 rounded-2xl">
-                <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Status</div>
+                <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">Status</div>
                 <div className="mt-1.5">
                   <StatusBadge status={selectedItem.status} />
                 </div>
               </div>
               <div className="p-3.5 bg-stone-50 border border-stone-150 rounded-2xl">
-                <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Occurred At</div>
+                <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">Occurred At</div>
                 <div className="mt-1.5 font-bold text-stone-800 text-xs leading-relaxed">
                   {new Date(selectedItem.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}{' '}
                   {new Date(selectedItem.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
@@ -707,7 +712,7 @@ export default function GovernancePage() {
                       <User className="w-5 h-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">Performed By</span>
+                      <span className="block text-xs font-bold text-stone-400 uppercase tracking-wider">Performed By</span>
                       <span className="font-extrabold text-stone-900 text-sm mt-0.5 block">
                         {selectedItem.actor_username || 'System Automatic Process'}
                       </span>
@@ -719,7 +724,7 @@ export default function GovernancePage() {
                       <Shield className="w-5 h-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">Action Type</span>
+                      <span className="block text-xs font-bold text-stone-400 uppercase tracking-wider">Action Type</span>
                       <div className="mt-1">
                         <span className="inline-flex px-2.5 py-1 bg-brand-50 border border-brand-100 rounded-xl text-[11px] font-bold text-brand-700 tracking-tight">
                           {formatOptionText(selectedItem.action)}
@@ -734,7 +739,7 @@ export default function GovernancePage() {
                         <Cpu className="w-5 h-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">Affected Area</span>
+                        <span className="block text-xs font-bold text-stone-400 uppercase tracking-wider">Affected Area</span>
                         <div className="mt-1">
                           <span className="text-stone-855 font-bold text-xs bg-stone-100 px-2.5 py-1 border border-stone-200 rounded-xl">
                             {formatOptionText(selectedItem.entity_type)}
@@ -752,7 +757,7 @@ export default function GovernancePage() {
                       <FileText className="w-5 h-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">Category</span>
+                      <span className="block text-xs font-bold text-stone-400 uppercase tracking-wider">Category</span>
                       <div className="mt-1">
                         <span className="inline-flex px-2.5 py-1 bg-stone-100 dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-xl text-[11px] font-bold text-stone-700 dark:text-stone-300 tracking-tight">
                           {formatOptionText(selectedItem.log_type)}
@@ -766,7 +771,7 @@ export default function GovernancePage() {
                       <Cpu className="w-5 h-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">Event Name</span>
+                      <span className="block text-xs font-bold text-stone-400 uppercase tracking-wider">Event Name</span>
                       <span className="font-extrabold text-stone-900 text-sm mt-0.5 block">
                         {formatOptionText(selectedItem.event_name)}
                       </span>
@@ -779,7 +784,7 @@ export default function GovernancePage() {
                         <Clock className="w-5 h-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">Execution Duration</span>
+                        <span className="block text-xs font-bold text-stone-400 uppercase tracking-wider">Execution Duration</span>
                         <span className="text-stone-850 font-extrabold text-sm block mt-0.5">
                           {selectedItem.duration_ms} ms
                         </span>
@@ -789,7 +794,7 @@ export default function GovernancePage() {
 
                   {selectedItem.message && (
                     <div className="p-4 flex flex-col gap-1.5">
-                      <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">Summary Message</span>
+                      <span className="block text-xs font-bold text-stone-400 uppercase tracking-wider">Summary Message</span>
                       <p className="text-stone-600 text-xs font-semibold leading-relaxed bg-stone-50 border border-stone-200/80 p-3.5 rounded-2xl">
                         {selectedItem.message}
                       </p>
@@ -802,13 +807,13 @@ export default function GovernancePage() {
             {/* Changes Diff Viewer Card (Dynamic) */}
             {changedFields && (
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">Changed Field Details</label>
+                <label className="text-xs font-bold text-stone-400 uppercase tracking-wider block">Changed Field Details</label>
                 <div className="bg-stone-50 border border-stone-200/60 rounded-3xl p-4 space-y-3">
                   {Object.keys(changedFields).map((fieldName) => {
                     const fieldVal = changedFields[fieldName];
                     return (
                       <div key={fieldName} className="bg-white border border-stone-150 p-3 rounded-2xl space-y-1.5 shadow-sm">
-                        <span className="text-[10px] font-bold text-brand-600 uppercase tracking-wide">
+                        <span className="text-xs font-bold text-brand-600 uppercase tracking-wide">
                           {fieldName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                         </span>
                         
@@ -838,7 +843,7 @@ export default function GovernancePage() {
                 onClick={() => setShowRawJson(!showRawJson)}
                 className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-stone-100 transition-colors text-left"
               >
-                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
                   <SlidersHorizontal className="w-3.5 h-3.5" /> Technical / Developer Info
                 </span>
                 {showRawJson ? (
@@ -853,24 +858,24 @@ export default function GovernancePage() {
                   {/* Technical database IDs */}
                   <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                     <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-150">
-                      <span className="text-[9px] font-bold text-stone-400 block uppercase tracking-wider">Log Record ID</span>
+                      <span className="text-xs font-bold text-stone-400 block uppercase tracking-wider">Log Record ID</span>
                       <span className="text-stone-700 font-bold">#{selectedItem.id}</span>
                     </div>
                     {'actor_id' in selectedItem && selectedItem.actor_id && (
                       <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-150">
-                        <span className="text-[9px] font-bold text-stone-400 block uppercase tracking-wider">Actor ID</span>
+                        <span className="text-xs font-bold text-stone-400 block uppercase tracking-wider">Actor ID</span>
                         <span className="text-stone-700 font-bold">{selectedItem.actor_id}</span>
                       </div>
                     )}
                     {'entity_id' in selectedItem && selectedItem.entity_id && (
                       <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-150">
-                        <span className="text-[9px] font-bold text-stone-400 block uppercase tracking-wider">Target Entity ID</span>
+                        <span className="text-xs font-bold text-stone-400 block uppercase tracking-wider">Target Entity ID</span>
                         <span className="text-stone-700 font-bold">{selectedItem.entity_id}</span>
                       </div>
                     )}
                     {'job_id' in selectedItem && selectedItem.job_id && (
                       <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-150">
-                        <span className="text-[9px] font-bold text-stone-400 block uppercase tracking-wider">Job ID</span>
+                        <span className="text-xs font-bold text-stone-400 block uppercase tracking-wider">Job ID</span>
                         <span className="text-stone-700 font-bold">{selectedItem.job_id}</span>
                       </div>
                     )}
@@ -879,7 +884,7 @@ export default function GovernancePage() {
                   {/* Raw JSON */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-bold text-stone-400 uppercase tracking-wider">Raw JSON Payload</span>
+                      <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Raw JSON Payload</span>
                       <button
                         onClick={() => {
                           const jsonStr = JSON.stringify(selectedItem.metadata_json || {}, null, 2);

@@ -2,19 +2,24 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     setError('');
+    setIsLoading(true);
     const success = await login(username, password);
     if (!success) {
       setError('Invalid username or password');
+      setIsLoading(false);
     }
   };
 
@@ -70,9 +75,17 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              className="flex w-full justify-center rounded-xl border border-transparent bg-brand-600 py-3 px-4 text-sm font-bold text-white shadow-lift hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 transition-colors"
+              disabled={isLoading}
+              className="flex w-full justify-center items-center gap-2 rounded-xl border border-transparent bg-brand-600 py-3 px-4 text-sm font-bold text-white shadow-lift hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Sign in
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign in'
+              )}
             </button>
           </div>
         </form>

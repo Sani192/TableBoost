@@ -1,8 +1,11 @@
 'use client';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getMessageLogs, MessageLogResponse } from '@/lib/api';
-import { Star, Megaphone, Search, SlidersHorizontal, RefreshCw, X, Calendar, Lock } from 'lucide-react';
+import { Star, Megaphone, Search, SlidersHorizontal, RefreshCw, X, Calendar, Lock, MessageSquare } from 'lucide-react';
 import Card from '@/components/ui/Card';
+import EmptyState from '@/components/ui/EmptyState';
+import Button from '@/components/ui/Button';
+import SubscriptionPlansModal from '@/components/SubscriptionPlansModal';
 import { useAuth } from '@/context/AuthContext';
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -17,6 +20,7 @@ export default function MessagesPage() {
 
   const [logs, setLogs] = useState<MessageLogResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showPlans, setShowPlans] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [skip, setSkip] = useState(0);
@@ -91,7 +95,7 @@ export default function MessagesPage() {
   useEffect(() => {
     const timer = setTimeout(() => fetchLogs(false), 400);
     return () => clearTimeout(timer);
-  }, [search, type, status, startDate, endDate]);
+  }, [search, type, status, startDate, endDate, fetchLogs]);
 
   const loadingRef = useRef(false);
   loadingRef.current = loading || loadingMore;
@@ -113,7 +117,7 @@ export default function MessagesPage() {
     if (skip > 0) {
       fetchLogs(true);
     }
-  }, [skip]);
+  }, [skip, fetchLogs]);
 
   const activeFiltersCount = [type, status, startDate, endDate].filter(Boolean).length;
 
@@ -128,7 +132,7 @@ export default function MessagesPage() {
 
   if (!hasFeatureAccess('campaigns')) {
     return (
-      <div className="py-12 text-center bg-white rounded-3xl border border-stone-200/60 shadow-card p-6 flex flex-col items-center justify-center gap-4 animate-fade-in">
+      <div className="py-12 text-center bg-white rounded-3xl border border-stone-200/60 shadow-card p-6 flex flex-col items-center justify-center gap-4 animate-fade-in max-w-2xl mx-auto mt-10">
         <div className="h-14 w-14 bg-stone-50 text-stone-400 rounded-2xl flex items-center justify-center border border-stone-200/60 shadow-sm animate-bounce">
           <Lock className="h-6 w-6" />
         </div>
@@ -136,6 +140,10 @@ export default function MessagesPage() {
           <h3 className="text-lg font-bold text-stone-900">Message Campaigns & Logs are Gated</h3>
           <p className="text-sm text-stone-500 max-w-sm mt-1 mx-auto">Upgrade to the Growth plan to unlock manual text campaigns and full conversation history log features.</p>
         </div>
+        <Button onClick={() => setShowPlans(true)} className="mt-2 shadow-sm shadow-brand-500/20">
+          View Subscription Plans
+        </Button>
+        {showPlans && <SubscriptionPlansModal onClose={() => setShowPlans(false)} />}
       </div>
     );
   }
@@ -155,7 +163,7 @@ export default function MessagesPage() {
           <SlidersHorizontal className="h-4 w-4" />
           <span className="hidden sm:inline">Filters</span>
           {activeFiltersCount > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[10px] text-white">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-xs text-white">
               {activeFiltersCount}
             </span>
           )}
@@ -250,7 +258,7 @@ export default function MessagesPage() {
           {[1, 2, 3].map(i => <div key={i} className="h-20 bg-stone-100 rounded-xl"></div>)}
         </div>
       ) : logs.length === 0 ? (
-        <p className="text-sm font-bold text-stone-500 text-center py-10">No messages found.</p>
+        <EmptyState title="No messages found" description="Try adjusting your filters or date range." icon={<MessageSquare className="h-8 w-8" />} />
       ) : (
         <div className="space-y-3">
           {logs.map(log => (
@@ -266,7 +274,7 @@ export default function MessagesPage() {
               </div>
               <p className="text-sm text-stone-700 bg-stone-50 p-2 rounded">{log.message_text}</p>
               <div className="mt-3 flex items-center">
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold border ${
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs sm:text-xs font-bold border ${
                   log.type === 'review' 
                     ? 'bg-blue-50 text-blue-700 border-blue-200' 
                     : log.type === 'campaign' 

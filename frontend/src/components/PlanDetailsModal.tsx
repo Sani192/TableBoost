@@ -80,15 +80,15 @@ export default function PlanDetailsModal({ plan, currentPlan, onClose }: PlanDet
           {/* Plan Price & Status Badge */}
           <div className="p-4 bg-stone-50 dark:bg-stone-800 border border-stone-150 dark:border-stone-700 rounded-2xl flex justify-between items-center">
             <div>
-              <span className="text-[9px] uppercase font-black text-stone-400 dark:text-stone-500 tracking-wider">Plan Pricing</span>
+              <span className="text-[10px] uppercase font-black text-stone-400 dark:text-stone-500 tracking-wider">Plan Pricing</span>
               <p className="text-base font-black text-stone-900 dark:text-stone-100 mt-0.5">{plan.price}</p>
             </div>
             {isCurrent ? (
-              <span className="bg-brand-600 text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-full">
+              <span className="bg-brand-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full">
                 Currently Active
               </span>
             ) : (
-              <span className="bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 text-[9px] font-black uppercase px-2.5 py-1 rounded-full">
+              <span className="bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 text-[10px] font-black uppercase px-2.5 py-1 rounded-full">
                 Available Tier
               </span>
             )}

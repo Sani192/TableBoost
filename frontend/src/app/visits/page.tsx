@@ -117,14 +117,14 @@ export default function VisitsPage() {
     if (skip > 0) {
       fetchVisits(true);
     }
-  }, [skip]);
+  }, [skip, fetchVisits]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchVisits();
     }, 400);
     return () => clearTimeout(timer);
-  }, [search, startDate, endDate, minAmount, maxAmount, sortKey, sortOrder]);
+  }, [search, startDate, endDate, minAmount, maxAmount, sortKey, sortOrder, fetchVisits]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -186,7 +186,7 @@ export default function VisitsPage() {
           <SlidersHorizontal className="h-4 w-4" />
           <span className="hidden sm:inline">Filters</span>
           {activeFiltersCount > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[10px] text-white">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-xs text-white">
               {activeFiltersCount}
             </span>
           )}
@@ -236,6 +236,7 @@ export default function VisitsPage() {
                 <DollarSign className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
                 <input
                   type="number"
+                  min="0"
                   placeholder="0.00"
                   value={minAmount}
                   onChange={(e) => setMinAmount(e.target.value)}
@@ -250,6 +251,7 @@ export default function VisitsPage() {
                 <DollarSign className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
                 <input
                   type="number"
+                  min="0"
                   placeholder="Any"
                   value={maxAmount}
                   onChange={(e) => setMaxAmount(e.target.value)}

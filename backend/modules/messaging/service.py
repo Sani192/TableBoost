@@ -84,7 +84,7 @@ def get_messages(
         })
     return formatted_results
 
-def execute_campaign(db: Session, message_template: str, audience_type: str, inactive_days: int = None):
+def get_campaign_audience(db: Session, audience_type: str, inactive_days: int = None):
     if audience_type == "all":
         customers = db.query(Customer).all()
     elif audience_type == "inactive":
@@ -116,8 +116,26 @@ def execute_campaign(db: Session, message_template: str, audience_type: str, ina
         ).exists()
         
         customers = db.query(Customer).join(LoyaltyProgress, Customer.id == LoyaltyProgress.customer_id).filter(subq).all()
+    elif audience_type == "at_risk":
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
+        
+        customers = db.query(Customer).outerjoin(Visit, Customer.id == Visit.customer_id)\
+            .group_by(Customer.id).having(and_(
+                func.count(Visit.id) > 1,
+                func.max(Visit.visited_at) < thirty_days_ago,
+                func.max(Visit.visited_at) >= ninety_days_ago
+            )).all()
     else:
         raise ValueError(f"Invalid audience_type: {audience_type}")
+    return customers
+
+def get_audience_count(db: Session, audience_type: str, inactive_days: int = None) -> int:
+    customers = get_campaign_audience(db, audience_type, inactive_days)
+    return len(customers)
+
+def execute_campaign(db: Session, message_template: str, audience_type: str, inactive_days: int = None):
+    customers = get_campaign_audience(db, audience_type, inactive_days)
 
     sent_count = 0
     failed_count = 0

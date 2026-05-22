@@ -9,7 +9,8 @@ import {
   MessageSquare, 
   Save, 
   CheckCircle2, 
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -83,6 +84,13 @@ export default function SettingsPage() {
         <p className="text-stone-500">Manage global restaurant configuration.</p>
       </header>
 
+      {error && (
+        <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 flex items-center gap-2 mt-4">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          {error}
+        </div>
+      )}
+
       {/* Messaging & Campaigns */}
       <section className="space-y-6">
         <form onSubmit={handleSaveSettings} className="space-y-6">
@@ -102,6 +110,12 @@ export default function SettingsPage() {
                   rows={4}
                   className="w-full rounded-xl border border-stone-200 px-4 py-3 text-sm font-medium outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all"
                 />
+                <p className="text-xs text-stone-500 mt-2 flex justify-between">
+                  <span>Use <code className="bg-stone-100 px-1 py-0.5 rounded font-bold text-brand-600">{'{name}'}</code> to personalize.</span>
+                  <span className={template.length > 160 ? "text-orange-500 font-bold" : ""}>
+                    {template.length} chars ({Math.max(1, Math.ceil(template.length / 160))} segment{Math.ceil(template.length / 160) > 1 ? 's' : ''})
+                  </span>
+                </p>
               </div>
 
             </div>

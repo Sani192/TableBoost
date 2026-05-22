@@ -200,6 +200,11 @@ export const createCampaign = async (payload: CampaignCreateRequest): Promise<{ 
   return response.data;
 };
 
+export const getCampaignAudienceCount = async (audienceType: string, inactiveDays?: number): Promise<{ count: number }> => {
+  const response = await api.get('/api/messages/campaign/audience-count', { params: { audience_type: audienceType, inactive_days: inactiveDays } });
+  return response.data;
+};
+
 export const getCampaignCustomers = async (campaignId: number, skip: number = 0, limit: number = 20): Promise<Array<{ id: number; name: string; phone_number: string; status: string; amount: number; visited_at: string | null }>> => {
   const response = await api.get(`/api/intelligence/campaigns/${campaignId}/customers`, { params: { skip, limit } });
   return response.data;

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, Repeat2, UsersRound, Utensils, RefreshCw, Trophy, Cake, Heart, ChevronRight, BarChart3, Rocket, Activity, TrendingUp, Wallet, UserCheck, UserX, UserPlus, Target, Sparkles, Megaphone, Gift, Lock } from 'lucide-react';
+import { Plus, Repeat2, UsersRound, Utensils, RefreshCw, Trophy, Cake, Heart, ChevronRight, BarChart3, Rocket, Activity, TrendingUp, Wallet, UserCheck, UserX, UserPlus, Target, Sparkles, Megaphone, Gift, Lock, AlertCircle } from 'lucide-react';
 import ActivityList from '@/components/ActivityList';
 import StatCard from '@/components/StatCard';
 import Card from '@/components/ui/Card';
@@ -12,6 +12,7 @@ import Button from '@/components/ui/Button';
 import RecommendationCard from '@/components/dashboard/RecommendationCard';
 import CustomerListItem from '@/components/ui/CustomerListItem';
 import VisitListItem from '@/components/ui/VisitListItem';
+import SubscriptionPlansModal from '@/components/SubscriptionPlansModal';
 import { getDashboard, DashboardResponse, getCustomers, getVisits, getGrowthDashboard, GrowthDashboardResponse, dismissRecommendation, getCampaignRoi, getRewardEffectiveness, getIntelligenceCustomers } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
@@ -56,10 +57,12 @@ export default function Dashboard() {
   const { hasFeatureAccess } = useAuth();
 
   const [data, setData] = useState<DashboardResponse | null>(null);
+  const [showPlans, setShowPlans] = useState(false);
   const [growthData, setGrowthData] = useState<GrowthDashboardResponse | null>(null);
   const [campaignRoi, setCampaignRoi] = useState<any[]>([]);
   const [rewardEffectiveness, setRewardEffectiveness] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const activeTab = (searchParams.get('tab') as 'ops' | 'revenue' | 'growth') || 'ops';
   
   const [drilldownOpen, setDrilldownOpen] = useState(false);
@@ -148,7 +151,7 @@ export default function Dashboard() {
     router.push(`/?tab=${activeTab}`, { scroll: false });
   };
 
-  const fetchDashboard = (silent = false) => {
+  const fetchDashboard = useCallback((silent = false) => {
     if (!silent) setIsLoading(true);
     
     const promises: Promise<any>[] = [getDashboard()];
@@ -173,12 +176,16 @@ export default function Dashboard() {
         setGrowthData(growth);
         setCampaignRoi(roi);
         setRewardEffectiveness(rewards);
+        setError(null);
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err);
+        setError('Failed to load dashboard data. Please try again.');
+      })
       .finally(() => {
         if (!silent) setIsLoading(false);
       });
-  };
+  }, [hasFeatureAccess]);
 
   const handleDismissRecommendation = async (recId: number) => {
     try {
@@ -208,7 +215,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboard();
-  }, []);
+  }, [fetchDashboard]);
 
   const drilldownLoadingRef = useRef(false);
   drilldownLoadingRef.current = isDrilldownLoading || isLoadingMore;
@@ -230,7 +237,7 @@ export default function Dashboard() {
     if (drilldownSkip > 0 && drilldownOpen) {
       openDrilldown(drilldownType, drilldownTitle, drilldownSubtitle, currentParams, true);
     }
-  }, [drilldownSkip]);
+  }, [drilldownSkip, drilldownOpen, drilldownType, drilldownTitle, drilldownSubtitle, currentParams, openDrilldown]);
 
   // Restore drawer from URL on mount / back-navigation
   useEffect(() => {
@@ -308,6 +315,45 @@ export default function Dashboard() {
   const handleTabChange = (tab: 'ops' | 'revenue' | 'growth') => {
     router.push(`/?tab=${tab}`, { scroll: false });
   };
+
+  if (isLoading && !data) {
+    return (
+      <div className="animate-pulse space-y-6 pb-6 max-w-full overflow-hidden">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-3 w-24 bg-stone-200 rounded"></div>
+            <div className="h-8 w-48 bg-stone-200 rounded"></div>
+          </div>
+          <div className="h-10 w-10 bg-stone-200 rounded-xl"></div>
+        </div>
+        <div className="flex gap-2">
+           <div className="h-10 flex-1 bg-stone-200 rounded-xl"></div>
+           <div className="h-10 flex-1 bg-stone-200 rounded-xl"></div>
+           <div className="h-10 flex-1 bg-stone-200 rounded-xl"></div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-4">
+           <div className="h-24 bg-stone-200 rounded-2xl"></div>
+           <div className="h-24 bg-stone-200 rounded-2xl"></div>
+           <div className="h-24 bg-stone-200 rounded-2xl"></div>
+           <div className="h-24 bg-stone-200 rounded-2xl"></div>
+        </div>
+        <div className="h-64 bg-stone-200 rounded-2xl"></div>
+      </div>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+        <div className="h-16 w-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-4">
+          <AlertCircle className="h-8 w-8" />
+        </div>
+        <h2 className="text-xl font-bold text-stone-900">Failed to load dashboard</h2>
+        <p className="text-sm text-stone-500 mt-2 mb-6 max-w-md">{error}</p>
+        <Button onClick={() => fetchDashboard()}>Try Again</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in space-y-5 pb-6 sm:space-y-6">
@@ -429,17 +475,20 @@ export default function Dashboard() {
               <div className="h-32 flex items-end justify-between gap-2 mt-4 px-2 relative">
                 {data?.revenue?.daily_trends && data.revenue.daily_trends.some(d => d.revenue > 0) ? (
                   data.revenue.daily_trends.map((day, i) => (
-                    <div key={i} className="flex-1 h-full flex flex-col justify-end items-center gap-2 group">
+                    <div 
+                      key={i} 
+                      className="flex-1 h-full flex flex-col justify-end items-center gap-2 group cursor-pointer"
+                      onClick={() => openCustomDrilldown('visits', `Visits on ${new Date(day.date).toLocaleDateString()}`, { start_date: `${day.date}T00:00:00`, end_date: `${day.date}T23:59:59` })}
+                    >
                       <div 
-                        className="w-full bg-brand-500/20 hover:bg-brand-500 rounded-t-lg transition-all duration-300 relative min-h-[2px] cursor-pointer"
+                        className="w-full bg-brand-500/20 group-hover:bg-brand-500 rounded-t-lg transition-all duration-300 relative min-h-[2px]"
                         style={{ height: `${(day.revenue / (Math.max(...data.revenue.daily_trends.map(d => d.revenue)) || 1)) * 100}%` }}
-                        onClick={() => openCustomDrilldown('visits', `Visits on ${new Date(day.date).toLocaleDateString()}`, { start_date: `${day.date}T00:00:00`, end_date: `${day.date}T23:59:59` })}
                       >
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                           ${day.revenue}
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold text-stone-400 truncate w-full text-center">
+                      <span className="text-xs font-bold text-stone-400 truncate w-full text-center">
                         {new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
                       </span>
                     </div>
@@ -468,14 +517,14 @@ export default function Dashboard() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                      <div>
-                        <p className="text-[10px] text-stone-400 font-bold">CONVERSION</p>
+                        <p className="text-xs text-stone-400 font-bold">CONVERSION</p>
                         <p className="text-lg font-extrabold text-stone-900">{stats.campaignRoi.conversion_rate.toFixed(1)}%</p>
-                        <p className="text-[10px] text-stone-500">{stats.campaignRoi.converted_messages}/{stats.campaignRoi.total_messages} visits</p>
+                        <p className="text-xs text-stone-500">{stats.campaignRoi.converted_messages}/{stats.campaignRoi.total_messages} visits</p>
                      </div>
                      <div>
-                        <p className="text-[10px] text-stone-400 font-bold">REVENUE</p>
+                        <p className="text-xs text-stone-400 font-bold">REVENUE</p>
                         <p className="text-lg font-extrabold text-emerald-600">${stats.campaignRoi.revenue_generated.toFixed(2)}</p>
-                        <p className="text-[10px] text-stone-500">attributed</p>
+                        <p className="text-xs text-stone-500">attributed</p>
                      </div>
                   </div>
                </Card>
@@ -500,7 +549,7 @@ export default function Dashboard() {
                        </div>
                        <div>
                           <h4 className="text-sm font-bold text-stone-900">Automation Pilots</h4>
-                          <p className="text-[10px] uppercase font-bold text-stone-400">Locked under Pro</p>
+                          <p className="text-xs uppercase font-bold text-stone-400">Locked under Pro</p>
                        </div>
                     </div>
                     <span className="text-xs font-bold text-stone-400">Locked</span>
@@ -529,6 +578,10 @@ export default function Dashboard() {
               <h3 className="text-lg font-bold text-stone-900">Intelligence Hub is Gated</h3>
               <p className="text-sm text-stone-500 max-w-sm mt-1 mx-auto">Upgrade to the Growth plan to unlock campaign ROI tracking, automated pilot stats, VIP tracking, and advanced revenue metrics.</p>
             </div>
+            <Button onClick={() => setShowPlans(true)} className="mt-2 shadow-sm shadow-brand-500/20">
+              View Subscription Plans
+            </Button>
+            {showPlans && <SubscriptionPlansModal onClose={() => setShowPlans(false)} />}
           </div>
         )}
       </div>
@@ -598,11 +651,11 @@ export default function Dashboard() {
                   </h4>
                   <div className="grid grid-cols-2 gap-2">
                      <div>
-                        <p className="text-[10px] text-stone-400 font-bold">INFLUENCED REVENUE</p>
+                        <p className="text-xs text-stone-400 font-bold">INFLUENCED REVENUE</p>
                         <p className="text-lg font-extrabold text-stone-900">${growthData?.loyalty_impact?.reward_influenced_revenue || 0}</p>
                      </div>
                      <div>
-                        <p className="text-[10px] text-stone-400 font-bold">AVG REVISIT RATE</p>
+                        <p className="text-xs text-stone-400 font-bold">AVG REVISIT RATE</p>
                         <p className="text-lg font-extrabold text-emerald-600">{growthData?.loyalty_impact?.avg_revisit_rate || 0}%</p>
                      </div>
                   </div>
@@ -622,12 +675,12 @@ export default function Dashboard() {
                            <div key={i} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg cursor-pointer hover:bg-stone-100 transition-colors" onClick={() => openCustomDrilldown('customers', camp.campaign_name, { is_campaign: true, campaign_id: camp.campaign_id })}>
                               <div>
                                  <p className="text-xs font-bold text-stone-900">{camp.campaign_name}</p>
-                                 <p className="text-[10px] text-stone-500">{camp.total_sent} sent • {camp.total_converted} converted</p>
+                                 <p className="text-xs text-stone-500">{camp.total_sent} sent • {camp.total_converted} converted</p>
                               </div>
                               <div className="text-right flex items-center gap-2">
                                  <div>
                                     <p className="text-xs font-bold text-emerald-600">${camp.revenue_attributed}</p>
-                                    <p className="text-[10px] text-stone-400">{camp.conversion_rate}% rate</p>
+                                    <p className="text-xs text-stone-400">{camp.conversion_rate}% rate</p>
                                  </div>
                                  <ChevronRight className="h-4 w-4 text-stone-300" />
                               </div>
@@ -650,12 +703,12 @@ export default function Dashboard() {
                            <div key={i} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg cursor-pointer hover:bg-stone-100 transition-colors" onClick={() => openCustomDrilldown('customers', rew.reward_name, { is_reward: true, reward_id: rew.reward_id })}>
                               <div>
                                  <p className="text-xs font-bold text-stone-900">{rew.reward_name}</p>
-                                 <p className="text-[10px] text-stone-500">{rew.total_redeemed} redeemed</p>
+                                 <p className="text-xs text-stone-500">{rew.total_redeemed} redeemed</p>
                               </div>
                               <div className="text-right flex items-center gap-2">
                                  <div>
                                     <p className="text-xs font-bold text-emerald-600">${rew.reward_influenced_revenue}</p>
-                                    <p className="text-[10px] text-stone-400">{rew.post_reward_revisit_rate}% revisit</p>
+                                    <p className="text-xs text-stone-400">{rew.post_reward_revisit_rate}% revisit</p>
                                  </div>
                                  <ChevronRight className="h-4 w-4 text-stone-300" />
                               </div>
@@ -677,6 +730,10 @@ export default function Dashboard() {
               <h3 className="text-lg font-bold text-stone-900">Growth Suite is Gated</h3>
               <p className="text-sm text-stone-500 max-w-sm mt-1 mx-auto">Upgrade to the Pro plan to access Customer Lifetime Value (CLV), Churn Risk scoring, AI Recommendations, and periodic Business Summaries.</p>
             </div>
+            <Button onClick={() => setShowPlans(true)} className="mt-2 shadow-sm shadow-brand-500/20">
+              View Subscription Plans
+            </Button>
+            {showPlans && <SubscriptionPlansModal onClose={() => setShowPlans(false)} />}
           </div>
         )}
       </div>

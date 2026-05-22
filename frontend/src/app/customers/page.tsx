@@ -1,10 +1,11 @@
 'use client';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getCustomers, CustomerListResponse } from '@/lib/api';
-import { Search, SlidersHorizontal, RefreshCw, X, Cake, Heart, Lock } from 'lucide-react';
+import { Search, SlidersHorizontal, RefreshCw, X, Cake, Heart, Lock, Users } from 'lucide-react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import CustomerListItem from '@/components/ui/CustomerListItem';
+import EmptyState from '@/components/ui/EmptyState';
 import { ListItemSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
 
@@ -111,7 +112,7 @@ export default function CustomersPage() {
         fetchCustomers(false);
     }, 400);
     return () => clearTimeout(timer);
-  }, [search, minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth, isCelebrating, isVip, isAtRisk, isRewardNear]);
+  }, [search, minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth, isCelebrating, isVip, isAtRisk, isRewardNear, fetchCustomers]);
 
   const loadingRef = useRef(false);
   loadingRef.current = loading || loadingMore;
@@ -133,7 +134,7 @@ export default function CustomersPage() {
     if (skip > 0) {
       fetchCustomers(true);
     }
-  }, [skip]);
+  }, [skip, fetchCustomers]);
 
   const activeFiltersCount = [minVisits, maxVisits, minSpent, maxSpent, birthdayMonth, anniversaryMonth].filter(Boolean).length + (isCelebrating ? 1 : 0) + (isVip ? 1 : 0) + (isAtRisk ? 1 : 0) + (isRewardNear ? 1 : 0);
 
@@ -174,7 +175,7 @@ export default function CustomersPage() {
           <SlidersHorizontal className="h-4 w-4" />
           <span className="hidden sm:inline">Filters</span>
           {activeFiltersCount > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[10px] text-white">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-xs text-white">
               {activeFiltersCount}
             </span>
           )}
@@ -195,6 +196,7 @@ export default function CustomersPage() {
               <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Min Visits</label>
               <input
                 type="number"
+                min="0"
                 value={minVisits}
                 onChange={(e) => setMinVisits(e.target.value)}
                 className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
@@ -204,6 +206,7 @@ export default function CustomersPage() {
               <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Max Visits</label>
               <input
                 type="number"
+                min="0"
                 value={maxVisits}
                 onChange={(e) => setMaxVisits(e.target.value)}
                 className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
@@ -213,6 +216,7 @@ export default function CustomersPage() {
               <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Min Spent</label>
               <input
                 type="number"
+                min="0"
                 value={minSpent}
                 onChange={(e) => setMinSpent(e.target.value)}
                 className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
@@ -222,6 +226,7 @@ export default function CustomersPage() {
               <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Max Spent</label>
               <input
                 type="number"
+                min="0"
                 value={maxSpent}
                 onChange={(e) => setMaxSpent(e.target.value)}
                 className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
@@ -273,7 +278,7 @@ export default function CustomersPage() {
                     <div className="px-3 py-1.5 rounded-lg text-xs font-bold border bg-stone-50 border-stone-200 text-stone-400 flex items-center gap-1 cursor-not-allowed opacity-60">
                       <Lock className="h-3.5 w-3.5 text-stone-400" /> VIP Customers
                     </div>
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-stone-900 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-md whitespace-nowrap z-50 pointer-events-none">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden sm:group-hover:block bg-stone-900 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-md whitespace-nowrap z-50 pointer-events-none">
                       Upgrade to Growth Plan to unlock
                       <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-stone-900"></div>
                     </div>
@@ -291,7 +296,7 @@ export default function CustomersPage() {
                     <div className="px-3 py-1.5 rounded-lg text-xs font-bold border bg-stone-50 border-stone-200 text-stone-400 flex items-center gap-1 cursor-not-allowed opacity-60">
                       <Lock className="h-3.5 w-3.5 text-stone-400" /> At Risk
                     </div>
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-stone-900 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-md whitespace-nowrap z-50 pointer-events-none">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden sm:group-hover:block bg-stone-900 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-md whitespace-nowrap z-50 pointer-events-none">
                       Upgrade to Pro Plan to unlock
                       <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-stone-900"></div>
                     </div>
@@ -309,7 +314,7 @@ export default function CustomersPage() {
                     <div className="px-3 py-1.5 rounded-lg text-xs font-bold border bg-stone-50 border-stone-200 text-stone-400 flex items-center gap-1 cursor-not-allowed opacity-60">
                       <Lock className="h-3.5 w-3.5 text-stone-400" /> Near Reward
                     </div>
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-stone-900 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-md whitespace-nowrap z-50 pointer-events-none">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden sm:group-hover:block bg-stone-900 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-md whitespace-nowrap z-50 pointer-events-none">
                       Upgrade to Growth Plan to unlock
                       <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-stone-900"></div>
                     </div>
@@ -349,7 +354,7 @@ export default function CustomersPage() {
           {[1, 2, 3, 4, 5].map(i => <ListItemSkeleton key={i} />)}
         </div>
       ) : customers.length === 0 ? (
-        <p className="text-sm font-bold text-stone-500 text-center py-10">No customers found.</p>
+        <EmptyState title="No customers found" description="Try adjusting your search or filters." icon={<Users className="h-8 w-8" />} />
       ) : (
         <div className="space-y-3">
           {customers.map(c => (

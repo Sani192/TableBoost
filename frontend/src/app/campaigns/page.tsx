@@ -1,10 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createCampaign, getSettings, updateSettings } from '@/lib/api';
-import { Megaphone, Users, Send, CheckCircle2, Settings as SettingsIcon, Lock } from 'lucide-react';
+import { createCampaign, getSettings, updateSettings, getCampaignAudienceCount } from '@/lib/api';
+import { Megaphone, Users, Send, CheckCircle2, Settings as SettingsIcon, Lock, AlertCircle, RefreshCw } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
+import Modal from '@/components/ui/Modal';
+import SubscriptionPlansModal from '@/components/SubscriptionPlansModal';
 import { useAuth } from '@/context/AuthContext';
 
 type Feedback = { type: 'success' | 'error', text: string } | null;
@@ -13,12 +15,17 @@ export default function CampaignsPage() {
   const { hasFeatureAccess } = useAuth();
   const [audience, setAudience] = useState('inactive');
   const [inactiveDays, setInactiveDays] = useState<number | string>(30);
+  const [audienceCount, setAudienceCount] = useState<number | null>(null);
+  const [audienceLoading, setAudienceLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{sent_count: number, failed_count: number} | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSavingDays, setIsSavingDays] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [campaignError, setCampaignError] = useState<string | null>(null);
+  const [showPlans, setShowPlans] = useState(false);
 
   const handleSaveInactiveDays = async () => {
     if (inactiveDays === '') {
@@ -44,10 +51,40 @@ export default function CampaignsPage() {
     }).catch(console.error);
   }, []);
 
-  const handleSend = async (e: React.FormEvent) => {
+  useEffect(() => {
+    let active = true;
+    const fetchCount = async () => {
+      setAudienceLoading(true);
+      try {
+        const data = await getCampaignAudienceCount(audience, audience === 'inactive' ? Number(inactiveDays) : undefined);
+        if (active) setAudienceCount(data.count);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (active) setAudienceLoading(false);
+      }
+    };
+    
+    // Add small debounce if typing inactive days
+    const timer = setTimeout(fetchCount, 300);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [audience, inactiveDays]);
+
+  const handleLaunchClick = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!message.trim()) return;
+    setCampaignError(null);
+    setShowConfirmModal(true);
+  };
+
+  const confirmSend = async () => {
     setLoading(true);
     setResult(null);
+    setCampaignError(null);
+    setShowConfirmModal(false);
     try {
       const res = await createCampaign({ 
         message, 
@@ -58,8 +95,8 @@ export default function CampaignsPage() {
       setMessage('');
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      alert('Failed to send campaign');
+    } catch (err: any) {
+      setCampaignError(err.response?.data?.detail || 'Failed to send campaign. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -67,7 +104,7 @@ export default function CampaignsPage() {
 
   if (!hasFeatureAccess('campaigns')) {
     return (
-      <div className="py-12 text-center bg-white rounded-3xl border border-stone-200/60 shadow-card p-6 flex flex-col items-center justify-center gap-4 animate-fade-in max-w-2xl mx-auto">
+      <div className="py-12 text-center bg-white rounded-3xl border border-stone-200/60 shadow-card p-6 flex flex-col items-center justify-center gap-4 animate-fade-in max-w-2xl mx-auto mt-10">
         <div className="h-14 w-14 bg-stone-50 text-stone-400 rounded-2xl flex items-center justify-center border border-stone-200/60 shadow-sm animate-bounce">
           <Lock className="h-6 w-6" />
         </div>
@@ -75,6 +112,10 @@ export default function CampaignsPage() {
           <h3 className="text-lg font-bold text-stone-900">SMS Campaigns are Gated</h3>
           <p className="text-sm text-stone-500 max-w-sm mt-1 mx-auto">Upgrade to the Growth plan to unlock manual text campaigns, VIP segmentation, and custom SMS templates.</p>
         </div>
+        <Button onClick={() => setShowPlans(true)} className="mt-2 shadow-sm shadow-brand-500/20">
+          View Subscription Plans
+        </Button>
+        {showPlans && <SubscriptionPlansModal onClose={() => setShowPlans(false)} />}
       </div>
     );
   }
@@ -86,7 +127,7 @@ export default function CampaignsPage() {
         <p className="text-stone-500">Send bulk SMS messages to your customers.</p>
       </header>
 
-      <form onSubmit={handleSend} className="space-y-6">
+      <form onSubmit={handleLaunchClick} className="space-y-6">
         <Card className="p-5 space-y-4">
           <div>
             <label className="flex items-center gap-2 text-sm font-bold text-stone-700 mb-2">
@@ -104,7 +145,7 @@ export default function CampaignsPage() {
                 }`}
               >
                 <span className="font-bold">Inactive</span>
-                <span className="text-[10px] uppercase font-bold opacity-70">Customers</span>
+                <span className="text-xs uppercase font-bold opacity-70">Customers</span>
               </button>
               <button
                 type="button"
@@ -116,7 +157,7 @@ export default function CampaignsPage() {
                 }`}
               >
                 <span className="font-bold">All</span>
-                <span className="text-[10px] uppercase font-bold opacity-70">Customers</span>
+                <span className="text-xs uppercase font-bold opacity-70">Customers</span>
               </button>
               <button
                 type="button"
@@ -128,7 +169,7 @@ export default function CampaignsPage() {
                 }`}
               >
                 <span className="font-bold">VIP</span>
-                <span className="text-[10px] uppercase font-bold opacity-70">Spenders</span>
+                <span className="text-xs uppercase font-bold opacity-70">Spenders</span>
               </button>
               <button
                 type="button"
@@ -140,7 +181,7 @@ export default function CampaignsPage() {
                 }`}
               >
                 <span className="font-bold">Near Reward</span>
-                <span className="text-[10px] uppercase font-bold opacity-70">Milestones</span>
+                <span className="text-xs uppercase font-bold opacity-70">Milestones</span>
               </button>
               <button
                 type="button"
@@ -152,7 +193,7 @@ export default function CampaignsPage() {
                 }`}
               >
                 <span className="font-bold">At Risk</span>
-                <span className="text-[10px] uppercase font-bold opacity-70">30-90 Days</span>
+                <span className="text-xs uppercase font-bold opacity-70">30-90 Days</span>
               </button>
             </div>
             
@@ -167,20 +208,41 @@ export default function CampaignsPage() {
                       const val = e.target.value;
                       setInactiveDays(val === '' ? '' : Number(val));
                     }}
+                    onBlur={() => {
+                      if (typeof inactiveDays === 'number' && inactiveDays > 365) setInactiveDays(365);
+                      if (typeof inactiveDays === 'number' && inactiveDays < 1) setInactiveDays(1);
+                    }}
                     className="w-16 rounded border border-stone-200 px-2 py-1 text-sm font-bold text-stone-900 focus:border-brand-500 outline-none"
                     min="1"
+                    max="365"
                   />
                   <span className="text-xs font-medium text-stone-500">days</span>
                 </div>
                 <button
                   onClick={handleSaveInactiveDays}
                   disabled={isSavingDays}
-                  className="text-[10px] font-bold uppercase tracking-wider text-brand-600 hover:text-brand-700 disabled:opacity-50"
+                  className="text-xs font-bold uppercase tracking-wider text-brand-600 hover:text-brand-700 disabled:opacity-50"
                 >
                   {isSavingDays ? 'Saving...' : 'Save'}
                 </button>
               </div>
             )}
+            
+            <div className="mt-4 p-3 bg-blue-50/50 border border-blue-100 rounded-xl flex items-center justify-between">
+              <span className="text-sm font-bold text-blue-900 flex items-center gap-2">
+                <Users className="h-4 w-4 text-blue-500" />
+                Estimated Audience:
+              </span>
+              <span className="text-sm font-black text-blue-700">
+                {audienceLoading ? (
+                  <RefreshCw className="h-4 w-4 animate-spin inline-block" />
+                ) : audienceCount !== null ? (
+                  `${audienceCount} customers`
+                ) : (
+                  '--'
+                )}
+              </span>
+            </div>
           </div>
 
           <div>
@@ -196,10 +258,20 @@ export default function CampaignsPage() {
               className="w-full rounded-xl border border-stone-200 px-4 py-3 text-sm font-medium outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all"
               placeholder="Hi {name}, we miss you at Bowie Fusion!..."
             />
-            <p className="text-xs text-stone-500 mt-2">
-              Use <code className="bg-stone-100 px-1 py-0.5 rounded font-bold text-brand-600">{'{name}'}</code> to personalize.
+            <p className="text-xs text-stone-500 mt-2 flex justify-between">
+              <span>Use <code className="bg-stone-100 px-1 py-0.5 rounded font-bold text-brand-600">{'{name}'}</code> to personalize.</span>
+              <span className={message.length > 160 ? "text-orange-500 font-bold" : ""}>
+                {message.length} chars ({Math.max(1, Math.ceil(message.length / 160))} SMS segment{Math.ceil(message.length / 160) > 1 ? 's' : ''})
+              </span>
             </p>
           </div>
+
+          {campaignError && (
+            <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 flex items-center gap-2 text-left">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {campaignError}
+            </div>
+          )}
 
           <Button 
             type="submit" 
@@ -221,11 +293,11 @@ export default function CampaignsPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white p-3 rounded-xl border border-green-100 shadow-sm">
-              <p className="text-[10px] font-bold uppercase text-stone-400">Successfully Sent</p>
+              <p className="text-xs font-bold uppercase text-stone-400">Successfully Sent</p>
               <p className="text-xl font-black text-green-600">{result.sent_count}</p>
             </div>
             <div className="bg-white p-3 rounded-xl border border-green-100 shadow-sm">
-              <p className="text-[10px] font-bold uppercase text-stone-400">Delivery Failures</p>
+              <p className="text-xs font-bold uppercase text-stone-400">Delivery Failures</p>
               <p className="text-xl font-black text-red-500">{result.failed_count}</p>
             </div>
           </div>
@@ -238,29 +310,36 @@ export default function CampaignsPage() {
           <span className="text-sm font-bold">Campaign launched successfully</span>
         </div>
       )}
+
+
+      <Modal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        title="Confirm Campaign Launch"
+        footer={
+          <div className="flex items-center gap-3 w-full justify-end">
+            <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmSend}>
+              Yes, Launch Campaign
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center text-center gap-4">
+          <div className="h-16 w-16 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center">
+            <Megaphone className="h-8 w-8" />
+          </div>
+          <div>
+            <p className="text-stone-900 font-bold text-lg">Send to {audience === 'all' ? 'All Customers' : audience === 'vip' ? 'VIP Spenders' : audience === 'inactive' ? `Inactive (${inactiveDays} days)` : audience === 'at_risk' ? 'At Risk' : 'Near Reward'}?</p>
+            <p className="text-stone-500 mt-2 text-sm max-w-sm mx-auto">
+              This will queue SMS messages to be sent immediately. This action cannot be undone and will consume Twilio credits.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
-// Helper component for animation (not strictly necessary but adds polish)
-function RefreshCw({ className }: { className?: string }) {
-  return (
-    <svg 
-      className={className} 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    >
-      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-      <path d="M21 3v5h-5" />
-      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-      <path d="M3 21v-5h5" />
-    </svg>
-  );
-}

@@ -48,7 +48,7 @@ export default function AddVisitForm({ onSuccess, onCancel, customerId }: AddVis
     } else {
       setIsNewCustomer(false);
     }
-  }, [phoneNumber]);
+  }, [phoneNumber, name]);
 
   const isPhoneValid = phoneNumber.length === 10;
   const isAmountValid = amount.trim() !== '' && !isNaN(Number(amount)) && Number(amount) > 0;

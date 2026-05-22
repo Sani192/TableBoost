@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   getAutomationConfigs,
@@ -18,10 +18,13 @@ import {
   ToggleLeft, 
   ToggleRight,
   Lock,
-  ChevronRight
+  ChevronRight,
+  AlertCircle
 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
+import SubscriptionPlansModal from '@/components/SubscriptionPlansModal';
 import { useAuth } from '@/context/AuthContext';
 
 const AUTOMATION_METADATA: Record<string, { label: string; icon: any; description: string }> = {
@@ -84,8 +87,14 @@ export default function AutomationsPage() {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [templateError, setTemplateError] = useState<string | null>(null);
+  const [showPlans, setShowPlans] = useState(false);
 
-  const fetchData = async () => {
+  const [pendingToggle, setPendingToggle] = useState<{ type: string, isEnabled: boolean } | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [toggleError, setToggleError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
     try {
       if (hasFeatureAccess('automation')) {
         const data = await getAutomationConfigs();
@@ -96,28 +105,42 @@ export default function AutomationsPage() {
       setLoading(false);
       setError('Failed to load automations');
     }
-  };
+  }, [hasFeatureAccess]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
-  const toggleAutomation = async (type: string, isEnabled: boolean) => {
+  const handleToggleClick = (type: string, isEnabled: boolean) => {
+    setPendingToggle({ type, isEnabled });
+    setToggleError(null);
+    setShowConfirmModal(true);
+  };
+
+  const confirmToggle = async () => {
+    if (!pendingToggle) return;
+    setToggleError(null);
     try {
-      await updateAutomationConfig({ automation_type: type, is_enabled: !isEnabled });
+      await updateAutomationConfig({ automation_type: pendingToggle.type, is_enabled: !pendingToggle.isEnabled });
+      setShowConfirmModal(false);
       fetchData();
-    } catch (err) {
-      alert('Failed to update automation');
+    } catch (err: any) {
+      setToggleError(err.response?.data?.detail || 'Failed to update automation');
+    } finally {
+      if (!toggleError) {
+        setPendingToggle(null);
+      }
     }
   };
 
   const handleUpdateAutoTemplate = async (type: string) => {
+    setTemplateError(null);
     try {
       await updateAutomationConfig({ automation_type: type, message_template: editTemplate });
       setEditingAuto(null);
       fetchData();
-    } catch (err) {
-      alert('Failed to update template');
+    } catch (err: any) {
+      setTemplateError(err.response?.data?.detail || 'Failed to update template. Please try again.');
     }
   };
 
@@ -130,6 +153,24 @@ export default function AutomationsPage() {
     );
   }
 
+  if (!hasFeatureAccess('automation')) {
+    return (
+      <div className="py-12 text-center bg-white rounded-3xl border border-stone-200/60 shadow-card p-6 flex flex-col items-center justify-center gap-4 animate-fade-in max-w-2xl mx-auto mt-10">
+        <div className="h-14 w-14 bg-stone-50 text-stone-400 rounded-2xl flex items-center justify-center border border-stone-200/60 shadow-sm animate-bounce">
+          <Lock className="h-6 w-6" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-stone-900">Automation Engine is Gated</h3>
+          <p className="text-sm text-stone-500 max-w-sm mt-1 mx-auto">Upgrade to the Pro plan to configure birthday SMS, anniversary SMS, and inactivity recovery campaigns.</p>
+        </div>
+        <Button onClick={() => setShowPlans(true)} className="mt-2 shadow-sm shadow-brand-500/20">
+          View Subscription Plans
+        </Button>
+        {showPlans && <SubscriptionPlansModal onClose={() => setShowPlans(false)} />}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-2xl mx-auto pb-20">
       <header>
@@ -137,8 +178,14 @@ export default function AutomationsPage() {
         <p className="text-stone-500">Manage auto-pilot campaigns and system operations.</p>
       </header>
 
+      {error && (
+        <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 flex items-center gap-2 mt-4">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          {error}
+        </div>
+      )}
+
       <section className="space-y-4">
-        {hasFeatureAccess('automation') ? (
           <div className="grid grid-cols-1 gap-3">
             {automations
               .filter(a => a.automation_type !== 'campaign_scheduler')
@@ -158,7 +205,7 @@ export default function AutomationsPage() {
                           <div className="flex items-center gap-2">
                             <p className="text-xs text-stone-500 font-medium">{meta.description}</p>
                             {auto.is_enabled && auto.schedule && (
-                              <span className="text-[9px] font-extrabold bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                              <span className="text-xs font-extrabold bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded uppercase tracking-tighter">
                                 {auto.schedule.replace('cron:', '').replace('interval:', 'Every ' + (auto.schedule.split(':')[1] === '1' ? 'Hour' : auto.schedule.split(':')[1] + ' Hours'))}
                               </span>
                             )}
@@ -166,8 +213,8 @@ export default function AutomationsPage() {
                         </div>
                       </div>
                       <button 
-                        onClick={() => toggleAutomation(auto.automation_type, auto.is_enabled)}
-                        className={`p-2 rounded-lg transition-colors ${auto.is_enabled ? 'text-brand-600 hover:bg-brand-50' : 'text-stone-400 hover:bg-stone-100'}`}
+                        onClick={() => handleToggleClick(auto.automation_type, auto.is_enabled)}
+                        className={`p-3 rounded-lg transition-colors ${auto.is_enabled ? 'text-brand-600 hover:bg-brand-50' : 'text-stone-400 hover:bg-stone-100'}`}
                       >
                         {auto.is_enabled ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
                       </button>
@@ -176,7 +223,7 @@ export default function AutomationsPage() {
                     {auto.is_enabled && (
                       <div className="mt-3 pt-3 border-t border-stone-100 flex flex-col gap-3">
                         <div className="flex items-center justify-between">
-                           <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Active Template</p>
+                           <p className="text-xs font-bold text-stone-400 uppercase tracking-widest">Active Template</p>
                            <button 
                               onClick={() => {
                                  if (editingAuto === auto.automation_type) {
@@ -184,6 +231,7 @@ export default function AutomationsPage() {
                                  } else {
                                     setEditingAuto(auto.automation_type);
                                     setEditTemplate(auto.message_template);
+                                    setTemplateError(null);
                                  }
                               }}
                               className="text-xs font-bold text-brand-600 hover:underline"
@@ -194,12 +242,24 @@ export default function AutomationsPage() {
                         
                         {editingAuto === auto.automation_type ? (
                            <div className="space-y-3">
+                              {templateError && (
+                                <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 flex items-center gap-2">
+                                  <AlertCircle className="h-4 w-4 shrink-0" />
+                                  {templateError}
+                                </div>
+                              )}
                               <textarea
                                  value={editTemplate}
                                  onChange={e => setEditTemplate(e.target.value)}
                                  className="w-full rounded-xl border border-stone-200 p-3 text-xs font-medium outline-none focus:border-brand-500 transition-all bg-stone-50"
                                  rows={3}
                               />
+                              <p className="text-xs text-stone-500 mt-1 flex justify-between">
+                                  <span>Use <code className="bg-stone-200 px-1 py-0.5 rounded font-bold text-brand-600">{'{name}'}</code> to personalize.</span>
+                                  <span className={editTemplate.length > 160 ? "text-orange-500 font-bold" : ""}>
+                                    {editTemplate.length} chars ({Math.max(1, Math.ceil(editTemplate.length / 160))} segment{Math.ceil(editTemplate.length / 160) > 1 ? 's' : ''})
+                                  </span>
+                               </p>
                               <Button onClick={() => handleUpdateAutoTemplate(auto.automation_type)} fullWidth>
                                  Save Template
                               </Button>
@@ -219,14 +279,45 @@ export default function AutomationsPage() {
               </div>
             )}
           </div>
-        ) : (
-          <div className="p-6 text-center bg-stone-50 rounded-2xl border border-stone-200 flex flex-col items-center justify-center gap-2">
-            <Lock className="h-6 w-6 text-stone-400" />
-            <h3 className="text-sm font-bold text-stone-900">Automation Engine is Gated</h3>
-            <p className="text-xs text-stone-500 max-w-sm">Upgrade to the Pro plan to configure birthday SMS, anniversary SMS, and inactivity recovery campaigns.</p>
-          </div>
-        )}
       </section>
+
+      <Modal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        title="Confirm Automation Status Change"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmToggle} className={pendingToggle?.isEnabled ? "bg-red-600 hover:bg-red-700 focus:ring-red-500 text-white" : ""}>
+              {pendingToggle?.isEnabled ? 'Deactivate Automation' : 'Activate Automation'}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col items-center text-center gap-4">
+          <div className="h-16 w-16 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center">
+            <Rocket className="h-8 w-8" />
+          </div>
+          <div>
+            <p className="text-stone-900 font-bold text-lg">
+              {pendingToggle?.isEnabled ? 'Deactivate' : 'Activate'} {pendingToggle ? AUTOMATION_METADATA[pendingToggle.type]?.label || pendingToggle.type : ''}?
+            </p>
+            <p className="text-stone-500 mt-2 text-sm max-w-sm mx-auto">
+              {pendingToggle?.isEnabled 
+                ? 'This will immediately halt any background jobs for this automation. No new events will be processed.' 
+                : 'This will begin processing background jobs for this automation on the next scheduled run.'}
+            </p>
+          </div>
+          {toggleError && (
+            <div className="w-full mt-2 p-3 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 flex items-center gap-2 text-left">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {toggleError}
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

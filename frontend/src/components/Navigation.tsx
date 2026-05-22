@@ -60,18 +60,13 @@ export default function Navigation({ children }: { children?: React.ReactNode })
   const mobilePrimaryItems = [
     { name: 'Home', href: '/', icon: Home, roles: ['OWNER', 'MANAGER'] },
     { name: 'Customers', href: '/customers', icon: Users, roles: ['OWNER', 'MANAGER'] },
+    { name: 'Visits', href: '/visits', icon: LayoutDashboard, roles: ['OWNER', 'MANAGER'] },
     { name: 'Add Visit', href: '/add-visit', icon: Plus, roles: ['STAFF'] },
   ];
 
   // Handler for navigation click
   const handleNavClick = (e: React.MouseEvent, item: any) => {
-    if (item.feature && !hasFeatureAccess(item.feature)) {
-      e.preventDefault();
-      setUpgradeFeature({ name: item.name, desc: item.desc || 'Upgrade to unlock this premium module.' });
-      setIsMobileMenuOpen(false);
-    } else {
-      setIsMobileMenuOpen(false);
-    }
+    setIsMobileMenuOpen(false);
   };
 
   const NavItemRender = ({ item, isMobile = false }: { item: any, isMobile?: boolean }) => {
@@ -84,7 +79,7 @@ export default function Navigation({ children }: { children?: React.ReactNode })
     
     return (
       <Link
-        href={isLocked ? '#' : item.href}
+        href={item.href}
         onClick={(e) => handleNavClick(e, item)}
         title={isCollapsed && !isMobile ? item.name : undefined}
         className={`flex items-center gap-3 py-2 rounded-xl transition-all group relative ${isCollapsed && !isMobile ? 'px-0 justify-center mx-2' : 'px-3'} ${isActive ? activeStyles : inactiveStyles}`}
@@ -107,7 +102,7 @@ export default function Navigation({ children }: { children?: React.ReactNode })
             {isLocked && (
               <div className="shrink-0 flex items-center justify-center bg-stone-100 dark:bg-stone-800 rounded-lg px-2 py-0.5 border border-stone-200 dark:border-stone-700 shadow-sm">
                 <Lock className="h-3 w-3 text-stone-500 dark:text-stone-400 mr-1" />
-                <span className="text-[9px] font-extrabold text-stone-600 dark:text-stone-400 tracking-wider">PRO</span>
+                <span className="text-[10px] font-extrabold text-stone-600 dark:text-stone-400 tracking-wider">PRO</span>
               </div>
             )}
           </>
@@ -357,39 +352,7 @@ export default function Navigation({ children }: { children?: React.ReactNode })
 
       <ProfileDrawer isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
 
-      {upgradeFeature && (
-        <Drawer isOpen={!!upgradeFeature} onClose={() => setUpgradeFeature(null)} title="Premium Feature">
-          <div className="p-6 flex flex-col items-center text-center animate-slide-up">
-            <div className="w-20 h-20 bg-stone-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6">
-              <Lock className="h-10 w-10 text-stone-900 dark:text-white" />
-            </div>
-            
-            <h3 className="text-2xl font-black text-stone-900 dark:text-white tracking-tight mb-2">
-              Unlock {upgradeFeature.name}
-            </h3>
-            
-            <p className="text-stone-500 dark:text-stone-400 font-medium mb-8 max-w-sm">
-              {upgradeFeature.desc} Upgrade your workspace to access this feature and supercharge your restaurant operations.
-            </p>
-            
-            <div className="w-full space-y-3">
-              <Button 
-                variant="primary" 
-                fullWidth 
-                onClick={() => {
-                  setUpgradeFeature(null);
-                  setIsSubscriptionModalOpen(true);
-                }}
-              >
-                View Subscription Plans
-              </Button>
-              <Button variant="secondary" fullWidth onClick={() => setUpgradeFeature(null)}>
-                Maybe Later
-              </Button>
-            </div>
-          </div>
-        </Drawer>
-      )}
+      {/* Removed upgradeFeature Drawer */}
 
       {/* Unified Subscription Plans Modal */}
       {isSubscriptionModalOpen && (

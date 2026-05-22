@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -20,7 +20,7 @@ import ActivityList from '@/components/ActivityList';
 import CustomerHealthBadge from '@/components/intelligence/CustomerHealthBadge';
 import CLVBadge from '@/components/intelligence/CLVBadge';
 import StatCard from '@/components/StatCard';
-import { Utensils, DollarSign, RefreshCw, Trophy, History, Gift, CheckCircle2, Loader2, Lock, ChevronRight, Cake, Heart, Edit2, Calendar, ArrowLeft, Receipt } from 'lucide-react';
+import { Utensils, DollarSign, RefreshCw, Trophy, History, Gift, CheckCircle2, Loader2, Lock, ChevronRight, Cake, Heart, Edit2, Calendar, ArrowLeft, Receipt, AlertCircle } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Modal from '@/components/ui/Modal';
@@ -42,6 +42,7 @@ export default function CustomerDetailPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [skip, setSkip] = useState(0);
+  const [intelError, setIntelError] = useState<boolean>(false);
   
   const [redeemingId, setRedeemingId] = useState<number | null>(null);
   const [redeemSuccess, setRedeemSuccess] = useState(false);
@@ -50,14 +51,17 @@ export default function CustomerDetailPage() {
   const [editData, setEditData] = useState({ name: '', birthday: '', anniversary: '' });
   const [pendingRedeem, setPendingRedeem] = useState<{ id: number; name: string } | null>(null);
   const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [redeemError, setRedeemError] = useState<string | null>(null);
   const isUnchanged = customer ? (
     editData.name.trim() === (customer.name || '').trim() &&
     (editData.birthday || '') === (customer.birthday || '') &&
     (editData.anniversary || '') === (customer.anniversary || '')
   ) : true;
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!id) return;
+    setIntelError(false);
     try {
       const hasLoyalty = hasFeatureAccess('loyalty');
       const hasIntel = hasFeatureAccess('intelligence');
@@ -68,7 +72,8 @@ export default function CustomerDetailPage() {
         hasLoyalty ? getLoyaltyStatus(Number(id)) : Promise.resolve(null),
         hasLoyalty ? getRedemptionHistory(Number(id)) : Promise.resolve([]),
         hasIntel ? getCustomerIntelligence(Number(id)).catch(err => {
-          console.log('No intelligence data yet');
+          console.error('Intelligence fetch error', err);
+          setIntelError(true);
           return null;
         }) : Promise.resolve(null)
       ]);
@@ -83,11 +88,11 @@ export default function CustomerDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, hasFeatureAccess]);
 
   useEffect(() => {
     fetchData();
-  }, [id]);
+  }, [fetchData]);
 
   const handleEditClick = () => {
     if (!customer) return;
@@ -102,6 +107,7 @@ export default function CustomerDetailPage() {
   const handleUpdateProfile = async () => {
     if (!id || !customer) return;
     setUpdatingProfile(true);
+    setUpdateError(null);
     try {
       await updateCustomer(Number(id), {
         name: editData.name,
@@ -111,7 +117,7 @@ export default function CustomerDetailPage() {
       setShowEditModal(false);
       fetchData();
     } catch (err) {
-      alert('Failed to update profile');
+      setUpdateError('Failed to update profile. Please try again.');
     } finally {
       setUpdatingProfile(false);
     }
@@ -135,6 +141,7 @@ export default function CustomerDetailPage() {
 
   const handleRedeemClick = (rewardId: number, rewardName: string) => {
     setPendingRedeem({ id: rewardId, name: rewardName });
+    setRedeemError(null);
     setShowConfirmModal(true);
   };
 
@@ -143,17 +150,20 @@ export default function CustomerDetailPage() {
     
     const rewardId = pendingRedeem.id;
     setRedeemingId(rewardId);
-    setShowConfirmModal(false);
+    setRedeemError(null);
     try {
       await redeemReward(Number(id), rewardId);
       setRedeemSuccess(true);
+      setShowConfirmModal(false);
       await fetchData();
       setTimeout(() => setRedeemSuccess(false), 4000);
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to redeem reward');
+      setRedeemError(err.response?.data?.detail || 'Failed to redeem reward. Please try again.');
     } finally {
       setRedeemingId(null);
-      setPendingRedeem(null);
+      if (!redeemError) {
+        setPendingRedeem(null);
+      }
     }
   };
 
@@ -173,10 +183,10 @@ export default function CustomerDetailPage() {
         <div className="flex items-start gap-4">
           <button
             onClick={() => router.back()}
-            className="mt-1 h-9 w-9 flex items-center justify-center rounded-xl bg-stone-100 text-stone-500 hover:bg-stone-200 hover:text-stone-700 transition-all shrink-0"
+            className="mt-1 h-11 w-11 flex items-center justify-center rounded-xl bg-stone-100 text-stone-500 hover:bg-stone-200 hover:text-stone-700 transition-all shrink-0"
             aria-label="Go back"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -186,9 +196,13 @@ export default function CustomerDetailPage() {
                   <CustomerHealthBadge status={intelligence.health_status} />
                   <CLVBadge tier={intelligence.clv_tier} />
                 </div>
+              ) : intelError ? (
+                <div className="flex items-center gap-1 text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-md border border-red-100">
+                  <AlertCircle className="h-3 w-3" /> Intelligence Unavailable
+                </div>
               ) : (
                 !hasFeatureAccess('intelligence') && (
-                  <div className="flex items-center gap-1 text-[10px] font-extrabold text-stone-400 uppercase tracking-wider bg-stone-100 px-2 py-0.5 rounded-md">
+                  <div className="flex items-center gap-1 text-xs font-extrabold text-stone-400 uppercase tracking-wider bg-stone-100 px-2 py-0.5 rounded-md">
                     <Lock className="h-3 w-3" /> Churn Risk Gated
                   </div>
                 )
@@ -198,12 +212,12 @@ export default function CustomerDetailPage() {
             {(customer.birthday || customer.anniversary) && (
               <div className="flex gap-3 mt-2">
                 {customer.birthday && (
-                  <div className="flex items-center gap-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider bg-stone-50 px-2 py-0.5 rounded-md">
+                  <div className="flex items-center gap-1 text-xs font-bold text-stone-400 uppercase tracking-wider bg-stone-50 px-2 py-0.5 rounded-md">
                     <Cake className="h-3 w-3" /> {new Date(customer.birthday).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                   </div>
                 )}
                 {customer.anniversary && (
-                  <div className="flex items-center gap-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider bg-stone-50 px-2 py-0.5 rounded-md">
+                  <div className="flex items-center gap-1 text-xs font-bold text-stone-400 uppercase tracking-wider bg-stone-50 px-2 py-0.5 rounded-md">
                     <Heart className="h-3 w-3" /> {new Date(customer.anniversary).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                   </div>
                 )}
@@ -277,7 +291,7 @@ export default function CustomerDetailPage() {
                          <div>
                            <div className="flex items-center gap-2">
                               <h3 className="font-bold text-stone-900">{reward.name}</h3>
-                              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-600 uppercase">
+                              <span className="text-xs font-extrabold px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-600 uppercase">
                                 {reward.reward_type === 'milestone' ? `${reward.required_visits}V` : reward.reward_type}
                               </span>
                            </div>
@@ -385,7 +399,7 @@ export default function CustomerDetailPage() {
                     </div>
                     <div>
                       <p className="font-bold text-stone-900 text-sm">Visit</p>
-                      <p className="text-[10px] text-stone-400 uppercase font-bold tracking-tight">
+                      <p className="text-xs text-stone-400 uppercase font-bold tracking-tight">
                         {v.visited_at ? new Date(v.visited_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'}
                       </p>
                     </div>
@@ -423,7 +437,7 @@ export default function CustomerDetailPage() {
                         </div>
                         <div>
                           <p className="font-bold text-stone-900 text-sm">{r.reward_name}</p>
-                          <p className="text-[10px] text-stone-400 uppercase font-bold tracking-tight"> Milestone: {r.visits_threshold}V</p>
+                          <p className="text-xs text-stone-400 uppercase font-bold tracking-tight"> Milestone: {r.visits_threshold}V</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -472,6 +486,12 @@ export default function CustomerDetailPage() {
               This action will mark the reward as redeemed for <strong>{customer.name || customer.phone_number}</strong>. This cannot be undone.
             </p>
           </div>
+          {redeemError && (
+            <div className="w-full mt-2 p-3 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 flex items-center gap-2 text-left">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {redeemError}
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -492,6 +512,12 @@ export default function CustomerDetailPage() {
         }
       >
         <div className="space-y-4">
+          {updateError && (
+            <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {updateError}
+            </div>
+          )}
           <div>
             <label className="block text-sm font-bold text-stone-700 mb-1.5">Full Name</label>
             <input
@@ -526,7 +552,7 @@ export default function CustomerDetailPage() {
                 />
              </div>
           </div>
-          <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider text-center pt-2">
+          <p className="text-xs text-stone-400 font-bold uppercase tracking-wider text-center pt-2">
             Captured data enables yearly loyalty rewards
           </p>
         </div>
