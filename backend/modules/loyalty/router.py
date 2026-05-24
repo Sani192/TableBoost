@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from core.database import get_db
 from modules.loyalty import schemas, service
-from modules.auth.router import get_current_user, check_role, check_feature
+from modules.auth.router import get_current_tenant, check_role, check_feature
 from fastapi import Depends
 
 router = APIRouter(
@@ -13,21 +13,27 @@ router = APIRouter(
 )
 
 # Reward Management
-@router.get("/rewards", response_model=List[schemas.LoyaltyRewardResponse], dependencies=[Depends(get_current_user)])
-def get_rewards(db: Session = Depends(get_db)):
-    return service.get_all_rewards(db)
+@router.get("/rewards", response_model=List[schemas.LoyaltyRewardResponse])
+def get_rewards(
+    tenant_context = Depends(get_current_tenant),
+    db: Session = Depends(get_db)
+):
+    return service.get_all_rewards(db, tenant_context["restaurant_id"])
 
 from modules.governance.service import log_audit_event
 
 @router.post("/rewards", response_model=schemas.LoyaltyRewardResponse)
 def create_reward(
     reward: schemas.LoyaltyRewardCreate, 
-    current_user = Depends(check_role(["OWNER", "MANAGER"])),
+    tenant_context = Depends(check_role(["OWNER", "MANAGER"])),
     db: Session = Depends(get_db)
 ):
-    new_reward = service.create_reward(db, reward)
+    current_user = tenant_context["user"]
+    restaurant_id = tenant_context["restaurant_id"]
+    new_reward = service.create_reward(db, restaurant_id, reward)
     log_audit_event(
         db,
+        restaurant_id,
         actor_id=current_user.id,
         actor_username=current_user.username,
         action="CREATE_REWARD",
@@ -46,15 +52,18 @@ def create_reward(
 def update_reward(
     reward_id: int, 
     reward: schemas.LoyaltyRewardUpdate, 
-    current_user = Depends(check_role(["OWNER", "MANAGER"])),
+    tenant_context = Depends(check_role(["OWNER", "MANAGER"])),
     db: Session = Depends(get_db)
 ):
-    updated = service.update_reward(db, reward_id, reward)
+    current_user = tenant_context["user"]
+    restaurant_id = tenant_context["restaurant_id"]
+    updated = service.update_reward(db, restaurant_id, reward_id, reward)
     if not updated:
         raise HTTPException(status_code=404, detail="Reward not found")
         
     log_audit_event(
         db,
+        restaurant_id,
         actor_id=current_user.id,
         actor_username=current_user.username,
         action="UPDATE_REWARD",
@@ -66,21 +75,28 @@ def update_reward(
     return updated
 
 # Customer Loyalty
-@router.get("/status/{customer_id}", response_model=schemas.LoyaltyStatusResponse, dependencies=[Depends(get_current_user)])
-def get_status(customer_id: int, db: Session = Depends(get_db)):
-    return service.get_loyalty_status(db, customer_id)
+@router.get("/status/{customer_id}", response_model=schemas.LoyaltyStatusResponse)
+def get_status(
+    customer_id: int, 
+    tenant_context = Depends(get_current_tenant),
+    db: Session = Depends(get_db)
+):
+    return service.get_loyalty_status(db, tenant_context["restaurant_id"], customer_id)
 
 @router.post("/redeem/{customer_id}/{reward_id}", response_model=schemas.RewardRedemptionResponse)
 def redeem_reward(
     customer_id: int, 
     reward_id: int, 
-    current_user = Depends(get_current_user),
+    tenant_context = Depends(get_current_tenant),
     db: Session = Depends(get_db)
 ):
+    current_user = tenant_context["user"]
+    restaurant_id = tenant_context["restaurant_id"]
     try:
-        redemption = service.redeem_reward(db, customer_id, reward_id)
+        redemption = service.redeem_reward(db, restaurant_id, customer_id, reward_id)
         log_audit_event(
             db,
+            restaurant_id,
             actor_id=current_user.id,
             actor_username=current_user.username,
             action="REDEEM_REWARD",
@@ -93,6 +109,7 @@ def redeem_reward(
     except ValueError as e:
         log_audit_event(
             db,
+            restaurant_id,
             actor_id=current_user.id,
             actor_username=current_user.username,
             action="REDEEM_REWARD",
@@ -105,6 +122,7 @@ def redeem_reward(
     except Exception as e:
         log_audit_event(
             db,
+            restaurant_id,
             actor_id=current_user.id,
             actor_username=current_user.username,
             action="REDEEM_REWARD",
@@ -115,6 +133,12 @@ def redeem_reward(
         )
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/history/{customer_id}", response_model=List[schemas.RewardRedemptionResponse], dependencies=[Depends(get_current_user)])
-def get_history(customer_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
-    return service.get_redemption_history(db, customer_id, skip=skip, limit=limit)
+@router.get("/history/{customer_id}", response_model=List[schemas.RewardRedemptionResponse])
+def get_history(
+    customer_id: int, 
+    skip: int = 0, 
+    limit: int = 20, 
+    tenant_context = Depends(get_current_tenant),
+    db: Session = Depends(get_db)
+):
+    return service.get_redemption_history(db, tenant_context["restaurant_id"], customer_id, skip=skip, limit=limit)

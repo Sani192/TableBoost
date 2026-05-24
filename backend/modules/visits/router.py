@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from modules.visits.schemas import VisitCreate, VisitResponse, VisitDetail
 from modules.visits import service
-from modules.auth.router import get_current_user, check_role
+from modules.auth.router import get_current_tenant, check_role
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +23,16 @@ def list_visits(
     max_amount: Optional[float] = None,
     sort_by: str = "visited_at",
     sort_order: str = "desc",
-    current_user = Depends(check_role(["OWNER", "MANAGER"])),
+    tenant_context = Depends(check_role(["OWNER", "MANAGER"])),
     db: Session = Depends(get_db)
 ):
-    has_intel = "intelligence" in current_user.features
+    current_user = tenant_context["user"]
+    restaurant_id = tenant_context["restaurant_id"]
+    features = current_user.get_features(restaurant_id)
+    has_intel = "intelligence" in features
     return service.get_visits(
-        db, 
+        db,
+        restaurant_id=restaurant_id,
         skip=skip, 
         limit=limit, 
         search=search, 
@@ -56,9 +60,12 @@ IDEMPOTENCY_WINDOW_SECONDS = 5
 @router.post("/", response_model=VisitResponse)
 def create_visit(
     visit_data: VisitCreate, 
-    current_user = Depends(get_current_user),
+    tenant_context = Depends(get_current_tenant),
     db: Session = Depends(get_db)
 ):
+    current_user = tenant_context["user"]
+    restaurant_id = tenant_context["restaurant_id"]
+    
     # Idempotency check
     payload_str = visit_data.model_dump_json()
     payload_hash = hashlib.sha256(payload_str.encode()).hexdigest()
@@ -81,9 +88,10 @@ def create_visit(
         idempotency_cache[cache_key] = current_time
 
     try:
-        visit = service.add_visit(db, visit_data)
+        visit = service.add_visit(db, restaurant_id, visit_data)
         log_audit_event(
             db,
+            restaurant_id=restaurant_id,
             actor_id=current_user.id,
             actor_username=current_user.username,
             action="CREATE_VISIT",
@@ -97,6 +105,7 @@ def create_visit(
         logger.error(f"Failed to create visit: {e}", exc_info=True)
         log_audit_event(
             db,
+            restaurant_id=restaurant_id,
             actor_id=current_user.id,
             actor_username=current_user.username,
             action="CREATE_VISIT",

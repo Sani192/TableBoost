@@ -14,7 +14,7 @@ def test_starter_plan_cannot_access_loyalty(client, db):
     # 2. Get STARTER plan and create a subscription
     plan = db.query(Plan).filter(Plan.name == "STARTER").first()
     assert plan is not None
-    sub = Subscription(user_id=user.id, plan_id=plan.id, status="ACTIVE")
+    sub = Subscription(restaurant_id=1, plan_id=plan.id, status="ACTIVE")
     db.add(sub)
     db.commit()
 
@@ -39,7 +39,7 @@ def test_growth_plan_can_access_loyalty(client, db):
     # 2. Get GROWTH plan and create a subscription
     plan = db.query(Plan).filter(Plan.name == "GROWTH").first()
     assert plan is not None
-    sub = Subscription(user_id=user.id, plan_id=plan.id, status="ACTIVE")
+    sub = Subscription(restaurant_id=1, plan_id=plan.id, status="ACTIVE")
     db.add(sub)
     db.commit()
 
@@ -64,7 +64,7 @@ def test_growth_plan_cannot_access_intelligence(client, db):
     # 2. Get GROWTH plan and create a subscription
     plan = db.query(Plan).filter(Plan.name == "GROWTH").first()
     assert plan is not None
-    sub = Subscription(user_id=user.id, plan_id=plan.id, status="ACTIVE")
+    sub = Subscription(restaurant_id=1, plan_id=plan.id, status="ACTIVE")
     db.add(sub)
     db.commit()
 
@@ -88,13 +88,13 @@ def test_check_job_feature_access(db):
     db.refresh(starter_user)
     
     plan_starter = db.query(Plan).filter(Plan.name == "STARTER").first()
-    sub_starter = Subscription(user_id=starter_user.id, plan_id=plan_starter.id, status="ACTIVE")
+    sub_starter = Subscription(restaurant_id=1, plan_id=plan_starter.id, status="ACTIVE")
     db.add(sub_starter)
     db.commit()
     
     # Starter plan should not have access to 'automation' or 'campaigns'
-    assert check_job_feature_access(db, "automation") is False
-    assert check_job_feature_access(db, "campaigns") is False
+    assert check_job_feature_access(db, "automation", 1) is False
+    assert check_job_feature_access(db, "campaigns", 1) is False
     
     # 2. Upgrade to PRO
     plan_pro = db.query(Plan).filter(Plan.name == "PRO").first()
@@ -102,6 +102,6 @@ def test_check_job_feature_access(db):
     db.commit()
     
     # Pro plan should have access to 'automation' and 'campaigns'
-    assert check_job_feature_access(db, "automation") is True
-    assert check_job_feature_access(db, "campaigns") is True
+    assert check_job_feature_access(db, "automation", 1) is True
+    assert check_job_feature_access(db, "campaigns", 1) is True
 

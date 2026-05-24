@@ -23,12 +23,13 @@ def sanitize_metadata(data: Any) -> Any:
 
 def log_audit_event(
     db: Session,
-    actor_id: Optional[int],
-    actor_username: Optional[str],
-    action: str,
-    entity_type: Optional[str],
-    entity_id: Optional[str],
-    status: str,
+    restaurant_id: Optional[int] = None,
+    actor_id: Optional[int] = None,
+    actor_username: Optional[str] = None,
+    action: str = "",
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    status: str = "",
     metadata_json: Optional[Dict[str, Any]] = None
 ) -> AuditLog:
     """Log a user activity audit event to the database"""
@@ -36,6 +37,7 @@ def log_audit_event(
         if metadata_json:
             metadata_json = sanitize_metadata(metadata_json)
         log_entry = AuditLog(
+            restaurant_id=restaurant_id,
             actor_id=actor_id,
             actor_username=actor_username,
             action=action,
@@ -56,6 +58,7 @@ def log_audit_event(
 
 def log_operational_event(
     db: Session,
+    restaurant_id: Optional[int],
     log_type: str,
     event_name: str,
     status: str,
@@ -69,6 +72,7 @@ def log_operational_event(
         if metadata_json:
             metadata_json = sanitize_metadata(metadata_json)
         log_entry = OperationalLog(
+            restaurant_id=restaurant_id,
             log_type=log_type,
             event_name=event_name,
             job_id=job_id,
@@ -90,6 +94,7 @@ def log_operational_event(
 
 def get_audit_logs(
     db: Session,
+    restaurant_id: int,
     page: int = 1,
     limit: int = 20,
     search: Optional[str] = None,
@@ -103,7 +108,7 @@ def get_audit_logs(
     sort_dir: Optional[str] = "desc"
 ):
     """Retrieve audit logs with paginated filtering and sorting"""
-    query = db.query(AuditLog)
+    query = db.query(AuditLog).filter(AuditLog.restaurant_id == restaurant_id)
 
     if actor_username:
         query = query.filter(AuditLog.actor_username == actor_username)
@@ -159,6 +164,7 @@ def get_audit_logs(
 
 def get_operational_logs(
     db: Session,
+    restaurant_id: int,
     page: int = 1,
     limit: int = 20,
     search: Optional[str] = None,
@@ -172,7 +178,7 @@ def get_operational_logs(
     sort_dir: Optional[str] = "desc"
 ):
     """Retrieve operational logs with paginated filtering and sorting"""
-    query = db.query(OperationalLog)
+    query = db.query(OperationalLog).filter(OperationalLog.restaurant_id == restaurant_id)
 
     if log_type:
         query = query.filter(OperationalLog.log_type == log_type)

@@ -1,12 +1,13 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, Text, JSON, ForeignKey
 from sqlalchemy.sql import func
-from core.database import Base
+from core.database import Base, get_default_restaurant_id
 
 
 class CustomerIntelligence(Base):
     __tablename__ = "customer_intelligence"
 
     customer_id = Column(Integer, ForeignKey("customers.id"), primary_key=True)
+    restaurant_id = Column(Integer, ForeignKey("restaurants.id"), nullable=False, index=True, default=get_default_restaurant_id)
     clv_score = Column(Float, default=0)
     clv_tier = Column(String(10), default="low")        # high, medium, low
     total_spent = Column(Float, default=0)
@@ -23,6 +24,7 @@ class CampaignSummary(Base):
     __tablename__ = "campaign_summaries"
 
     campaign_id = Column(Integer, ForeignKey("campaigns.id"), primary_key=True)
+    restaurant_id = Column(Integer, ForeignKey("restaurants.id"), nullable=False, index=True, default=get_default_restaurant_id)
     total_sent = Column(Integer, default=0)
     total_converted = Column(Integer, default=0)
     conversion_rate = Column(Float, default=0)
@@ -34,6 +36,7 @@ class RewardSummary(Base):
     __tablename__ = "reward_summaries"
 
     reward_id = Column(Integer, ForeignKey("loyalty_rewards.id"), primary_key=True)
+    restaurant_id = Column(Integer, ForeignKey("restaurants.id"), nullable=False, index=True, default=get_default_restaurant_id)
     total_redeemed = Column(Integer, default=0)
     eligible_count = Column(Integer, default=0)
     redemption_rate = Column(Float, default=0)
@@ -46,6 +49,7 @@ class AutomationSummary(Base):
     __tablename__ = "automation_summaries"
 
     id = Column(Integer, primary_key=True, index=True)
+    restaurant_id = Column(Integer, ForeignKey("restaurants.id"), nullable=False, index=True, default=get_default_restaurant_id)
     automation_type = Column(String(50), nullable=False, index=True)
     period_month = Column(String(7), nullable=False, index=True)     # '2026-05'
     messages_sent = Column(Integer, default=0)
@@ -59,6 +63,7 @@ class BusinessSummary(Base):
     __tablename__ = "business_summaries"
 
     id = Column(Integer, primary_key=True, index=True)
+    restaurant_id = Column(Integer, ForeignKey("restaurants.id"), nullable=False, index=True, default=get_default_restaurant_id)
     period_type = Column(String(10), nullable=False, index=True)     # weekly, monthly
     period_start = Column(DateTime, nullable=False)
     period_end = Column(DateTime, nullable=False)
@@ -72,6 +77,7 @@ class Recommendation(Base):
     __tablename__ = "recommendations"
 
     id = Column(Integer, primary_key=True, index=True)
+    restaurant_id = Column(Integer, ForeignKey("restaurants.id"), nullable=False, index=True, default=get_default_restaurant_id)
     rule_id = Column(String(10), nullable=False)
     message = Column(Text, nullable=False)
     priority = Column(String(10), nullable=False, index=True)        # high, medium, positive

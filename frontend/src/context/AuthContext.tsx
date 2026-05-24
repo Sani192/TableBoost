@@ -10,11 +10,14 @@ interface User {
   features: string[];
   first_name?: string | null;
   last_name?: string | null;
+  restaurant_id?: number | null;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  currentRestaurantId: number | null;
+  setCurrentRestaurantId: (id: number | null) => void;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -28,19 +31,58 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentRestaurantId, setCurrentRestaurantIdState] = useState<number | null>(null);
   const router = useRouter();
+
+  // Load active restaurant ID from local storage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedId = window.localStorage.getItem('tableboost.currentRestaurantId');
+      if (storedId) {
+        setCurrentRestaurantIdState(parseInt(storedId, 10));
+      }
+    }
+  }, []);
+
+  const setCurrentRestaurantId = (id: number | null) => {
+    setCurrentRestaurantIdState(id);
+    if (id !== null) {
+      window.localStorage.setItem('tableboost.currentRestaurantId', id.toString());
+    } else {
+      window.localStorage.removeItem('tableboost.currentRestaurantId');
+    }
+  };
+
+  const getAuthHeaders = () => {
+    const headers: Record<string, string> = {};
+    if (currentRestaurantId !== null) {
+      headers['X-Restaurant-ID'] = currentRestaurantId.toString();
+    }
+    return headers;
+  };
 
   const checkAuth = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      const res = await fetch('/api/auth/me', { 
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
       if (res.ok) {
         const data = await res.json();
         
+        // Update currentRestaurantId if it was changed or set by the backend
+        if (data.restaurant_id) {
+          setCurrentRestaurantId(data.restaurant_id);
+        }
+
         // Fetch profile names
         let profile = { first_name: null, last_name: null };
         try {
-          const profileRes = await fetch('/api/auth/profile', { credentials: 'include' });
+          const profileRes = await fetch('/api/auth/profile', { 
+            credentials: 'include',
+            headers: getAuthHeaders()
+          });
           if (profileRes.ok) {
             profile = await profileRes.json();
           }
@@ -62,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [currentRestaurantId]);
 
   const login = async (username: string, password: string) => {
     try {
@@ -76,6 +118,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         
+        if (data.restaurant_id) {
+          setCurrentRestaurantId(data.restaurant_id);
+        }
+
         let profile = { first_name: null, last_name: null };
         try {
           const profileRes = await fetch('/api/auth/profile', { credentials: 'include' });
@@ -92,7 +138,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           plan: data.plan || 'STARTER',
           features: data.features || [],
           first_name: profile.first_name,
-          last_name: profile.last_name
+          last_name: profile.last_name,
+          restaurant_id: data.restaurant_id
         });
         window.location.href = '/';
         return true;
@@ -108,8 +155,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
       setUser(null);
+      setCurrentRestaurantId(null);
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem('tableboost.visits');
+        window.localStorage.removeItem('tableboost.currentRestaurantId');
       }
       router.push('/login');
     } catch (error) {
@@ -118,7 +167,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const authFetch = async (url: string, options: RequestInit = {}) => {
-    const res = await fetch(url, { ...options, credentials: 'include' });
+    const headers = {
+      ...options.headers,
+      ...getAuthHeaders()
+    };
+    
+    const res = await fetch(url, { ...options, headers, credentials: 'include' });
     if (res.status === 401) {
       setUser(null);
       router.push('/login');
@@ -128,7 +182,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasFeatureAccess = (feature: string) => {
     if (!user) return false;
-    // Database-driven check: feature list is returned by backend auth context
     return user.features ? user.features.includes(feature) : false;
   };
 
@@ -136,19 +189,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch('/api/auth/subscription', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
         body: JSON.stringify({ plan_name: planName }),
         credentials: 'include',
       });
 
       if (res.ok) {
         const data = await res.json();
-        setUser({
+        setUser(prev => prev ? {
+          ...prev,
           username: data.username,
           role: data.role,
           plan: data.plan || 'STARTER',
           features: data.features || []
-        });
+        } : null);
         return true;
       }
       return false;
@@ -159,7 +216,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth, authFetch, hasFeatureAccess, updateSubscription }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      currentRestaurantId,
+      setCurrentRestaurantId,
+      login, 
+      logout, 
+      checkAuth, 
+      authFetch, 
+      hasFeatureAccess, 
+      updateSubscription 
+    }}>
       {children}
     </AuthContext.Provider>
   );

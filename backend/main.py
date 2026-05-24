@@ -10,49 +10,132 @@ from modules.automation.router import router as automation_router
 from modules.intelligence.router import router as intelligence_router
 from modules.auth.router import router as auth_router
 from modules.governance.router import router as governance_router
+from modules.restaurants.models import Restaurant, RestaurantUser
 from modules.automation import service as automation_service
 from modules.messaging import service as messaging_service
 from core.database import SessionLocal
 from core.scheduler import scheduler
 import logging
+from core.middleware import CorrelationIdMiddleware, get_correlation_id
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Configure logging with correlation ID filter
+class CorrelationIdFilter(logging.Filter):
+    def filter(self, record):
+        record.correlation_id = get_correlation_id()
+        return True
+
+log_handler = logging.StreamHandler()
+log_handler.setFormatter(logging.Formatter('%(asctime)s - [%(correlation_id)s] - %(name)s - %(levelname)s - %(message)s'))
+log_handler.addFilter(CorrelationIdFilter())
+
+# Clear default logging handlers and setup correlation logging
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+for h in root_logger.handlers[:]:
+    root_logger.removeHandler(h)
+root_logger.addHandler(log_handler)
+
 logger = logging.getLogger(__name__)
 # Ensure the automation service logger is also at INFO level
 logging.getLogger('modules.automation.service').setLevel(logging.INFO)
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.exceptions import RequestValidationError
 from core.errors import TableBoostError
 
 app = FastAPI(title="TableBoost API", version="1.0.0")
 
+# Register CorrelationIdMiddleware first
+app.add_middleware(CorrelationIdMiddleware)
+
 @app.exception_handler(TableBoostError)
 async def tableboost_exception_handler(request: Request, exc: TableBoostError):
+    correlation_id = getattr(request.state, "correlation_id", "-")
     logger.error(f"TableBoostError [{exc.status_code}]: {exc.message}")
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "error": True,
             "message": exc.message,
+            "detail": exc.message,
             "payload": exc.payload,
-            "type": exc.__class__.__name__
+            "type": exc.__class__.__name__,
+            "correlation_id": correlation_id
+        }
+    )
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    correlation_id = getattr(request.state, "correlation_id", "-")
+    logger.error(f"HTTPException [{exc.status_code}]: {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": True,
+            "message": exc.detail,
+            "detail": exc.detail,
+            "payload": {},
+            "type": "HTTPException",
+            "correlation_id": correlation_id
+        }
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    correlation_id = getattr(request.state, "correlation_id", "-")
+    errors = exc.errors()
+    error_msgs = []
+    for err in errors:
+        loc = " -> ".join(str(l) for l in err.get("loc", []))
+        msg = err.get("msg", "invalid value")
+        error_msgs.append(f"{loc}: {msg}")
+    
+    friendly_message = "Validation failed: " + "; ".join(error_msgs)
+    logger.warning(f"RequestValidationError: {friendly_message}")
+    
+    # Sanitize Pydantic error dictionaries to ensure JSON serializability
+    sanitized_errors = []
+    for err in errors:
+        new_err = {}
+        for k, v in err.items():
+            if k == "ctx" and isinstance(v, dict):
+                new_ctx = {}
+                for ck, cv in v.items():
+                    if isinstance(cv, Exception):
+                        new_ctx[ck] = str(cv)
+                    else:
+                        new_ctx[ck] = cv
+                new_err[k] = new_ctx
+            else:
+                new_err[k] = v
+        sanitized_errors.append(new_err)
+    
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": True,
+            "message": friendly_message,
+            "detail": friendly_message,
+            "payload": {"details": sanitized_errors},
+            "type": "ValidationError",
+            "correlation_id": correlation_id
         }
     )
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    correlation_id = getattr(request.state, "correlation_id", "-")
     logger.error(f"Unhandled Exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
         content={
             "error": True,
             "message": "An internal operational error occurred.",
-            "type": "InternalServerError"
+            "detail": "An internal operational error occurred.",
+            "type": "InternalServerError",
+            "correlation_id": correlation_id
         }
     )
 

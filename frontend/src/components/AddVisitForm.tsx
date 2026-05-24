@@ -102,10 +102,14 @@ export default function AddVisitForm({ onSuccess, onCancel, customerId }: AddVis
         setTimeout(onSuccess, 1500); // Close after success message
       }
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Could not save the visit. Please try again.';
+      let message = 'Could not save the visit. Please try again.';
+      if (err instanceof Error) {
+        message = err.message;
+        const correlationId = (err as any).correlationId;
+        if (correlationId) {
+          message += ` (Support Code: ${correlationId})`;
+        }
+      }
       setFeedback({ type: 'error', text: message });
     } finally {
       setIsSubmitting(false);

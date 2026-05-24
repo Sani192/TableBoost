@@ -4,7 +4,7 @@ from core.database import get_db
 from modules.automation import service
 from typing import List, Optional
 from pydantic import BaseModel
-from modules.auth.router import get_current_user, check_role, check_feature
+from modules.auth.router import get_current_tenant, check_role, check_feature
 from fastapi import Depends
 
 router = APIRouter(
@@ -27,21 +27,28 @@ class AutomationUpdate(BaseModel):
 
 from modules.governance.service import log_audit_event
 
-@router.get("/", response_model=List[AutomationConfigBase], dependencies=[Depends(check_role(["OWNER"]))])
-def list_automations(db: Session = Depends(get_db)):
-    return service.get_automation_configs(db)
+@router.get("/", response_model=List[AutomationConfigBase])
+def list_automations(
+    tenant_context = Depends(check_role(["OWNER"])),
+    db: Session = Depends(get_db)
+):
+    restaurant_id = tenant_context["restaurant_id"]
+    return service.get_automation_configs(db, restaurant_id)
 
 @router.post("/", response_model=AutomationConfigBase)
 def update_automation(
     config: AutomationUpdate, 
-    current_user = Depends(check_role(["OWNER"])),
+    tenant_context = Depends(check_role(["OWNER"])),
     db: Session = Depends(get_db)
 ):
-    updated_config = service.update_automation_config(db, config.dict(exclude_unset=True))
+    current_user = tenant_context["user"]
+    restaurant_id = tenant_context["restaurant_id"]
+    updated_config = service.update_automation_config(db, restaurant_id, config.dict(exclude_unset=True))
     
     # Log audit event
     log_audit_event(
         db,
+        restaurant_id=restaurant_id,
         actor_id=current_user.id,
         actor_username=current_user.username,
         action="TOGGLE_AUTOMATION" if config.is_enabled is not None and len(config.dict(exclude_unset=True)) <= 2 else "UPDATE_AUTOMATION",

@@ -1,4 +1,3 @@
-from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, desc, case
 from datetime import datetime, timedelta, timezone, date
@@ -19,14 +18,8 @@ logger = logging.getLogger(__name__)
 
 # ── CLV + Health Computation ──────────────────────────────────────────────
 
-def compute_daily_intelligence(db: Session, restaurant_id: Optional[int] = None):
+def compute_daily_intelligence(db: Session):
     """Recompute CLV and health scores for all customers. Called by scheduler."""
-    if restaurant_id is None:
-        import os
-        if os.environ.get("TESTING") == "1":
-            restaurant_id = 1
-        else:
-            raise ValueError("restaurant_id is required")
     logger.info("Starting daily intelligence computation")
     now = datetime.now(timezone.utc)
 
@@ -36,7 +29,7 @@ def compute_daily_intelligence(db: Session, restaurant_id: Optional[int] = None)
         func.sum(Visit.amount).label("total_spent"),
         func.max(Visit.visited_at).label("last_visit"),
         func.min(Visit.visited_at).label("first_visit"),
-    ).outerjoin(Visit).filter(Customer.restaurant_id == restaurant_id).group_by(Customer.id).all()
+    ).outerjoin(Visit).group_by(Customer.id).all()
 
     updated = 0
     all_scores = []
@@ -120,11 +113,10 @@ def compute_daily_intelligence(db: Session, restaurant_id: Optional[int] = None)
 
             # ── Upsert ──
             intel = db.query(CustomerIntelligence).filter(
-                CustomerIntelligence.customer_id == cid,
-                CustomerIntelligence.restaurant_id == restaurant_id
+                CustomerIntelligence.customer_id == cid
             ).first()
             if not intel:
-                intel = CustomerIntelligence(customer_id=cid, restaurant_id=restaurant_id)
+                intel = CustomerIntelligence(customer_id=cid)
                 db.add(intel)
 
             intel.clv_score = clv_score
@@ -158,8 +150,7 @@ def compute_daily_intelligence(db: Session, restaurant_id: Optional[int] = None)
 
     for cid, tier in tier_map.items():
         db.query(CustomerIntelligence).filter(
-            CustomerIntelligence.customer_id == cid,
-            CustomerIntelligence.restaurant_id == restaurant_id
+            CustomerIntelligence.customer_id == cid
         ).update({"clv_tier": tier})
 
     db.commit()
@@ -169,17 +160,16 @@ def compute_daily_intelligence(db: Session, restaurant_id: Optional[int] = None)
 
 # ── Campaign ROI ──────────────────────────────────────────────────────────
 
-def compute_campaign_summaries(db: Session, restaurant_id: int):
+def compute_campaign_summaries(db: Session):
     """Compute per-campaign ROI summaries."""
     logger.info("Computing campaign summaries")
     now = datetime.now(timezone.utc)
-    campaigns = db.query(Campaign).filter(Campaign.status == "completed", Campaign.restaurant_id == restaurant_id).all()
+    campaigns = db.query(Campaign).filter(Campaign.status == "completed").all()
     count = 0
 
     for camp in campaigns:
         try:
             msgs = db.query(Message).filter(
-                Message.restaurant_id == restaurant_id,
                 Message.status == "sent",
                 (Message.campaign_id == camp.id) | 
                 ((Message.campaign_id == None) & (Message.type == "campaign") & (Message.message_text.contains(camp.message_template[:30]) if camp.message_template else True))
@@ -202,11 +192,10 @@ def compute_campaign_summaries(db: Session, restaurant_id: int):
             rate = (converted / total_sent * 100) if total_sent > 0 else 0
 
             summary = db.query(CampaignSummary).filter(
-                CampaignSummary.campaign_id == camp.id,
-                CampaignSummary.restaurant_id == restaurant_id
+                CampaignSummary.campaign_id == camp.id
             ).first()
             if not summary:
-                summary = CampaignSummary(campaign_id=camp.id, restaurant_id=restaurant_id)
+                summary = CampaignSummary(campaign_id=camp.id)
                 db.add(summary)
 
             summary.total_sent = total_sent
@@ -226,24 +215,24 @@ def compute_campaign_summaries(db: Session, restaurant_id: int):
 
 # ── Reward Effectiveness ──────────────────────────────────────────────────
 
-def compute_reward_effectiveness(db: Session, restaurant_id: int):
+def compute_reward_effectiveness(db: Session):
     """Compute per-reward effectiveness summaries."""
     logger.info("Computing reward effectiveness")
     now = datetime.now(timezone.utc)
-    rewards = db.query(LoyaltyReward).filter(LoyaltyReward.restaurant_id == restaurant_id).all()
+    rewards = db.query(LoyaltyReward).all()
     count = 0
 
     for reward in rewards:
         try:
             redeemed = db.query(RewardRedemption).filter(
-                RewardRedemption.reward_id == reward.id, RewardRedemption.restaurant_id == restaurant_id
+                RewardRedemption.reward_id == reward.id
             ).all()
             total_redeemed = len(redeemed)
 
             eligible_count = 0
             if reward.reward_type == "milestone":
-                eligible_count = db.query(LoyaltyProgress).join(Customer).filter(
-                    LoyaltyProgress.lifetime_visits >= reward.required_visits, Customer.restaurant_id == restaurant_id
+                eligible_count = db.query(LoyaltyProgress).filter(
+                    LoyaltyProgress.lifetime_visits >= reward.required_visits
                 ).count()
 
             redemption_rate = (total_redeemed / eligible_count * 100) if eligible_count > 0 else 0
@@ -263,11 +252,10 @@ def compute_reward_effectiveness(db: Session, restaurant_id: int):
             revisit_rate = (revisit_count / total_redeemed * 100) if total_redeemed > 0 else 0
 
             summary = db.query(RewardSummary).filter(
-                RewardSummary.reward_id == reward.id,
-                RewardSummary.restaurant_id == restaurant_id
+                RewardSummary.reward_id == reward.id
             ).first()
             if not summary:
-                summary = RewardSummary(reward_id=reward.id, restaurant_id=restaurant_id)
+                summary = RewardSummary(reward_id=reward.id)
                 db.add(summary)
 
             summary.total_redeemed = total_redeemed
@@ -288,23 +276,20 @@ def compute_reward_effectiveness(db: Session, restaurant_id: int):
 
 # ── Automation Effectiveness ──────────────────────────────────────────────
 
-def compute_automation_effectiveness(db: Session, restaurant_id: int):
+def compute_automation_effectiveness(db: Session):
     """Compute per-automation-type monthly effectiveness."""
     logger.info("Computing automation effectiveness")
     now = datetime.now(timezone.utc)
     current_month = now.strftime("%Y-%m")
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    auto_types = db.query(AutomationHistory.automation_type).filter(
-        AutomationHistory.restaurant_id == restaurant_id
-    ).distinct().all()
+    auto_types = db.query(AutomationHistory.automation_type).distinct().all()
     count = 0
 
     for (atype,) in auto_types:
         try:
             msgs = db.query(Message).filter(
                 Message.type == "automation",
-                Message.restaurant_id == restaurant_id,
                 Message.status == "sent",
                 Message.sent_at >= month_start,
             ).join(
@@ -312,7 +297,6 @@ def compute_automation_effectiveness(db: Session, restaurant_id: int):
                 and_(
                     AutomationHistory.customer_id == Message.customer_id,
                     AutomationHistory.automation_type == atype,
-                    AutomationHistory.restaurant_id == restaurant_id,
                 )
             ).all()
 
@@ -323,7 +307,6 @@ def compute_automation_effectiveness(db: Session, restaurant_id: int):
             for msg in msgs:
                 visit = db.query(Visit).filter(
                     Visit.customer_id == msg.customer_id,
-                    Visit.restaurant_id == restaurant_id,
                     Visit.visited_at >= msg.sent_at,
                     Visit.visited_at <= msg.sent_at + timedelta(days=7),
                 ).first()
@@ -336,14 +319,9 @@ def compute_automation_effectiveness(db: Session, restaurant_id: int):
             summary = db.query(AutomationSummary).filter(
                 AutomationSummary.automation_type == atype,
                 AutomationSummary.period_month == current_month,
-                AutomationSummary.restaurant_id == restaurant_id,
             ).first()
             if not summary:
-                summary = AutomationSummary(
-                    automation_type=atype,
-                    period_month=current_month,
-                    restaurant_id=restaurant_id,
-                )
+                summary = AutomationSummary(automation_type=atype, period_month=current_month)
                 db.add(summary)
 
             summary.messages_sent = sent_count
@@ -363,7 +341,7 @@ def compute_automation_effectiveness(db: Session, restaurant_id: int):
 
 # ── Business Summaries ────────────────────────────────────────────────────
 
-def generate_summary(db: Session, period_type: str, restaurant_id: int):
+def generate_summary(db: Session, period_type: str):
     """Generate weekly or monthly business summary."""
     logger.info(f"Generating {period_type} summary")
     now = datetime.now(timezone.utc)
@@ -381,56 +359,44 @@ def generate_summary(db: Session, period_type: str, restaurant_id: int):
 
     # Current period metrics
     total_visits = db.query(func.count(Visit.id)).filter(
-        Visit.restaurant_id == restaurant_id,
         Visit.visited_at >= period_start, Visit.visited_at < period_end
     ).scalar() or 0
     total_revenue = float(db.query(func.sum(Visit.amount)).filter(
-        Visit.restaurant_id == restaurant_id,
         Visit.visited_at >= period_start, Visit.visited_at < period_end
     ).scalar() or 0)
     new_customers = db.query(func.count(Customer.id)).filter(
-        Customer.restaurant_id == restaurant_id,
         Customer.created_at >= period_start, Customer.created_at < period_end
     ).scalar() or 0
     avg_ticket = float(db.query(func.avg(Visit.amount)).filter(
-        Visit.restaurant_id == restaurant_id,
         Visit.visited_at >= period_start, Visit.visited_at < period_end
     ).scalar() or 0)
     rewards_redeemed = db.query(func.count(RewardRedemption.id)).filter(
-        RewardRedemption.restaurant_id == restaurant_id,
         RewardRedemption.redeemed_at >= period_start, RewardRedemption.redeemed_at < period_end
     ).scalar() or 0
     msgs_sent = db.query(func.count(Message.id)).filter(
-        Message.restaurant_id == restaurant_id,
         Message.type.in_(["campaign", "automation"]),
         Message.sent_at >= period_start, Message.sent_at < period_end,
     ).scalar() or 0
 
     # Health distribution
     healthy = db.query(func.count(CustomerIntelligence.customer_id)).filter(
-        CustomerIntelligence.restaurant_id == restaurant_id,
         CustomerIntelligence.health_status == "healthy"
     ).scalar() or 0
     declining = db.query(func.count(CustomerIntelligence.customer_id)).filter(
-        CustomerIntelligence.restaurant_id == restaurant_id,
         CustomerIntelligence.health_status == "declining"
     ).scalar() or 0
     churn = db.query(func.count(CustomerIntelligence.customer_id)).filter(
-        CustomerIntelligence.restaurant_id == restaurant_id,
         CustomerIntelligence.health_status == "churn_risk"
     ).scalar() or 0
 
     # Previous period for trends
     prev_visits = db.query(func.count(Visit.id)).filter(
-        Visit.restaurant_id == restaurant_id,
         Visit.visited_at >= prev_start, Visit.visited_at < prev_end
     ).scalar() or 0
     prev_revenue = float(db.query(func.sum(Visit.amount)).filter(
-        Visit.restaurant_id == restaurant_id,
         Visit.visited_at >= prev_start, Visit.visited_at < prev_end
     ).scalar() or 0)
     prev_new = db.query(func.count(Customer.id)).filter(
-        Customer.restaurant_id == restaurant_id,
         Customer.created_at >= prev_start, Customer.created_at < prev_end
     ).scalar() or 0
 
@@ -468,7 +434,6 @@ def generate_summary(db: Session, period_type: str, restaurant_id: int):
         highlights.append(f"{rewards_redeemed} rewards redeemed this period")
 
     summary_exists = db.query(BusinessSummary).filter(
-        BusinessSummary.restaurant_id == restaurant_id,
         BusinessSummary.period_type == period_type,
         BusinessSummary.period_start == period_start,
         BusinessSummary.period_end == period_end
@@ -479,7 +444,6 @@ def generate_summary(db: Session, period_type: str, restaurant_id: int):
         return metrics
 
     summary = BusinessSummary(
-        restaurant_id=restaurant_id,
         period_type=period_type,
         period_start=period_start,
         period_end=period_end,
@@ -495,34 +459,23 @@ def generate_summary(db: Session, period_type: str, restaurant_id: int):
 
 # ── Recommendations ───────────────────────────────────────────────────────
 
-def evaluate_recommendations(db: Session, restaurant_id: Optional[int] = None):
+def evaluate_recommendations(db: Session):
     """Run rule-based recommendation engine."""
-    if restaurant_id is None:
-        import os
-        if os.environ.get("TESTING") == "1":
-            restaurant_id = 1
-        else:
-            raise ValueError("restaurant_id is required")
-    logger.info(f"Evaluating recommendations for restaurant {restaurant_id}")
+    logger.info("Evaluating recommendations")
 
-    # Clear old non-dismissed recommendations for this restaurant
-    db.query(Recommendation).filter(
-        Recommendation.restaurant_id == restaurant_id,
-        Recommendation.is_dismissed == False
-    ).delete()
+    # Clear old non-dismissed recommendations
+    db.query(Recommendation).filter(Recommendation.is_dismissed == False).delete()
     db.flush()
 
     recs = []
 
     # R1: High-value declining customers
     high_declining = db.query(CustomerIntelligence).filter(
-        CustomerIntelligence.restaurant_id == restaurant_id,
         CustomerIntelligence.clv_tier == "high",
         CustomerIntelligence.health_status.in_(["declining", "churn_risk"]),
     ).count()
     if high_declining > 0:
         recs.append(Recommendation(
-            restaurant_id=restaurant_id,
             rule_id="R1", priority="high",
             message=f"{high_declining} VIP customer{'s are' if high_declining > 1 else ' is'} declining — send a personal recovery message",
             action_type="view_customers",
@@ -532,12 +485,10 @@ def evaluate_recommendations(db: Session, restaurant_id: Optional[int] = None):
     # R2: Churn risk increasing
     now = datetime.now(timezone.utc)
     current_churn = db.query(func.count(CustomerIntelligence.customer_id)).filter(
-        CustomerIntelligence.health_status == "churn_risk",
-        CustomerIntelligence.restaurant_id == restaurant_id
+        CustomerIntelligence.health_status == "churn_risk"
     ).scalar() or 0
     if current_churn > 5:
         recs.append(Recommendation(
-            restaurant_id=restaurant_id,
             rule_id="R2", priority="high",
             message=f"{current_churn} customers at churn risk — review inactivity automation",
             action_type="review_settings",
@@ -545,13 +496,11 @@ def evaluate_recommendations(db: Session, restaurant_id: Optional[int] = None):
 
     # R3: Low reward redemption
     low_redemption = db.query(RewardSummary).filter(
-        RewardSummary.restaurant_id == restaurant_id,
         RewardSummary.redemption_rate < 30,
         RewardSummary.eligible_count > 0,
     ).count()
     if low_redemption > 0:
         recs.append(Recommendation(
-            restaurant_id=restaurant_id,
             rule_id="R4", priority="medium",
             message=f"{low_redemption} reward{'s have' if low_redemption > 1 else ' has'} low redemption rate — consider adjusting thresholds",
             action_type="review_settings",
@@ -559,15 +508,13 @@ def evaluate_recommendations(db: Session, restaurant_id: Optional[int] = None):
 
     # R4: No campaigns in 14 days
     recent_campaign = db.query(Campaign).filter(
-        Campaign.restaurant_id == restaurant_id,
         Campaign.status == "completed",
         Campaign.created_at >= now - timedelta(days=14),
     ).first()
     if not recent_campaign:
-        recent_any = db.query(Campaign).filter(Campaign.restaurant_id == restaurant_id).first()
+        recent_any = db.query(Campaign).first()
         if recent_any:
             recs.append(Recommendation(
-                restaurant_id=restaurant_id,
                 rule_id="R5", priority="medium",
                 message="No campaigns sent in 2 weeks — engagement may drop",
                 action_type="create_campaign",
@@ -575,17 +522,14 @@ def evaluate_recommendations(db: Session, restaurant_id: Optional[int] = None):
 
     # R5: Customer growth slowing
     week1_new = db.query(func.count(Customer.id)).filter(
-        Customer.restaurant_id == restaurant_id,
         Customer.created_at >= now - timedelta(days=7)
     ).scalar() or 0
     week2_new = db.query(func.count(Customer.id)).filter(
-        Customer.restaurant_id == restaurant_id,
         Customer.created_at >= now - timedelta(days=14),
         Customer.created_at < now - timedelta(days=7),
     ).scalar() or 0
     if week2_new > 0 and week1_new < week2_new * 0.5:
         recs.append(Recommendation(
-            restaurant_id=restaurant_id,
             rule_id="R6", priority="medium",
             message="New customer acquisition slowing — consider a new campaign",
             action_type="create_campaign",
@@ -604,64 +548,45 @@ def evaluate_recommendations(db: Session, restaurant_id: Optional[int] = None):
 def run_all_intelligence(db: Session):
     """Master function called by the scheduled job. Runs all computations."""
     logger.info("=== Starting intelligence pipeline ===")
-    from modules.restaurants.models import Restaurant
-    active_restaurants = db.query(Restaurant).all()
-    for restaurant in active_restaurants:
-        restaurant_id = restaurant.id
-        try:
-            logger.info(f"Running intelligence pipeline for restaurant {restaurant_id}")
-            compute_daily_intelligence(db, restaurant_id)
-            compute_campaign_summaries(db, restaurant_id)
-            compute_reward_effectiveness(db, restaurant_id)
-            compute_automation_effectiveness(db, restaurant_id)
-            evaluate_recommendations(db, restaurant_id)
-        except Exception as e:
-            logger.error(f"Error running intelligence for restaurant {restaurant_id}: {str(e)}", exc_info=True)
+    compute_daily_intelligence(db)
+    compute_campaign_summaries(db)
+    compute_reward_effectiveness(db)
+    compute_automation_effectiveness(db)
+    evaluate_recommendations(db)
     logger.info("=== Intelligence pipeline complete ===")
 
 
 # ── Query helpers (for API) ───────────────────────────────────────────────
 
-def get_growth_dashboard(db: Session, restaurant_id: int):
+def get_growth_dashboard(db: Session):
     """Return aggregated growth data for the Growth tab."""
     health_counts = {}
     for status in ["healthy", "cooling", "declining", "churn_risk", "new"]:
         health_counts[status] = db.query(func.count(CustomerIntelligence.customer_id)).filter(
-            CustomerIntelligence.restaurant_id == restaurant_id,
             CustomerIntelligence.health_status == status
         ).scalar() or 0
 
     now = datetime.now(timezone.utc)
     net_new = db.query(func.count(Customer.id)).filter(
-        Customer.restaurant_id == restaurant_id,
         Customer.created_at >= now - timedelta(days=30)
     ).scalar() or 0
 
     # Latest summary
-    latest_summary = db.query(BusinessSummary).filter(
-        BusinessSummary.restaurant_id == restaurant_id
-    ).order_by(
+    latest_summary = db.query(BusinessSummary).order_by(
         BusinessSummary.created_at.desc()
     ).first()
 
     # Recommendations
     recs = db.query(Recommendation).filter(
-        Recommendation.restaurant_id == restaurant_id,
         Recommendation.is_dismissed == False
     ).order_by(Recommendation.created_at.desc()).limit(5).all()
 
     # Reward impact
-    reward_revenue = db.query(func.sum(RewardSummary.reward_influenced_revenue)).filter(
-        RewardSummary.restaurant_id == restaurant_id
-    ).scalar() or 0
-    avg_revisit = db.query(func.avg(RewardSummary.post_reward_revisit_rate)).filter(
-        RewardSummary.restaurant_id == restaurant_id
-    ).scalar() or 0
+    reward_revenue = db.query(func.sum(RewardSummary.reward_influenced_revenue)).scalar() or 0
+    avg_revisit = db.query(func.avg(RewardSummary.post_reward_revisit_rate)).scalar() or 0
 
     # Top automation
-    top_auto = db.query(AutomationSummary).filter(
-        AutomationSummary.restaurant_id == restaurant_id
-    ).order_by(
+    top_auto = db.query(AutomationSummary).order_by(
         AutomationSummary.revisit_rate.desc()
     ).first()
 
@@ -698,10 +623,10 @@ def get_growth_dashboard(db: Session, restaurant_id: int):
     }
 
 
-def get_customer_intel(db: Session, customer_id: int, restaurant_id: int):
+def get_customer_intel(db: Session, customer_id: int):
     """Return pre-computed intelligence for a single customer."""
     intel = db.query(CustomerIntelligence).filter(
-        CustomerIntelligence.customer_id == customer_id, CustomerIntelligence.restaurant_id == restaurant_id
+        CustomerIntelligence.customer_id == customer_id
     ).first()
     if not intel:
         return None
@@ -720,11 +645,11 @@ def get_customer_intel(db: Session, customer_id: int, restaurant_id: int):
     }
 
 
-def get_campaign_roi_list(db: Session, restaurant_id: int):
+def get_campaign_roi_list(db: Session):
     """Return per-campaign ROI summaries."""
     summaries = db.query(CampaignSummary, Campaign.name).join(
         Campaign, CampaignSummary.campaign_id == Campaign.id
-    ).filter(CampaignSummary.restaurant_id == restaurant_id).order_by(CampaignSummary.revenue_attributed.desc()).all()
+    ).order_by(CampaignSummary.revenue_attributed.desc()).all()
 
     return [
         {
@@ -739,22 +664,21 @@ def get_campaign_roi_list(db: Session, restaurant_id: int):
     ]
 
 
-def get_campaign_customers(db: Session, campaign_id: int, restaurant_id: int, skip: int = 0, limit: int = 20):
+def get_campaign_customers(db: Session, campaign_id: int, skip: int = 0, limit: int = 20):
     """Return list of customers targeted by a campaign with conversion status."""
     from modules.messaging.models import Message, Campaign
     from modules.customers.models import Customer
     from modules.visits.models import Visit
     from datetime import timedelta
     
-    camp = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.restaurant_id == restaurant_id).first()
+    camp = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if not camp:
         return []
         
     msgs = db.query(Message, Customer).join(
         Customer, Message.customer_id == Customer.id
     ).filter(
-        Message.restaurant_id == restaurant_id,
-                Message.status == "sent",
+        Message.status == "sent",
         (Message.campaign_id == camp.id) | 
         ((Message.campaign_id == None) & (Message.type == "campaign") & (Message.message_text.contains(camp.message_template[:30]) if camp.message_template else True))
     ).offset(skip).limit(limit).all()
@@ -780,7 +704,7 @@ def get_campaign_customers(db: Session, campaign_id: int, restaurant_id: int, sk
     return results
 
 
-def get_reward_customers(db: Session, restaurant_id: int, reward_id: int = None, skip: int = 0, limit: int = 20):
+def get_reward_customers(db: Session, reward_id: int = None, skip: int = 0, limit: int = 20):
     """Return list of customers who redeemed a reward."""
     from modules.loyalty.models import RewardRedemption
     from modules.customers.models import Customer
@@ -789,7 +713,7 @@ def get_reward_customers(db: Session, restaurant_id: int, reward_id: int = None,
     
     query = db.query(RewardRedemption, Customer).join(
         Customer, RewardRedemption.customer_id == Customer.id
-    ).filter(RewardRedemption.restaurant_id == restaurant_id)
+    )
     
     if reward_id is not None:
         query = query.filter(RewardRedemption.reward_id == reward_id)
@@ -803,15 +727,14 @@ def get_reward_customers(db: Session, restaurant_id: int, reward_id: int = None,
     for red, cust in redemptions:
         # Find visit around redemption time
         visit = db.query(Visit).filter(
-            Visit.restaurant_id == restaurant_id,
             Visit.customer_id == cust.id,
             Visit.visited_at >= red.redeemed_at - timedelta(hours=2),
             Visit.visited_at <= red.redeemed_at + timedelta(hours=2),
         ).first()
         
-        intel = db.query(CustomerIntelligence).filter(CustomerIntelligence.customer_id == cust.id, CustomerIntelligence.restaurant_id == restaurant_id).first()
-        cust_total_visits = db.query(func.count(Visit.id)).filter(Visit.restaurant_id == restaurant_id, Visit.customer_id == cust.id).scalar() or 0
-        total_spent = db.query(func.sum(Visit.amount)).filter(Visit.restaurant_id == restaurant_id, Visit.customer_id == cust.id).scalar() or 0
+        intel = db.query(CustomerIntelligence).filter(CustomerIntelligence.customer_id == cust.id).first()
+        cust_total_visits = db.query(func.count(Visit.id)).filter(Visit.customer_id == cust.id).scalar() or 0
+        total_spent = db.query(func.sum(Visit.amount)).filter(Visit.customer_id == cust.id).scalar() or 0
         
         results.append({
             "id": cust.id,
@@ -830,11 +753,11 @@ def get_reward_customers(db: Session, restaurant_id: int, reward_id: int = None,
     return results
 
 
-def get_reward_effectiveness_list(db: Session, restaurant_id: int):
+def get_reward_effectiveness_list(db: Session):
     """Return per-reward effectiveness."""
     summaries = db.query(RewardSummary, LoyaltyReward.name).join(
         LoyaltyReward, RewardSummary.reward_id == LoyaltyReward.id
-    ).filter(RewardSummary.restaurant_id == restaurant_id).all()
+    ).all()
 
     return [
         {
@@ -850,11 +773,9 @@ def get_reward_effectiveness_list(db: Session, restaurant_id: int):
     ]
 
 
-def get_automation_effectiveness_list(db: Session, restaurant_id: int):
+def get_automation_effectiveness_list(db: Session):
     """Return per-automation-type effectiveness."""
-    summaries = db.query(AutomationSummary).filter(
-        AutomationSummary.restaurant_id == restaurant_id
-    ).order_by(
+    summaries = db.query(AutomationSummary).order_by(
         AutomationSummary.period_month.desc(),
         AutomationSummary.revisit_rate.desc(),
     ).all()
@@ -872,11 +793,9 @@ def get_automation_effectiveness_list(db: Session, restaurant_id: int):
     ]
 
 
-def get_summaries_list(db: Session, restaurant_id: int, limit: int = 10):
+def get_summaries_list(db: Session, limit: int = 10):
     """Return recent business summaries."""
-    summaries = db.query(BusinessSummary).filter(
-        BusinessSummary.restaurant_id == restaurant_id
-    ).order_by(
+    summaries = db.query(BusinessSummary).order_by(
         BusinessSummary.created_at.desc()
     ).limit(limit).all()
 
@@ -895,12 +814,9 @@ def get_summaries_list(db: Session, restaurant_id: int, limit: int = 10):
     ]
 
 
-def dismiss_recommendation(db: Session, rec_id: int, restaurant_id: int):
-    """Dismiss a recommendation securely within tenant boundaries."""
-    rec = db.query(Recommendation).filter(
-        Recommendation.id == rec_id,
-        Recommendation.restaurant_id == restaurant_id
-    ).first()
+def dismiss_recommendation(db: Session, rec_id: int):
+    """Dismiss a recommendation."""
+    rec = db.query(Recommendation).filter(Recommendation.id == rec_id).first()
     if rec:
         rec.is_dismissed = True
         db.commit()

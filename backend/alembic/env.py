@@ -33,6 +33,8 @@ from modules.intelligence.models import CustomerIntelligence, CampaignSummary, R
 from modules.users.models import User
 from modules.governance.models import AuditLog, OperationalLog
 from modules.subscriptions.models import Subscription, Feature, Plan, PlanFeature
+from modules.restaurants.models import Restaurant, RestaurantUser
+from modules.settings.models import Setting
 
 target_metadata = Base.metadata
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

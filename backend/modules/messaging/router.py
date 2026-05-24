@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from core.database import get_db
 from modules.messaging import schemas, service
-from modules.auth.router import get_current_user, check_role, check_feature
+from modules.auth.router import get_current_tenant, check_role, check_feature
 from fastapi import Depends
 
 router = APIRouter(
@@ -15,16 +15,17 @@ router = APIRouter(
 from typing import Optional
 from datetime import datetime
 
-@router.get("/campaign/audience-count", dependencies=[Depends(check_role(["OWNER", "MANAGER"]))])
+@router.get("/campaign/audience-count")
 def get_campaign_audience_count(
     audience_type: str,
     inactive_days: Optional[int] = None,
+    tenant_context = Depends(check_role(["OWNER", "MANAGER"])),
     db: Session = Depends(get_db)
 ):
-    count = service.get_audience_count(db, audience_type, inactive_days)
+    count = service.get_audience_count(db, tenant_context["restaurant_id"], audience_type, inactive_days)
     return {"count": count}
 
-@router.get("/", response_model=List[schemas.MessageLogResponse], dependencies=[Depends(check_role(["OWNER", "MANAGER"]))])
+@router.get("/", response_model=List[schemas.MessageLogResponse])
 def get_message_logs(
     skip: int = 0, 
     limit: int = 100, 
@@ -33,10 +34,12 @@ def get_message_logs(
     status: Optional[str] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
+    tenant_context = Depends(check_role(["OWNER", "MANAGER"])),
     db: Session = Depends(get_db)
 ):
     return service.get_messages(
         db, 
+        restaurant_id=tenant_context["restaurant_id"],
         skip=skip, 
         limit=limit,
         search=search,
@@ -64,9 +67,11 @@ CAMPAIGN_RATE_WINDOW = 300 # per 5 minutes
 @router.post("/campaign")
 def create_campaign(
     campaign: schemas.CampaignCreateRequest, 
-    current_user = Depends(check_role(["OWNER", "MANAGER"])),
+    tenant_context = Depends(check_role(["OWNER", "MANAGER"])),
     db: Session = Depends(get_db)
 ):
+    current_user = tenant_context["user"]
+    restaurant_id = tenant_context["restaurant_id"]
     current_time = time.time()
     
     # 1. Throttling
@@ -96,9 +101,10 @@ def create_campaign(
     campaign_rate_limit[current_user.id].append(current_time)
 
     try:
-        result = service.execute_campaign(db, campaign.message, campaign.audience_type, campaign.inactive_days)
+        result = service.execute_campaign(db, restaurant_id, campaign.message, campaign.audience_type, campaign.inactive_days)
         log_audit_event(
             db,
+            restaurant_id=restaurant_id,
             actor_id=current_user.id,
             actor_username=current_user.username,
             action="SEND_CAMPAIGN",
@@ -116,6 +122,7 @@ def create_campaign(
     except Exception as e:
         log_audit_event(
             db,
+            restaurant_id=restaurant_id,
             actor_id=current_user.id,
             actor_username=current_user.username,
             action="SEND_CAMPAIGN",

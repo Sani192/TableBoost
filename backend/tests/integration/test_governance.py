@@ -4,7 +4,7 @@ from modules.users.models import User
 from modules.auth.router import get_current_user
 from modules.users.service import get_password_hash
 from modules.governance.models import AuditLog, OperationalLog
-from modules.automation.service import process_specific_automation
+from modules.automation.service import run_system_job
 from modules.customers.models import Customer
 from modules.subscriptions.registry import seed_plans
 from modules.subscriptions.models import Plan, Subscription
@@ -30,11 +30,24 @@ def setup_user_with_subscription(db, username: str, plan_name: str) -> User:
     db.refresh(owner)
     
     # 4. Create active subscription
-    sub = Subscription(user_id=owner.id, plan_id=plan.id, status="ACTIVE")
-    db.add(sub)
+    sub = db.query(Subscription).filter(Subscription.restaurant_id == 1).first()
+    if not sub:
+        sub = Subscription(restaurant_id=1, plan_id=plan.id, status="ACTIVE")
+        db.add(sub)
+    else:
+        sub.plan_id = plan.id
+        sub.status = "ACTIVE"
     db.commit()
-    db.refresh(owner)
+
+    # 5. Create RestaurantUser link
+    from modules.restaurants.models import RestaurantUser
+    link = db.query(RestaurantUser).filter(RestaurantUser.user_id == owner.id, RestaurantUser.restaurant_id == 1).first()
+    if not link:
+        link = RestaurantUser(restaurant_id=1, user_id=owner.id)
+        db.add(link)
+        db.commit()
     
+    db.refresh(owner)
     return owner
 
 def test_log_audit_event_on_profile_update(client, db):
@@ -104,12 +117,12 @@ def test_process_specific_automation_creates_operational_logs(client, db, monkey
     monkeypatch.setattr(modules.automation.service, "SessionLocal", TestingSessionLocal)
 
     # Execute automation processing (e.g. daily_recommendations)
-    process_specific_automation("daily_recommendations")
+    run_system_job("daily_recommendations")
 
     # Verify that an OperationalLog has been written (skip or run)
-    log = db.query(OperationalLog).filter(OperationalLog.job_id == "auto_daily_recommendations").first()
+    log = db.query(OperationalLog).filter(OperationalLog.job_id == "sys_daily_recommendations").filter(OperationalLog.event_name == "daily_recommendations_SUCCESS").first()
     assert log is not None
-    assert log.log_type == "AUTOMATION"
+    assert log.log_type == "SYSTEM_JOB"
     assert log.status == "SUCCESS"
 
 def test_log_audit_event_on_create_visit(client, db):

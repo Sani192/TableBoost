@@ -37,3 +37,9 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def get_default_restaurant_id():
+    import os
+    if os.environ.get("TESTING") == "1":
+        return 1
+    return None

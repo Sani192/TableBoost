@@ -87,11 +87,35 @@ const api = axios.create({
   withCredentials: true,
 });
 
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const restaurantId = window.localStorage.getItem('tableboost.currentRestaurantId');
+    if (restaurantId) {
+      config.headers['X-Restaurant-ID'] = restaurantId;
+    }
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (axios.isCancel(error)) {
       return Promise.reject(error);
+    }
+
+    // Global session expiration handler (401)
+    if (error.response?.status === 401) {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('tableboost.currentRestaurantId');
+        window.localStorage.removeItem('tableboost.visits');
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+      }
+      const authError = new Error('Session expired. Please log in again.');
+      (authError as any).status = 401;
+      return Promise.reject(authError);
     }
     
     // If it's a normalized TableBoost backend error
@@ -100,11 +124,15 @@ api.interceptors.response.use(
       (tbError as any).status = error.response.status;
       (tbError as any).type = error.response.data.type;
       (tbError as any).payload = error.response.data.payload;
+      (tbError as any).correlationId = error.response.data.correlation_id || null;
       return Promise.reject(tbError);
     }
     
     // Fallback for standard Axios network errors
-    return Promise.reject(error);
+    const fallbackError = new Error(error.message || 'A network error occurred. Please check your connection.');
+    (fallbackError as any).status = error.response?.status || 500;
+    (fallbackError as any).correlationId = error.response?.headers?.['x-correlation-id'] || null;
+    return Promise.reject(fallbackError);
   }
 );
 

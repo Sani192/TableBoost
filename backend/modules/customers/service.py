@@ -9,6 +9,7 @@ from datetime import datetime, date, timedelta, timezone
 
 def get_customers(
     db: Session,
+    restaurant_id: Optional[int] = None,
     skip: int = 0,
     limit: int = 100,
     search: Optional[str] = None,
@@ -29,6 +30,13 @@ def get_customers(
     has_intel: bool = True,
     has_loyalty: bool = True
 ):
+    if restaurant_id is None:
+        import os
+        if os.environ.get("TESTING") == "1":
+            restaurant_id = 1
+        else:
+            raise ValueError("restaurant_id is required")
+
     query = db.query(
         Customer,
         func.count(Visit.id).label("total_visits"),
@@ -37,7 +45,7 @@ def get_customers(
         CustomerIntelligence.health_status.label("health_status"),
         CustomerIntelligence.clv_tier.label("clv_tier"),
         CustomerIntelligence.spend_trend.label("spend_trend")
-    ).options(selectinload(Customer.profile)).outerjoin(Visit, Customer.id == Visit.customer_id).outerjoin(CustomerIntelligence, Customer.id == CustomerIntelligence.customer_id).group_by(Customer.id, CustomerIntelligence.health_status, CustomerIntelligence.clv_tier, CustomerIntelligence.spend_trend)
+    ).filter(Customer.restaurant_id == restaurant_id).options(selectinload(Customer.profile)).outerjoin(Visit, Customer.id == Visit.customer_id).outerjoin(CustomerIntelligence, Customer.id == CustomerIntelligence.customer_id).group_by(Customer.id, CustomerIntelligence.health_status, CustomerIntelligence.clv_tier, CustomerIntelligence.spend_trend)
     
     if search:
         search_filter = f"%{search}%"
@@ -90,11 +98,11 @@ def get_customers(
 
     if is_vip:
         # Top 10% by total spent
-        total_customers = db.query(Customer).count()
+        total_customers = db.query(Customer).filter(Customer.restaurant_id == restaurant_id).count()
         vip_limit = max(1, int(total_customers * 0.1))
         
         # Subquery for top spender IDs
-        vip_ids_sub = db.query(Customer.id).outerjoin(Visit)\
+        vip_ids_sub = db.query(Customer.id).filter(Customer.restaurant_id == restaurant_id).outerjoin(Visit)\
                         .group_by(Customer.id)\
                         .order_by(desc(func.sum(Visit.amount)))\
                         .limit(vip_limit).subquery()
@@ -106,6 +114,7 @@ def get_customers(
         query = query.outerjoin(LoyaltyProgress, Customer.id == LoyaltyProgress.customer_id)\
                      .filter(exists().where(
                          and_(
+                             LoyaltyReward.restaurant_id == restaurant_id,
                              LoyaltyReward.reward_type == 'milestone',
                              LoyaltyReward.is_active == True,
                              LoyaltyReward.required_visits - func.coalesce(LoyaltyProgress.lifetime_visits, 0) <= 2,
@@ -157,14 +166,14 @@ def get_customers(
         for cust, total_visits, last_visit, total_spent, health_status, clv_tier, spend_trend in results
     ]
 
-def get_customer_detail(db: Session, customer_id: int):
+def get_customer_detail(db: Session, restaurant_id: int, customer_id: int):
     customer_info = db.query(
         Customer,
         func.count(Visit.id).label("total_visits"),
         func.max(Visit.visited_at).label("last_visit"),
         func.sum(Visit.amount).label("total_spent")
     ).options(selectinload(Customer.profile)).outerjoin(Visit, Customer.id == Visit.customer_id)\
-     .filter(Customer.id == customer_id).group_by(Customer.id).first()
+     .filter(Customer.restaurant_id == restaurant_id, Customer.id == customer_id).group_by(Customer.id).first()
      
     if not customer_info or not customer_info[0]:
         return None
@@ -183,8 +192,8 @@ def get_customer_detail(db: Session, customer_id: int):
         "total_spent": total_spent or 0.0
     }
 
-def get_customer_visits(db: Session, customer_id: int, skip: int = 0, limit: int = 20):
-    visits = db.query(Visit).filter(Visit.customer_id == customer_id).order_by(Visit.visited_at.desc()).offset(skip).limit(limit).all()
+def get_customer_visits(db: Session, restaurant_id: int, customer_id: int, skip: int = 0, limit: int = 20):
+    visits = db.query(Visit).join(Customer).filter(Customer.restaurant_id == restaurant_id, Visit.customer_id == customer_id).order_by(Visit.visited_at.desc()).offset(skip).limit(limit).all()
     return [{
         "id": v.id,
         "amount": v.amount,

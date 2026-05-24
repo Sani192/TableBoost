@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from core.database import get_db
 from modules.intelligence import service
-from modules.auth.router import get_current_user, check_role, check_feature
+from modules.auth.router import get_current_tenant, check_role, check_feature
 from fastapi import Depends
 
 router = APIRouter(
@@ -13,15 +13,20 @@ router = APIRouter(
 
 
 @router.get("/growth")
-def get_growth_dashboard(db: Session = Depends(get_db)):
+def get_growth_dashboard(db: Session = Depends(get_db), tenant_context = Depends(get_current_tenant)):
     """Growth tab dashboard data."""
-    return service.get_growth_dashboard(db)
+    return service.get_growth_dashboard(db, tenant_context["restaurant_id"])
 
 
 @router.get("/customer/{customer_id}")
-def get_customer_intelligence(customer_id: int, db: Session = Depends(get_db)):
+def get_customer_intelligence(customer_id: int, db: Session = Depends(get_db), tenant_context = Depends(get_current_tenant)):
     """Per-customer CLV + health detail."""
-    result = service.get_customer_intel(db, customer_id)
+    restaurant_id = tenant_context["restaurant_id"]
+    from modules.customers.models import Customer
+    customer = db.query(Customer).filter(Customer.id == customer_id, Customer.restaurant_id == restaurant_id).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    result = service.get_customer_intel(db, customer_id, restaurant_id)
     if not result:
         return {"customer_id": customer_id, "clv_score": 0, "clv_tier": "new",
                 "health_status": "new", "health_score": 50, "message": "Intelligence not yet computed"}
@@ -29,53 +34,54 @@ def get_customer_intelligence(customer_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/campaigns")
-def get_campaign_roi(db: Session = Depends(get_db)):
+def get_campaign_roi(db: Session = Depends(get_db), tenant_context = Depends(get_current_tenant)):
     """Per-campaign ROI list."""
-    return service.get_campaign_roi_list(db)
+    return service.get_campaign_roi_list(db, tenant_context["restaurant_id"])
 
 
 @router.get("/campaigns/{campaign_id}/customers")
-def get_campaign_customers(campaign_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+def get_campaign_customers(campaign_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db), tenant_context = Depends(get_current_tenant)):
     """List customers targeted by a campaign with conversion status."""
-    return service.get_campaign_customers(db, campaign_id, skip, limit)
+    return service.get_campaign_customers(db, campaign_id, tenant_context["restaurant_id"], skip, limit)
 
 
 @router.get("/rewards")
-def get_reward_effectiveness(db: Session = Depends(get_db)):
+def get_reward_effectiveness(db: Session = Depends(get_db), tenant_context = Depends(get_current_tenant)):
     """Per-reward effectiveness."""
-    return service.get_reward_effectiveness_list(db)
+    return service.get_reward_effectiveness_list(db, tenant_context["restaurant_id"])
 
 
 @router.get("/rewards/customers")
-def get_all_reward_customers(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+def get_all_reward_customers(skip: int = 0, limit: int = 20, db: Session = Depends(get_db), tenant_context = Depends(get_current_tenant)):
     """List customers who redeemed ANY reward."""
-    return service.get_reward_customers(db, None, skip, limit)
+    return service.get_reward_customers(db, tenant_context["restaurant_id"], None, skip, limit)
 
 
 @router.get("/rewards/{reward_id}/customers")
-def get_reward_customers(reward_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+def get_reward_customers(reward_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db), tenant_context = Depends(get_current_tenant)):
     """List customers who redeemed a reward."""
-    return service.get_reward_customers(db, reward_id, skip, limit)
+    return service.get_reward_customers(db, tenant_context["restaurant_id"], reward_id, skip, limit)
 
 
 @router.get("/automations")
-def get_automation_effectiveness(db: Session = Depends(get_db)):
+def get_automation_effectiveness(db: Session = Depends(get_db), tenant_context = Depends(get_current_tenant)):
     """Per-automation effectiveness."""
-    return service.get_automation_effectiveness_list(db)
+    return service.get_automation_effectiveness_list(db, tenant_context["restaurant_id"])
 
 
 @router.get("/summaries")
-def get_summaries(limit: int = 10, db: Session = Depends(get_db)):
+def get_summaries(limit: int = 10, db: Session = Depends(get_db), tenant_context = Depends(get_current_tenant)):
     """Business summaries list."""
-    return service.get_summaries_list(db, limit=limit)
+    return service.get_summaries_list(db, tenant_context["restaurant_id"], limit=limit)
 
 
 @router.get("/recommendations")
-def get_recommendations(db: Session = Depends(get_db)):
+def get_recommendations(db: Session = Depends(get_db), tenant_context = Depends(get_current_tenant)):
     """Active recommendations."""
     from modules.intelligence.models import Recommendation
     recs = db.query(Recommendation).filter(
-        Recommendation.is_dismissed == False
+        Recommendation.is_dismissed == False,
+        Recommendation.restaurant_id == tenant_context["restaurant_id"]
     ).order_by(Recommendation.created_at.desc()).limit(5).all()
     return [
         {
@@ -88,12 +94,12 @@ def get_recommendations(db: Session = Depends(get_db)):
 
 
 @router.get("/customers")
-def get_intelligence_customers(filter: str = None, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+def get_intelligence_customers(filter: str = None, skip: int = 0, limit: int = 20, db: Session = Depends(get_db), tenant_context = Depends(get_current_tenant)):
     """List customers with intelligence filters."""
     from modules.intelligence.models import CustomerIntelligence
     from modules.customers.models import Customer
     
-    query = db.query(Customer, CustomerIntelligence).join(CustomerIntelligence, Customer.id == CustomerIntelligence.customer_id)
+    query = db.query(Customer, CustomerIntelligence).join(CustomerIntelligence, Customer.id == CustomerIntelligence.customer_id).filter(Customer.restaurant_id == tenant_context["restaurant_id"])
     
     if filter == "declining_vip":
         query = query.filter(
@@ -132,9 +138,9 @@ def get_intelligence_customers(filter: str = None, skip: int = 0, limit: int = 2
 
 
 @router.post("/recommendations/{rec_id}/dismiss")
-def dismiss_recommendation(rec_id: int, db: Session = Depends(get_db)):
+def dismiss_recommendation(rec_id: int, db: Session = Depends(get_db), tenant_context = Depends(get_current_tenant)):
     """Dismiss a recommendation."""
-    result = service.dismiss_recommendation(db, rec_id)
+    result = service.dismiss_recommendation(db, rec_id, tenant_context["restaurant_id"])
     if not result:
         raise HTTPException(status_code=404, detail="Recommendation not found")
     return {"status": "dismissed"}

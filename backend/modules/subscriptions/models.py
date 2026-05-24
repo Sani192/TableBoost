@@ -40,7 +40,7 @@ class Subscription(Base):
     __tablename__ = "sub_subscriptions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    restaurant_id = Column(Integer, ForeignKey("restaurants.id"), unique=True, nullable=False)
     plan_id = Column(Integer, ForeignKey("sub_plans.id"), nullable=False)
     status = Column(String, nullable=False, default="ACTIVE")  # ACTIVE, EXPIRED, CANCELLED
     
@@ -48,5 +48,5 @@ class Subscription(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", back_populates="subscription")
+    restaurant = relationship("Restaurant", back_populates="subscription")
     plan = relationship("Plan")

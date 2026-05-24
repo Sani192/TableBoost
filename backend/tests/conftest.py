@@ -28,6 +28,7 @@ from modules.settings.models import Setting  # noqa: F401
 from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedemption  # noqa: F401
 from modules.users.models import User, UserProfile  # noqa: F401
 from modules.subscriptions.models import Subscription, Plan, PlanFeature, Feature  # noqa: F401
+from modules.restaurants.models import Restaurant, RestaurantUser  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
@@ -62,9 +63,33 @@ def setup_tables():
     """Create all tables before each test, drop after."""
     Base.metadata.create_all(bind=test_engine)
     from modules.subscriptions.registry import seed_plans
+    from modules.restaurants.models import Restaurant, RestaurantUser
+    from modules.users.models import User
     db = TestingSessionLocal()
     try:
         seed_plans(db)
+        default_restaurant = Restaurant(id=1, name="Default Test Restaurant")
+        db.add(default_restaurant)
+        
+        # Seed testowner user so it can be merged/fetched successfully in test environments
+        test_user = User(
+            id=1,
+            username="testowner",
+            password_hash="dummy_hash",
+            role="OWNER",
+            is_active=True,
+            token_version=1
+        )
+        db.add(test_user)
+        
+        # Link user 1 to restaurant 1
+        link = RestaurantUser(
+            restaurant_id=1,
+            user_id=1
+        )
+        db.add(link)
+        
+        db.commit()
     finally:
         db.close()
     yield

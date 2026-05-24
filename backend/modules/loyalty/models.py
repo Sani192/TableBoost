@@ -1,11 +1,12 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.sql import func
-from core.database import Base
+from core.database import Base, get_default_restaurant_id
 
 class LoyaltyReward(Base):
     __tablename__ = "loyalty_rewards"
 
     id = Column(Integer, primary_key=True, index=True)
+    restaurant_id = Column(Integer, ForeignKey("restaurants.id"), nullable=False, index=True, default=get_default_restaurant_id)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     required_visits = Column(Integer, nullable=False)
@@ -25,6 +26,7 @@ class RewardRedemption(Base):
     __tablename__ = "reward_redemptions"
 
     id = Column(Integer, primary_key=True, index=True)
+    restaurant_id = Column(Integer, ForeignKey("restaurants.id"), nullable=False, index=True, default=get_default_restaurant_id)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     reward_id = Column(Integer, ForeignKey("loyalty_rewards.id"), nullable=True)
     reward_name = Column(String, nullable=False) # Snapshot at time of redemption

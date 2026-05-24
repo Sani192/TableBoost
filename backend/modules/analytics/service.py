@@ -6,7 +6,7 @@ from modules.customers.models import Customer
 from modules.loyalty.models import RewardRedemption, LoyaltyReward, LoyaltyProgress
 from modules.messaging.models import Message
 
-def get_revenue_metrics(db: Session):
+def get_revenue_metrics(db: Session, restaurant_id: int):
     today = datetime.now(timezone.utc)
     
     # 1. Daily Revenue (Last 7 days - GAP FILLED)
@@ -15,7 +15,7 @@ def get_revenue_metrics(db: Session):
         func.date(Visit.visited_at).label('date'),
         func.sum(Visit.amount).label('revenue'),
         func.count(Visit.id).label('visit_count')
-    ).filter(Visit.visited_at >= seven_days_ago)\
+    ).filter(Visit.restaurant_id == restaurant_id, Visit.visited_at >= seven_days_ago)\
      .group_by(func.date(Visit.visited_at))\
      .order_by(func.date(Visit.visited_at)).all()
      
@@ -34,7 +34,7 @@ def get_revenue_metrics(db: Session):
      
     # 2. Average Ticket Size (Rolling 30 days)
     thirty_days_ago = today - timedelta(days=30)
-    avg_ticket = db.query(func.avg(Visit.amount)).filter(Visit.visited_at >= thirty_days_ago).scalar() or 0
+    avg_ticket = db.query(func.avg(Visit.amount)).filter(Visit.restaurant_id == restaurant_id, Visit.visited_at >= thirty_days_ago).scalar() or 0
     
     # 3. New vs Repeat Customer Revenue (Last 30 days)
     thirty_days_ago = today - timedelta(days=30)
@@ -43,7 +43,7 @@ def get_revenue_metrics(db: Session):
     first_visits = db.query(
         Visit.customer_id,
         func.min(Visit.visited_at).label('first_visit_at')
-    ).group_by(Visit.customer_id).subquery()
+    ).filter(Visit.restaurant_id == restaurant_id).group_by(Visit.customer_id).subquery()
     
     revenue_split = db.query(
         case(
@@ -52,28 +52,29 @@ def get_revenue_metrics(db: Session):
         ).label('customer_type'),
         func.sum(Visit.amount).label('total_revenue')
     ).join(first_visits, Visit.customer_id == first_visits.c.customer_id)\
-     .filter(Visit.visited_at >= thirty_days_ago)\
+     .filter(Visit.restaurant_id == restaurant_id, Visit.visited_at >= thirty_days_ago)\
      .group_by('customer_type').all()
 
     # 4. Weekly/Monthly Revenue
     last_week = today - timedelta(days=7)
-    weekly_total = db.query(func.sum(Visit.amount)).filter(Visit.visited_at >= last_week).scalar() or 0
-    monthly_total = db.query(func.sum(Visit.amount)).filter(Visit.visited_at >= thirty_days_ago).scalar() or 0
+    weekly_total = db.query(func.sum(Visit.amount)).filter(Visit.restaurant_id == restaurant_id, Visit.visited_at >= last_week).scalar() or 0
+    monthly_total = db.query(func.sum(Visit.amount)).filter(Visit.restaurant_id == restaurant_id, Visit.visited_at >= thirty_days_ago).scalar() or 0
     
     # 5. Repeat Visit Rate (Percentage of visits from repeat customers in last 30 days)
-    total_visits_30 = db.query(func.count(Visit.id)).filter(Visit.visited_at >= thirty_days_ago).scalar() or 1
+    total_visits_30 = db.query(func.count(Visit.id)).filter(Visit.restaurant_id == restaurant_id, Visit.visited_at >= thirty_days_ago).scalar() or 1
     repeat_visits_30 = db.query(func.count(Visit.id)).join(first_visits, Visit.customer_id == first_visits.c.customer_id)\
-                        .filter(Visit.visited_at >= thirty_days_ago)\
+                        .filter(Visit.restaurant_id == restaurant_id, Visit.visited_at >= thirty_days_ago)\
                         .filter(Visit.visited_at > first_visits.c.first_visit_at).scalar() or 0
     
     repeat_rate = (repeat_visits_30 / total_visits_30) * 100
 
     # 6. Rewards Redeemed (Total vs Last 30 days)
-    total_redeemed = db.query(func.count(RewardRedemption.id)).scalar() or 0
-    recent_redeemed = db.query(func.count(RewardRedemption.id)).filter(RewardRedemption.redeemed_at >= thirty_days_ago).scalar() or 0
+    total_redeemed = db.query(func.count(RewardRedemption.id)).filter(RewardRedemption.restaurant_id == restaurant_id).scalar() or 0
+    recent_redeemed = db.query(func.count(RewardRedemption.id)).filter(RewardRedemption.restaurant_id == restaurant_id, RewardRedemption.redeemed_at >= thirty_days_ago).scalar() or 0
     
     # 7. Campaign ROI (Last 30 days)
     total_messages = db.query(func.count(Message.id)).filter(
+        Message.restaurant_id == restaurant_id,
         Message.type.in_(['campaign', 'automation']),
         Message.status == 'sent',
         Message.sent_at >= thirty_days_ago
@@ -82,6 +83,8 @@ def get_revenue_metrics(db: Session):
     converted_messages = db.query(func.count(func.distinct(Message.id))).join(
         Visit, Visit.customer_id == Message.customer_id
     ).filter(
+        Message.restaurant_id == restaurant_id,
+        Visit.restaurant_id == restaurant_id,
         Message.type.in_(['campaign', 'automation']),
         Message.status == 'sent',
         Message.sent_at >= thirty_days_ago,
@@ -92,6 +95,8 @@ def get_revenue_metrics(db: Session):
     revenue_generated = db.query(func.sum(Visit.amount)).join(
         Message, Visit.customer_id == Message.customer_id
     ).filter(
+        Message.restaurant_id == restaurant_id,
+        Visit.restaurant_id == restaurant_id,
         Message.type.in_(['campaign', 'automation']),
         Message.status == 'sent',
         Message.sent_at >= thirty_days_ago,
@@ -120,17 +125,17 @@ def get_revenue_metrics(db: Session):
         }
     }
 
-def get_customer_segments(db: Session):
+def get_customer_segments(db: Session, restaurant_id: int):
     # VIPs (Top 10% spenders)
-    total_customers = db.query(Customer).count()
+    total_customers = db.query(Customer).filter(Customer.restaurant_id == restaurant_id).count()
     vip_limit = max(1, int(total_customers * 0.1))
     
     total_spent_sub = db.query(
         Visit.customer_id,
         func.sum(Visit.amount).label('total_amount')
-    ).group_by(Visit.customer_id).order_by(desc('total_amount')).subquery()
+    ).filter(Visit.restaurant_id == restaurant_id).group_by(Visit.customer_id).order_by(desc('total_amount')).subquery()
     
-    vips = db.query(Customer).join(total_spent_sub, Customer.id == total_spent_sub.c.customer_id)\
+    vips = db.query(Customer).filter(Customer.restaurant_id == restaurant_id).join(total_spent_sub, Customer.id == total_spent_sub.c.customer_id)\
              .order_by(desc(total_spent_sub.c.total_amount)).limit(vip_limit).all()
              
     # At-Risk (No visits in 30-90 days)
@@ -140,26 +145,27 @@ def get_customer_segments(db: Session):
     last_visits = db.query(
         Visit.customer_id,
         func.max(Visit.visited_at).label('last_visit')
-    ).group_by(Visit.customer_id).subquery()
+    ).filter(Visit.restaurant_id == restaurant_id).group_by(Visit.customer_id).subquery()
     
-    at_risk_count = db.query(Customer).join(last_visits, Customer.id == last_visits.c.customer_id)\
+    at_risk_count = db.query(Customer).filter(Customer.restaurant_id == restaurant_id).join(last_visits, Customer.id == last_visits.c.customer_id)\
                 .filter(and_(
                     last_visits.c.last_visit < thirty_days_ago,
                     last_visits.c.last_visit >= ninety_days_ago
                 )).count()
 
     # Lost (No visits in 90+ days)
-    lost_count = db.query(Customer).join(last_visits, Customer.id == last_visits.c.customer_id)\
+    lost_count = db.query(Customer).filter(Customer.restaurant_id == restaurant_id).join(last_visits, Customer.id == last_visits.c.customer_id)\
                 .filter(last_visits.c.last_visit < ninety_days_ago).count()
 
     # New Blood (Joined in last 7 days)
     seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    new_blood_count = db.query(Customer).filter(Customer.created_at >= seven_days_ago).count()
+    new_blood_count = db.query(Customer).filter(Customer.restaurant_id == restaurant_id, Customer.created_at >= seven_days_ago).count()
 
     # 3. Near Rewards (Within 2 visits of any milestone reward, including those AT threshold)
-    near_rewards_count = db.query(Customer).join(LoyaltyProgress, Customer.id == LoyaltyProgress.customer_id)\
+    near_rewards_count = db.query(Customer).filter(Customer.restaurant_id == restaurant_id).join(LoyaltyProgress, Customer.id == LoyaltyProgress.customer_id)\
                      .filter(exists().where(
                           and_(
+                              LoyaltyReward.restaurant_id == restaurant_id,
                               LoyaltyReward.reward_type == 'milestone',
                               LoyaltyReward.is_active == True,
                               LoyaltyReward.required_visits - LoyaltyProgress.lifetime_visits <= 2,

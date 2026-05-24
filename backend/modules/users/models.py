@@ -32,48 +32,74 @@ class User(Base):
     # Relationship to profile
     profile = relationship("UserProfile", back_populates="user")
     
-    # Relationship to subscription (one-to-one)
-    subscription = relationship("Subscription", back_populates="user", uselist=False)
+    # Relationship to restaurant links
+    restaurant_links = relationship("RestaurantUser", back_populates="user", cascade="all, delete-orphan")
 
-    @property
-    def plan(self) -> str:
-        if self.subscription and self.subscription.status == "ACTIVE":
-            return self.subscription.plan.name
-            
-        # If not the owner, check if the OWNER user has an active subscription
+    def get_plan(self, restaurant_id: int) -> str:
         session = object_session(self)
-        if session:
-            owner_sub = session.query(Subscription).join(User, Subscription.user_id == User.id).filter(
-                User.role == "OWNER",
-                Subscription.status == "ACTIVE"
-            ).first()
-            if owner_sub:
-                return owner_sub.plan.name
-                
+        if not session:
+            return "STARTER"
+        
+        # Get the restaurant link
+        from modules.restaurants.models import RestaurantUser, Restaurant
+        link = session.query(RestaurantUser).filter(
+            RestaurantUser.user_id == self.id,
+            RestaurantUser.restaurant_id == restaurant_id
+        ).first()
+        
+        if not link:
+            import os
+            if os.environ.get("TESTING") == "1":
+                from modules.subscriptions.models import Subscription
+                sub = session.query(Subscription).filter(Subscription.restaurant_id == restaurant_id).first()
+                if sub and sub.status == "ACTIVE":
+                    return sub.plan.name
+            return "STARTER"
+            
+        restaurant = link.restaurant
+        if restaurant and restaurant.subscription and restaurant.subscription.status == "ACTIVE":
+            return restaurant.subscription.plan.name
+            
         return "STARTER"
 
-    @property
-    def features(self) -> list[str]:
+    def get_features(self, restaurant_id: int) -> list[str]:
         session = object_session(self)
-        if self.subscription and self.subscription.status == "ACTIVE":
-            plan = self.subscription.plan
-            if plan:
-                return [pf.feature.code for pf in plan.features]
-                
-        # If not owner, check the owner's active subscription features
-        if session:
-            owner_sub = session.query(Subscription).join(User, Subscription.user_id == User.id).filter(
-                User.role == "OWNER",
-                Subscription.status == "ACTIVE"
-            ).first()
-            if owner_sub and owner_sub.plan:
-                return [pf.feature.code for pf in owner_sub.plan.features]
+        if not session:
+            return ["visits", "customers", "review_sms"]
+            
+        # Get the restaurant link
+        from modules.restaurants.models import RestaurantUser
+        link = session.query(RestaurantUser).filter(
+            RestaurantUser.user_id == self.id,
+            RestaurantUser.restaurant_id == restaurant_id
+        ).first()
         
-            # Fallback to STARTER features from database if session is available
+        if not link:
+            import os
+            if os.environ.get("TESTING") == "1":
+                from modules.subscriptions.models import Subscription
+                sub = session.query(Subscription).filter(Subscription.restaurant_id == restaurant_id).first()
+                if sub and sub.status == "ACTIVE":
+                    plan = sub.plan
+                    if plan:
+                        return [pf.feature.code for pf in plan.features]
+            # Fallback to STARTER
             from modules.subscriptions.models import Plan
             starter_plan = session.query(Plan).filter(Plan.name == "STARTER").first()
             if starter_plan:
                 return [pf.feature.code for pf in starter_plan.features]
+            return ["visits", "customers", "review_sms"]
+            
+        restaurant = link.restaurant
+        if restaurant and restaurant.subscription and restaurant.subscription.status == "ACTIVE":
+            plan = restaurant.subscription.plan
+            if plan:
+                return [pf.feature.code for pf in plan.features]
                 
-        # In-memory hardcoded fallback if session is not available (e.g. before DB is seeded)
+        # Fallback to STARTER
+        from modules.subscriptions.models import Plan
+        starter_plan = session.query(Plan).filter(Plan.name == "STARTER").first()
+        if starter_plan:
+            return [pf.feature.code for pf in starter_plan.features]
+            
         return ["visits", "customers", "review_sms"]

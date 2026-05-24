@@ -76,20 +76,17 @@ def has_feature_access_db(db: Session, plan_name: str, feature_name: str) -> boo
     
     return feature_mapping is not None
 
-def check_job_feature_access(db: Session, feature_name: str) -> bool:
+def check_job_feature_access(db: Session, feature_name: str, restaurant_id: int) -> bool:
     """
-    Check if the active subscription has access to the given feature.
-    If multiple users exist, we check if the OWNER user has access.
+    Check if the active subscription for the given restaurant has access to the feature.
     """
-    from modules.users.models import User
+    from modules.subscriptions.models import Subscription
     
-    owner = db.query(User).filter(User.role == "OWNER").first()
-    if not owner:
-        # Fallback to checking the first active subscription in the system
-        from modules.subscriptions.models import Subscription
-        active_sub = db.query(Subscription).filter(Subscription.status == "ACTIVE").first()
-        if active_sub:
-            return has_feature_access_db(db, active_sub.plan.name, feature_name)
-        return has_feature_access_db(db, "STARTER", feature_name)
-        
-    return has_feature_access_db(db, owner.plan, feature_name)
+    sub = db.query(Subscription).filter(
+        Subscription.restaurant_id == restaurant_id,
+        Subscription.status == "ACTIVE"
+    ).first()
+    
+    if sub:
+        return has_feature_access_db(db, sub.plan.name, feature_name)
+    return has_feature_access_db(db, "STARTER", feature_name)

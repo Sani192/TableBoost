@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from core.database import get_db
-from modules.auth.router import check_role, check_feature
+from modules.auth.router import get_current_tenant, check_role, check_feature
 from modules.governance import schemas, service
 from typing import Optional
 from datetime import datetime
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/governance", tags=["Governance"])
 @router.get(
     "/audit",
     response_model=schemas.PaginatedAuditLogs,
-    dependencies=[Depends(check_role(["OWNER"])), Depends(check_feature("governance"))]
+    dependencies=[Depends(check_feature("governance"))]
 )
 def get_audit_logs(
     page: int = Query(1, ge=1),
@@ -25,11 +25,13 @@ def get_audit_logs(
     end_date: Optional[datetime] = Query(None),
     sort_by: Optional[str] = Query("timestamp"),
     sort_dir: Optional[str] = Query("desc"),
+    tenant_context = Depends(check_role(["OWNER"])),
     db: Session = Depends(get_db)
 ):
     """Retrieve user activity audit logs. Only accessible to OWNER role with PRO subscription."""
     return service.get_audit_logs(
         db=db,
+        restaurant_id=tenant_context["restaurant_id"],
         page=page,
         limit=limit,
         search=search,
@@ -46,7 +48,7 @@ def get_audit_logs(
 @router.get(
     "/operational",
     response_model=schemas.PaginatedOperationalLogs,
-    dependencies=[Depends(check_role(["OWNER", "MANAGER"])), Depends(check_feature("governance"))]
+    dependencies=[Depends(check_feature("governance"))]
 )
 def get_operational_logs(
     page: int = Query(1, ge=1),
@@ -60,11 +62,13 @@ def get_operational_logs(
     end_date: Optional[datetime] = Query(None),
     sort_by: Optional[str] = Query("timestamp"),
     sort_dir: Optional[str] = Query("desc"),
+    tenant_context = Depends(check_role(["OWNER", "MANAGER"])),
     db: Session = Depends(get_db)
 ):
     """Retrieve system & background operational logs. Accessible to OWNER and MANAGER roles with PRO subscription."""
     return service.get_operational_logs(
         db=db,
+        restaurant_id=tenant_context["restaurant_id"],
         page=page,
         limit=limit,
         search=search,

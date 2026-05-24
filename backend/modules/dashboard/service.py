@@ -6,28 +6,28 @@ from modules.loyalty import service as loyalty_service
 from modules.analytics import service as analytics_service
 from modules.intelligence.models import CustomerIntelligence
 
-def get_dashboard_stats(db: Session, has_loyalty: bool = True, has_intel: bool = True):
-    total_customers = db.query(Customer).count()
-    total_visits = db.query(Visit).count()
-    subquery = db.query(Visit.customer_id, func.count(Visit.id).label('visit_count')).group_by(Visit.customer_id).subquery()
+def get_dashboard_stats(db: Session, restaurant_id: int, has_loyalty: bool = True, has_intel: bool = True):
+    total_customers = db.query(Customer).filter(Customer.restaurant_id == restaurant_id).count()
+    total_visits = db.query(Visit).filter(Visit.restaurant_id == restaurant_id).count()
+    subquery = db.query(Visit.customer_id, func.count(Visit.id).label('visit_count')).filter(Visit.restaurant_id == restaurant_id).group_by(Visit.customer_id).subquery()
     repeat_customers = db.query(subquery).filter(subquery.c.visit_count > 1).count()
     
     # Loyalty stats
-    total_redeemed = loyalty_service.get_total_redemption_count(db) if has_loyalty else 0
-    celebrations = loyalty_service.get_today_celebrations(db) if has_loyalty else {"birthdays": 0, "anniversaries": 0}
+    total_redeemed = loyalty_service.get_total_redemption_count(db, restaurant_id) if has_loyalty else 0
+    celebrations = loyalty_service.get_today_celebrations(db, restaurant_id) if has_loyalty else {"birthdays": 0, "anniversaries": 0}
     
     # Revenue & Segments
-    revenue_metrics = analytics_service.get_revenue_metrics(db)
-    segments = analytics_service.get_customer_segments(db)
+    revenue_metrics = analytics_service.get_revenue_metrics(db, restaurant_id)
+    segments = analytics_service.get_customer_segments(db, restaurant_id)
     
     # Recent visits (last 10)
-    recent_visits_query = db.query(Visit, Customer, CustomerIntelligence).select_from(Visit).join(Customer, Visit.customer_id == Customer.id).outerjoin(CustomerIntelligence, Customer.id == CustomerIntelligence.customer_id).order_by(Visit.visited_at.desc()).limit(10).all()
+    recent_visits_query = db.query(Visit, Customer, CustomerIntelligence).select_from(Visit).join(Customer, Visit.customer_id == Customer.id).outerjoin(CustomerIntelligence, Customer.id == CustomerIntelligence.customer_id).filter(Visit.restaurant_id == restaurant_id).order_by(Visit.visited_at.desc()).limit(10).all()
     
     recent_visits = []
     for visit, customer, intel in recent_visits_query:
-        cust_total_visits = db.query(func.count(Visit.id)).filter(Visit.customer_id == customer.id).scalar() or 0
-        total_spent = db.query(func.sum(Visit.amount)).filter(Visit.customer_id == customer.id).scalar() or 0
-        last_visit = db.query(func.max(Visit.visited_at)).filter(Visit.customer_id == customer.id).scalar()
+        cust_total_visits = db.query(func.count(Visit.id)).filter(Visit.restaurant_id == restaurant_id, Visit.customer_id == customer.id).scalar() or 0
+        total_spent = db.query(func.sum(Visit.amount)).filter(Visit.restaurant_id == restaurant_id, Visit.customer_id == customer.id).scalar() or 0
+        last_visit = db.query(func.max(Visit.visited_at)).filter(Visit.restaurant_id == restaurant_id, Visit.customer_id == customer.id).scalar()
         
         recent_visits.append({
             "customer_id": customer.id,

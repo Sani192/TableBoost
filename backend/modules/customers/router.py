@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from core.database import get_db
 from modules.customers import schemas, service
-from modules.auth.router import get_current_user, check_role
+from modules.auth.router import get_current_tenant, check_role
 
 router = APIRouter(prefix="/api/customers", tags=["Customers"])
 
@@ -26,24 +26,28 @@ def list_customers(
     is_reward_near: Optional[bool] = None,
     is_lost: Optional[bool] = None,
     is_new: Optional[bool] = None,
-    current_user = Depends(check_role(["OWNER", "MANAGER"])),
+    tenant_context = Depends(check_role(["OWNER", "MANAGER"])),
     db: Session = Depends(get_db)
 ):
-    if is_vip and "smart_segments" not in current_user.features:
+    user = tenant_context["user"]
+    restaurant_id = tenant_context["restaurant_id"]
+    features = user.get_features(restaurant_id)
+    
+    if is_vip and "smart_segments" not in features:
         raise HTTPException(status_code=403, detail="Filtering by VIP Customers requires the smart_segments feature.")
-    if is_reward_near and "loyalty" not in current_user.features:
+    if is_reward_near and "loyalty" not in features:
         raise HTTPException(status_code=403, detail="Filtering by Near Reward requires the loyalty feature.")
-    if is_at_risk and "intelligence" not in current_user.features:
+    if is_at_risk and "intelligence" not in features:
         raise HTTPException(status_code=403, detail="Filtering by At Risk requires the intelligence feature.")
-    if is_lost and "intelligence" not in current_user.features:
+    if is_lost and "intelligence" not in features:
         raise HTTPException(status_code=403, detail="Filtering by Lost requires the intelligence feature.")
-    if is_new and "intelligence" not in current_user.features:
+    if is_new and "intelligence" not in features:
         raise HTTPException(status_code=403, detail="Filtering by New Customers requires the intelligence feature.")
 
-    has_intel = "intelligence" in current_user.features
-    has_loyalty = "loyalty" in current_user.features
+    has_intel = "intelligence" in features
+    has_loyalty = "loyalty" in features
     return service.get_customers(
-        db, skip=skip, limit=limit, search=search,
+        db, restaurant_id=restaurant_id, skip=skip, limit=limit, search=search,
         min_visits=min_visits, max_visits=max_visits,
         min_spent=min_spent, max_spent=max_spent,
         birthday_month=birthday_month, birthday_day=birthday_day,
@@ -54,17 +58,17 @@ def list_customers(
         has_intel=has_intel, has_loyalty=has_loyalty
     )
 
-@router.get("/{customer_id}", response_model=schemas.CustomerDetailResponse, dependencies=[Depends(get_current_user)])
-def get_customer(customer_id: int, db: Session = Depends(get_db)):
-    customer = service.get_customer_detail(db, customer_id)
+@router.get("/{customer_id}", response_model=schemas.CustomerDetailResponse)
+def get_customer(customer_id: int, tenant_context = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    customer = service.get_customer_detail(db, tenant_context["restaurant_id"], customer_id)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     return customer
 
 
-@router.get("/{customer_id}/visits", response_model=List[schemas.VisitMinimal], dependencies=[Depends(get_current_user)])
-def get_customer_visits(customer_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
-    return service.get_customer_visits(db, customer_id, skip=skip, limit=limit)
+@router.get("/{customer_id}/visits", response_model=List[schemas.VisitMinimal])
+def get_customer_visits(customer_id: int, skip: int = 0, limit: int = 20, tenant_context = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    return service.get_customer_visits(db, tenant_context["restaurant_id"], customer_id, skip=skip, limit=limit)
 
 from modules.governance.service import log_audit_event
 
@@ -72,10 +76,13 @@ from modules.governance.service import log_audit_event
 def update_customer(
     customer_id: int, 
     customer_data: schemas.CustomerUpdate, 
-    current_user = Depends(get_current_user),
+    tenant_context = Depends(get_current_tenant),
     db: Session = Depends(get_db)
 ):
-    customer = db.query(service.Customer).filter(service.Customer.id == customer_id).first()
+    current_user = tenant_context["user"]
+    restaurant_id = tenant_context["restaurant_id"]
+    
+    customer = db.query(service.Customer).filter(service.Customer.id == customer_id, service.Customer.restaurant_id == restaurant_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
         
@@ -103,7 +110,7 @@ def update_customer(
     # Handle profile fields
     if "birthday" in data or "anniversary" in data:
         if not customer.profile:
-            customer.profile = service.CustomerProfile(customer_id=customer.id)
+            customer.profile = service.CustomerProfile(customer_id=customer.id, restaurant_id=restaurant_id)
             db.add(customer.profile)
             
         if "birthday" in data:
@@ -131,6 +138,7 @@ def update_customer(
 
     log_audit_event(
         db,
+        restaurant_id=restaurant_id,
         actor_id=current_user.id,
         actor_username=current_user.username,
         action="UPDATE_CUSTOMER",
