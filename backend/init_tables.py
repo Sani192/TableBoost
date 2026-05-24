@@ -1,11 +1,13 @@
 from core.database import engine, Base, SessionLocal
+from modules.restaurants.models import Restaurant, RestaurantUser
+from modules.users.models import User
+from modules.settings.models import Setting
 from modules.customers.models import Customer, CustomerProfile
 from modules.visits.models import Visit
 from modules.messaging.models import Message, Campaign
 from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedemption
 from modules.automation.models import AutomationConfig, AutomationHistory
 from modules.intelligence.models import CustomerIntelligence, CampaignSummary, RewardSummary, AutomationSummary, BusinessSummary, Recommendation
-from modules.users.models import User
 from modules.governance.models import AuditLog, OperationalLog
 from modules.subscriptions.models import Subscription, Feature, Plan, PlanFeature
 from modules.subscriptions.registry import seed_plans
@@ -17,7 +19,17 @@ def init_db():
     
     db = SessionLocal()
     try:
-        # Initialize default automations if they don't exist
+        from modules.restaurants.models import Restaurant
+        
+        default_rest = db.query(Restaurant).first()
+        if not default_rest:
+            print("Creating Default Restaurant...")
+            default_rest = Restaurant(name="Default Restaurant")
+            db.add(default_rest)
+            db.commit()
+            db.refresh(default_rest)
+            
+        # Initialize default automations for the default restaurant
         defaults = [
             {
                 "automation_type": "birthday",
@@ -66,7 +78,7 @@ def init_db():
         ]
         
         for d in defaults:
-            automation_service.update_automation_config(db, d)
+            automation_service.update_automation_config(db, default_rest.id, d)
             
         print("Seeding plans...")
         seed_plans(db)
