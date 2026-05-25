@@ -105,7 +105,10 @@ api.interceptors.response.use(
     }
 
     // Global session expiration handler (401)
-    if (error.response?.status === 401) {
+    const isAuthEndpoint = error.config?.url?.includes('/auth/me')
+      || error.config?.url?.includes('/auth/profile');
+
+    if (error.response?.status === 401 && isAuthEndpoint) {
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem('tableboost.currentRestaurantId');
         window.localStorage.removeItem('tableboost.visits');
