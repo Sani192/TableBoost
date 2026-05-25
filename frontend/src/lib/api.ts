@@ -145,7 +145,7 @@ export const addVisit = async (payload: AddVisitPayload): Promise<AddVisitRespon
 };
 
 export const getDashboard = async (): Promise<DashboardResponse> => {
-  const response = await api.get<DashboardResponse>('/api/dashboard/');
+  const response = await api.get<DashboardResponse>('/api/dashboard');
   return response.data;
 };
 
