@@ -25,7 +25,7 @@ def get_campaign_audience_count(
     count = service.get_audience_count(db, tenant_context["restaurant_id"], audience_type, inactive_days)
     return {"count": count}
 
-@router.get("/", response_model=List[schemas.MessageLogResponse])
+@router.get("", response_model=List[schemas.MessageLogResponse])
 def get_message_logs(
     skip: int = 0, 
     limit: int = 100, 

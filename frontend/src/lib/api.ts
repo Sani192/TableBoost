@@ -140,7 +140,7 @@ api.interceptors.response.use(
 );
 
 export const addVisit = async (payload: AddVisitPayload): Promise<AddVisitResponse> => {
-  const response = await api.post<AddVisitResponse>('/api/visits/', payload);
+  const response = await api.post<AddVisitResponse>('/api/visits', payload);
   return response.data;
 };
 
@@ -150,7 +150,7 @@ export const getDashboard = async (): Promise<DashboardResponse> => {
 };
 
 export const getVisits = async (params: GetVisitsParams = {}): Promise<VisitDetail[]> => {
-  const response = await api.get<VisitDetail[]>('/api/visits/', { params });
+  const response = await api.get<VisitDetail[]>('/api/visits', { params });
   return response.data;
 };
 
@@ -207,7 +207,7 @@ export const getCustomers = async (params: {
   is_at_risk?: boolean;
   is_reward_near?: boolean;
 } = {}): Promise<CustomerListResponse[]> => {
-  const response = await api.get<CustomerListResponse[]>('/api/customers/', { params });
+  const response = await api.get<CustomerListResponse[]>('/api/customers', { params });
   return response.data;
 };
 
@@ -222,7 +222,7 @@ export const updateCustomer = async (id: number, payload: Partial<CustomerDetail
 };
 
 export const getMessageLogs = async (params: { skip?: number; limit?: number; search?: string; type?: string; status?: string; start_date?: string; end_date?: string } = {}): Promise<MessageLogResponse[]> => {
-  const response = await api.get<MessageLogResponse[]>('/api/messages/', { params });
+  const response = await api.get<MessageLogResponse[]>('/api/messages', { params });
   return response.data;
 };
 
@@ -264,12 +264,12 @@ export interface SettingsUpdate {
 }
 
 export const getSettings = async (): Promise<SettingsResponse> => {
-  const response = await api.get<SettingsResponse>('/api/settings/');
+  const response = await api.get<SettingsResponse>('/api/settings');
   return response.data;
 };
 
 export const updateSettings = async (payload: SettingsUpdate): Promise<SettingsResponse> => {
-  const response = await api.post<SettingsResponse>('/api/settings/', payload);
+  const response = await api.post<SettingsResponse>('/api/settings', payload);
   return response.data;
 };
 
@@ -348,12 +348,12 @@ export interface AutomationConfig {
 }
 
 export const getAutomationConfigs = async (): Promise<AutomationConfig[]> => {
-  const response = await api.get<AutomationConfig[]>('/api/automation/');
+  const response = await api.get<AutomationConfig[]>('/api/automation');
   return response.data;
 };
 
 export const updateAutomationConfig = async (payload: Partial<AutomationConfig>): Promise<AutomationConfig> => {
-  const response = await api.post<AutomationConfig>('/api/automation/', payload);
+  const response = await api.post<AutomationConfig>('/api/automation', payload);
   return response.data;
 };
 

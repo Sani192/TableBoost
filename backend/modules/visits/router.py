@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/visits", tags=["Visits"])
 
-@router.get("/", response_model=List[VisitDetail])
+@router.get("", response_model=List[VisitDetail])
 def list_visits(
     skip: int = 0,
     limit: int = 100,
@@ -57,7 +57,7 @@ import json
 idempotency_cache = {}
 IDEMPOTENCY_WINDOW_SECONDS = 5
 
-@router.post("/", response_model=VisitResponse)
+@router.post("", response_model=VisitResponse)
 def create_visit(
     visit_data: VisitCreate, 
     tenant_context = Depends(get_current_tenant),

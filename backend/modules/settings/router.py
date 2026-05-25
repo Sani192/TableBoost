@@ -9,7 +9,7 @@ from modules.governance.service import log_audit_event
 
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
-@router.get("/", response_model=SettingsResponse)
+@router.get("", response_model=SettingsResponse)
 def get_settings(
     tenant_context = Depends(check_role(["OWNER"])),
     db: Session = Depends(get_db)
@@ -24,7 +24,7 @@ def get_settings(
         campaign_inactive_days=inactive_days
     )
 
-@router.post("/", response_model=SettingsResponse)
+@router.post("", response_model=SettingsResponse)
 def update_settings(
     settings: SettingsUpdate, 
     tenant_context = Depends(check_role(["OWNER"])), 

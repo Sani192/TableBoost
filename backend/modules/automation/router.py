@@ -27,7 +27,7 @@ class AutomationUpdate(BaseModel):
 
 from modules.governance.service import log_audit_event
 
-@router.get("/", response_model=List[AutomationConfigBase])
+@router.get("", response_model=List[AutomationConfigBase])
 def list_automations(
     tenant_context = Depends(check_role(["OWNER"])),
     db: Session = Depends(get_db)
@@ -35,7 +35,7 @@ def list_automations(
     restaurant_id = tenant_context["restaurant_id"]
     return service.get_automation_configs(db, restaurant_id)
 
-@router.post("/", response_model=AutomationConfigBase)
+@router.post("", response_model=AutomationConfigBase)
 def update_automation(
     config: AutomationUpdate, 
     tenant_context = Depends(check_role(["OWNER"])),

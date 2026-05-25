@@ -7,7 +7,7 @@ from modules.auth.router import get_current_tenant, check_role
 
 router = APIRouter(prefix="/api/customers", tags=["Customers"])
 
-@router.get("/", response_model=List[schemas.CustomerListResponse])
+@router.get("", response_model=List[schemas.CustomerListResponse])
 def list_customers(
     skip: int = 0,
     limit: int = 100,
