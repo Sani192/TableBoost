@@ -82,7 +82,7 @@ export interface GetVisitsParams {
 }
 
 const api = axios.create({
-  baseURL: '',
+  baseURL: 'https://tableboost-backend.onrender.com',
   timeout: 8000,
   withCredentials: true,
 });
@@ -117,7 +117,7 @@ api.interceptors.response.use(
       (authError as any).status = 401;
       return Promise.reject(authError);
     }
-    
+
     // If it's a normalized TableBoost backend error
     if (error.response?.data?.error === true && error.response?.data?.message) {
       const tbError = new Error(error.response.data.message);
@@ -127,7 +127,7 @@ api.interceptors.response.use(
       (tbError as any).correlationId = error.response.data.correlation_id || null;
       return Promise.reject(tbError);
     }
-    
+
     // Fallback for standard Axios network errors
     const fallbackError = new Error(error.message || 'A network error occurred. Please check your connection.');
     (fallbackError as any).status = error.response?.status || 500;
@@ -163,7 +163,7 @@ export interface CustomerListResponse {
   anniversary?: string | null;
 }
 
-export interface CustomerDetailResponse extends CustomerListResponse {}
+export interface CustomerDetailResponse extends CustomerListResponse { }
 
 export const getCustomerVisits = async (id: number, params: { skip?: number; limit?: number } = {}): Promise<VisitDetail[]> => {
   const response = await api.get<VisitDetail[]>(`/api/customers/${id}/visits`, { params });
@@ -187,13 +187,13 @@ export interface CampaignCreateRequest {
   inactive_days?: number;
 }
 
-export const getCustomers = async (params: { 
-  skip?: number; 
-  limit?: number; 
-  search?: string; 
-  min_visits?: number; 
-  max_visits?: number; 
-  min_spent?: number; 
+export const getCustomers = async (params: {
+  skip?: number;
+  limit?: number;
+  search?: string;
+  min_visits?: number;
+  max_visits?: number;
+  min_spent?: number;
   max_spent?: number;
   birthday_month?: number;
   birthday_day?: number;
