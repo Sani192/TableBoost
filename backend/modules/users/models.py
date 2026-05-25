@@ -20,7 +20,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    profile_id = Column(Integer, ForeignKey("user_profiles.id"), unique=True, nullable=True) # Nullable for now to support existing users
+    profile_id = Column(Integer, ForeignKey("user_profiles.id"), unique=True, nullable=False)
     username = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     role = Column(String, nullable=False) # OWNER, MANAGER, STAFF
@@ -28,6 +28,13 @@ class User(Base):
     token_version = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    def __init__(self, **kwargs):
+        if "profile" not in kwargs and "profile_id" not in kwargs:
+            from .models import UserProfile
+            username = kwargs.get("username", "")
+            kwargs["profile"] = UserProfile(last_name=username)
+        super().__init__(**kwargs)
 
     # Relationship to profile
     profile = relationship("UserProfile", back_populates="user")

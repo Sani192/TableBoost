@@ -26,7 +26,7 @@ def test_get_profile_creates_profile_on_fly(client, db):
     assert response.status_code == 200
     data = response.json()
     assert data["first_name"] is None
-    assert data["last_name"] is None
+    assert data["last_name"] == "testuser"
     assert data["id"] is not None
     
     # 4. Verify user was updated with profile_id

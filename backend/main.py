@@ -10,6 +10,7 @@ from modules.automation.router import router as automation_router
 from modules.intelligence.router import router as intelligence_router
 from modules.auth.router import router as auth_router
 from modules.governance.router import router as governance_router
+from provisioning import provisioning_router
 from modules.restaurants.models import Restaurant, RestaurantUser
 from modules.automation import service as automation_service
 from modules.messaging import service as messaging_service
@@ -197,6 +198,7 @@ app.include_router(automation_router)
 app.include_router(intelligence_router)
 app.include_router(auth_router)
 app.include_router(governance_router)
+app.include_router(provisioning_router)
 
 import os
 import sys

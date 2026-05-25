@@ -212,6 +212,8 @@ def get_current_tenant(request: Request, current_user = Depends(get_current_user
     
     if tenant_id_str and tenant_id_str.isdigit():
         tenant_id = int(tenant_id_str)
+        if current_user.role == "SUPER_ADMIN":
+            return {"user": current_user, "restaurant_id": tenant_id, "role": current_user.role}
         link = db.query(RestaurantUser).filter(RestaurantUser.user_id == current_user.id, RestaurantUser.restaurant_id == tenant_id).first()
         if not link:
             import os
@@ -219,6 +221,10 @@ def get_current_tenant(request: Request, current_user = Depends(get_current_user
                 return {"user": current_user, "restaurant_id": tenant_id, "role": current_user.role}
             raise HTTPException(status_code=403, detail="Not authorized for this restaurant")
     else:
+        if current_user.role == "SUPER_ADMIN":
+            link = db.query(RestaurantUser).filter(RestaurantUser.user_id == current_user.id).first()
+            tenant_id = link.restaurant_id if link else 1
+            return {"user": current_user, "restaurant_id": tenant_id, "role": current_user.role}
         link = db.query(RestaurantUser).filter(RestaurantUser.user_id == current_user.id).first()
         if not link:
             import os
@@ -368,6 +374,8 @@ def change_password(data: ChangePasswordRequest, current_user = Depends(get_curr
 # Role checker dependency factory
 def check_role(allowed_roles: list):
     def role_checker(tenant_context = Depends(get_current_tenant)):
+        if tenant_context["role"] == "SUPER_ADMIN":
+            return tenant_context
         if tenant_context["role"] not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

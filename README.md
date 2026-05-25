@@ -94,6 +94,7 @@ TableBoost includes a production-safe authentication system with role-based acce
 - **JWT Authentication**: Secure stateless authentication using JSON Web Tokens.
 - **HTTP-only Cookies**: Session tokens are stored in secure, HTTP-only cookies to prevent XSS attacks.
 - **Roles**:
+  - **SUPER_ADMIN**: Platform operator role that bypasses row-level tenant restrictions and accesses global admin APIs to provision and validate tenants.
   - **OWNER**: Full access to all features, analytics, and settings.
   - **MANAGER**: Access to operations, analytics, and limited settings.
   - **STAFF**: Operational access only (Add Visit). Cannot access sensitive analytics or settings.
@@ -349,9 +350,12 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DB_NAME
 # Production Security Configurations
 ENVIRONMENT=production # Set to 'production' to enforce HTTPS-only secure JWT cookies
 ALLOWED_ORIGINS=https://your-production-domain.com # Comma-separated list of allowed CORS origins
+
+# Option: Seed custom initial superadmin password (defaults to 'superadmin123' if omitted)
+SUPER_ADMIN_PASSWORD=my_secure_password
 ```
 
-Initialize database tables and seed default automation configs:
+Initialize database tables, seed plans, and bootstrap the platform operator:
 
 ```bash
 python backend/init_tables.py
