@@ -19,13 +19,13 @@ import { useAuth } from '@/context/AuthContext';
 type DrilldownConfig = { type: 'customers' | 'visits'; title: string; subtitle?: string; params: () => Record<string, any> };
 
 const DRILLDOWN_MAP: Record<string, DrilldownConfig> = {
-  vip:         { type: 'customers', title: 'VIP Customers',          subtitle: 'Top tier lifetime value', params: () => ({ is_vip: true }) },
-  at_risk:     { type: 'customers', title: 'At-Risk Customers',      subtitle: 'Likely to churn', params: () => ({ is_at_risk: true }) },
-  reward_near: { type: 'customers', title: 'Customers Near Reward',  subtitle: '1 visit away from milestone', params: () => ({ is_reward_near: true }) },
-  lost:        { type: 'customers', title: 'Lost Customers',         subtitle: 'Churned segment', params: () => ({ is_lost: true }) },
-  new_blood:   { type: 'customers', title: 'New Customers',          subtitle: 'Acquired recently', params: () => ({ is_new: true }) },
-  weekly:      { type: 'visits',    title: 'Weekly Revenue Visits',  subtitle: 'Last 7 Days', params: () => ({ start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() }) },
-  monthly:     { type: 'visits',    title: 'Monthly Revenue Visits', subtitle: 'Last 30 Days', params: () => ({ start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() }) },
+  vip: { type: 'customers', title: 'VIP Customers', subtitle: 'Top tier lifetime value', params: () => ({ is_vip: true }) },
+  at_risk: { type: 'customers', title: 'At-Risk Customers', subtitle: 'Likely to churn', params: () => ({ is_at_risk: true }) },
+  reward_near: { type: 'customers', title: 'Customers Near Reward', subtitle: '1 visit away from milestone', params: () => ({ is_reward_near: true }) },
+  lost: { type: 'customers', title: 'Lost Customers', subtitle: 'Churned segment', params: () => ({ is_lost: true }) },
+  new_blood: { type: 'customers', title: 'New Customers', subtitle: 'Acquired recently', params: () => ({ is_new: true }) },
+  weekly: { type: 'visits', title: 'Weekly Revenue Visits', subtitle: 'Last 7 Days', params: () => ({ start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() }) },
+  monthly: { type: 'visits', title: 'Monthly Revenue Visits', subtitle: 'Last 30 Days', params: () => ({ start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() }) },
 };
 
 const formatTime = (isoDate: string) => {
@@ -64,14 +64,15 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const activeTab = (searchParams.get('tab') as 'ops' | 'revenue' | 'growth') || 'ops';
-  
+  const [isRestaurantReady, setIsRestaurantReady] = useState(false);
+
   const [drilldownOpen, setDrilldownOpen] = useState(false);
   const [drilldownTitle, setDrilldownTitle] = useState('');
   const [drilldownSubtitle, setDrilldownSubtitle] = useState('');
   const [drilldownData, setDrilldownData] = useState<any[]>([]);
   const [isDrilldownLoading, setIsDrilldownLoading] = useState(false);
   const [drilldownType, setDrilldownType] = useState<'customers' | 'visits'>('customers');
-  
+
   const [drilldownSkip, setDrilldownSkip] = useState(0);
   const [drilldownHasMore, setDrilldownHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -83,7 +84,7 @@ export default function Dashboard() {
     setDrilldownSubtitle(subtitle);
     setDrilldownType(type);
     setDrilldownOpen(true);
-    
+
     if (isLoadMore) {
       setIsLoadingMore(true);
     } else {
@@ -92,14 +93,14 @@ export default function Dashboard() {
       setDrilldownSkip(0);
       setCurrentParams(params);
     }
-    
+
     try {
       const currentSkip = isLoadMore ? drilldownSkip : 0;
       let res: any[] = [];
-      
+
       const queryParams = { ...params };
       delete queryParams.is_intel;
-      
+
       if (params?.is_intel) {
         res = await getIntelligenceCustomers({ filter: params.filter, skip: currentSkip, limit: 20 });
       } else if (params?.is_campaign) {
@@ -116,14 +117,14 @@ export default function Dashboard() {
       } else if (type === 'visits') {
         res = await getVisits({ limit: 20, skip: currentSkip, ...queryParams });
       }
-      
+
       if (isLoadMore) {
         setDrilldownData(prev => [...prev, ...res]);
         setDrilldownSkip(currentSkip);
       } else {
         setDrilldownData(res);
       }
-      
+
       setDrilldownHasMore(res.length === 20);
     } catch (error) {
       console.error('Failed to fetch drilldown data:', error);
@@ -153,15 +154,15 @@ export default function Dashboard() {
 
   const fetchDashboard = useCallback((silent = false) => {
     if (!silent) setIsLoading(true);
-    
+
     const promises: Promise<any>[] = [getDashboard()];
-    
+
     if (hasFeatureAccess('intelligence')) {
       promises.push(getGrowthDashboard());
     } else {
       promises.push(Promise.resolve(null));
     }
-    
+
     if (hasFeatureAccess('campaigns')) {
       promises.push(getCampaignRoi().catch(() => []));
       promises.push(getRewardEffectiveness().catch(() => []));
@@ -214,8 +215,17 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    const restaurantId = window.localStorage.getItem('tableboost.currentRestaurantId');
+    if (restaurantId) {
+      setIsRestaurantReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isRestaurantReady) return;
+
     fetchDashboard();
-  }, [fetchDashboard]);
+  }, [isRestaurantReady, fetchDashboard]);
 
   const drilldownLoadingRef = useRef(false);
   drilldownLoadingRef.current = isDrilldownLoading || isLoadingMore;
@@ -247,9 +257,9 @@ export default function Dashboard() {
     const drawerParamsStr = searchParams.get('drawer_params');
 
     const shouldBeOpen = !!(drawerKey || drawerType);
-    
+
     const currentTitle = drawerKey && DRILLDOWN_MAP[drawerKey] ? DRILLDOWN_MAP[drawerKey].title : decodeURIComponent(drawerTitle || '');
-    
+
     if (shouldBeOpen && (!drilldownOpen || drilldownTitle !== currentTitle)) {
       setDrilldownOpen(true);
       if (drawerKey && DRILLDOWN_MAP[drawerKey]) {
@@ -270,47 +280,47 @@ export default function Dashboard() {
 
   const stats = data
     ? {
-        totalCustomers: data.total_customers,
-        totalVisits: data.total_visits,
-        repeatCustomers: data.repeat_customers,
-        totalRedeemed: data.total_redeemed,
-        vipsCount: data.segments?.vips_count || 0,
-        atRiskCount: data.segments?.at_risk_count || 0,
-        nearRewardsCount: data.segments?.near_rewards_count || 0,
-        lostCount: data.segments?.lost_count || 0,
-        newBloodCount: data.segments?.new_blood_count || 0,
-        weeklyRevenue: data.revenue?.weekly_total || 0,
-        monthlyRevenue: data.revenue?.monthly_total || 0,
-        avgTicket: data.revenue?.avg_ticket || 0,
-        repeatRate: data.revenue?.repeat_rate || 0,
-        recentRedeemed: data.revenue?.rewards_stats?.recent_redeemed || 0,
-        campaignRoi: data.revenue?.campaign_roi || {
-          total_messages: 0,
-          converted_messages: 0,
-          conversion_rate: 0,
-          revenue_generated: 0
-        }
+      totalCustomers: data.total_customers,
+      totalVisits: data.total_visits,
+      repeatCustomers: data.repeat_customers,
+      totalRedeemed: data.total_redeemed,
+      vipsCount: data.segments?.vips_count || 0,
+      atRiskCount: data.segments?.at_risk_count || 0,
+      nearRewardsCount: data.segments?.near_rewards_count || 0,
+      lostCount: data.segments?.lost_count || 0,
+      newBloodCount: data.segments?.new_blood_count || 0,
+      weeklyRevenue: data.revenue?.weekly_total || 0,
+      monthlyRevenue: data.revenue?.monthly_total || 0,
+      avgTicket: data.revenue?.avg_ticket || 0,
+      repeatRate: data.revenue?.repeat_rate || 0,
+      recentRedeemed: data.revenue?.rewards_stats?.recent_redeemed || 0,
+      campaignRoi: data.revenue?.campaign_roi || {
+        total_messages: 0,
+        converted_messages: 0,
+        conversion_rate: 0,
+        revenue_generated: 0
       }
+    }
     : {
-        totalCustomers: 0,
-        totalVisits: 0,
-        repeatCustomers: 0,
-        totalRedeemed: 0,
-        vipsCount: 0,
-        atRiskCount: 0,
-        nearRewardsCount: 0,
-        weeklyRevenue: 0,
-        monthlyRevenue: 0,
-        avgTicket: 0,
-        repeatRate: 0,
-        recentRedeemed: 0,
-        campaignRoi: {
-          total_messages: 0,
-          converted_messages: 0,
-          conversion_rate: 0,
-          revenue_generated: 0
-        }
-      };
+      totalCustomers: 0,
+      totalVisits: 0,
+      repeatCustomers: 0,
+      totalRedeemed: 0,
+      vipsCount: 0,
+      atRiskCount: 0,
+      nearRewardsCount: 0,
+      weeklyRevenue: 0,
+      monthlyRevenue: 0,
+      avgTicket: 0,
+      repeatRate: 0,
+      recentRedeemed: 0,
+      campaignRoi: {
+        total_messages: 0,
+        converted_messages: 0,
+        conversion_rate: 0,
+        revenue_generated: 0
+      }
+    };
 
   const handleTabChange = (tab: 'ops' | 'revenue' | 'growth') => {
     router.push(`/?tab=${tab}`, { scroll: false });
@@ -327,15 +337,15 @@ export default function Dashboard() {
           <div className="h-10 w-10 bg-stone-200 rounded-xl"></div>
         </div>
         <div className="flex gap-2">
-           <div className="h-10 flex-1 bg-stone-200 rounded-xl"></div>
-           <div className="h-10 flex-1 bg-stone-200 rounded-xl"></div>
-           <div className="h-10 flex-1 bg-stone-200 rounded-xl"></div>
+          <div className="h-10 flex-1 bg-stone-200 rounded-xl"></div>
+          <div className="h-10 flex-1 bg-stone-200 rounded-xl"></div>
+          <div className="h-10 flex-1 bg-stone-200 rounded-xl"></div>
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-4">
-           <div className="h-24 bg-stone-200 rounded-2xl"></div>
-           <div className="h-24 bg-stone-200 rounded-2xl"></div>
-           <div className="h-24 bg-stone-200 rounded-2xl"></div>
-           <div className="h-24 bg-stone-200 rounded-2xl"></div>
+          <div className="h-24 bg-stone-200 rounded-2xl"></div>
+          <div className="h-24 bg-stone-200 rounded-2xl"></div>
+          <div className="h-24 bg-stone-200 rounded-2xl"></div>
+          <div className="h-24 bg-stone-200 rounded-2xl"></div>
         </div>
         <div className="h-64 bg-stone-200 rounded-2xl"></div>
       </div>
@@ -379,25 +389,22 @@ export default function Dashboard() {
       <div className="flex gap-1 p-1 bg-stone-100 rounded-2xl w-full max-w-lg">
         <button
           onClick={() => handleTabChange('ops')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${
-            activeTab === 'ops' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
-          }`}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${activeTab === 'ops' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
+            }`}
         >
           <Activity className="h-4 w-4" /> Operations
         </button>
         <button
           onClick={() => handleTabChange('revenue')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold rounded-xl transition-all ${
-            activeTab === 'revenue' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
-          }`}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold rounded-xl transition-all ${activeTab === 'revenue' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
+            }`}
         >
           <TrendingUp className="h-4 w-4" /> Intelligence {!hasFeatureAccess('smart_segments') && <Lock className="h-3 w-3 text-stone-400" />}
         </button>
         <button
           onClick={() => handleTabChange('growth')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold rounded-xl transition-all ${
-            activeTab === 'growth' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
-          }`}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold rounded-xl transition-all ${activeTab === 'growth' ? 'bg-white text-brand-600 shadow-sm' : 'text-stone-500 hover:text-stone-700'
+            }`}
         >
           <Sparkles className="h-4 w-4" /> Growth {!hasFeatureAccess('intelligence') && <Lock className="h-3 w-3 text-stone-400" />}
         </button>
@@ -475,12 +482,12 @@ export default function Dashboard() {
               <div className="h-32 flex items-end justify-between gap-2 mt-4 px-2 relative">
                 {data?.revenue?.daily_trends && data.revenue.daily_trends.some(d => d.revenue > 0) ? (
                   data.revenue.daily_trends.map((day, i) => (
-                    <div 
-                      key={i} 
+                    <div
+                      key={i}
                       className="flex-1 h-full flex flex-col justify-end items-center gap-2 group cursor-pointer"
                       onClick={() => openCustomDrilldown('visits', `Visits on ${new Date(day.date).toLocaleDateString()}`, { start_date: `${day.date}T00:00:00`, end_date: `${day.date}T23:59:59` })}
                     >
-                      <div 
+                      <div
                         className="w-full bg-brand-500/20 group-hover:bg-brand-500 rounded-t-lg transition-all duration-300 relative min-h-[2px]"
                         style={{ height: `${(day.revenue / (Math.max(...data.revenue.daily_trends.map(d => d.revenue)) || 1)) * 100}%` }}
                       >
@@ -503,70 +510,70 @@ export default function Dashboard() {
             </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-               <Card className="p-5">
-                  <div className="flex items-center justify-between mb-4">
-                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
-                           <Target className="h-6 w-6" />
-                        </div>
-                        <div>
-                           <h4 className="text-sm font-bold text-stone-900">Campaign ROI</h4>
-                           <p className="text-xs text-stone-500">Last 30 days</p>
-                        </div>
-                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                     <div>
-                        <p className="text-xs text-stone-400 font-bold">CONVERSION</p>
-                        <p className="text-lg font-extrabold text-stone-900">{stats.campaignRoi.conversion_rate.toFixed(1)}%</p>
-                        <p className="text-xs text-stone-500">{stats.campaignRoi.converted_messages}/{stats.campaignRoi.total_messages} visits</p>
-                     </div>
-                     <div>
-                        <p className="text-xs text-stone-400 font-bold">REVENUE</p>
-                        <p className="text-lg font-extrabold text-emerald-600">${stats.campaignRoi.revenue_generated.toFixed(2)}</p>
-                        <p className="text-xs text-stone-500">attributed</p>
-                     </div>
-                  </div>
-               </Card>
-               {hasFeatureAccess('automation') ? (
-                 <Card className="p-5 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                       <div className="h-12 w-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
-                          <Rocket className="h-6 w-6" />
-                       </div>
-                       <div>
-                          <h4 className="text-sm font-bold text-stone-900">Automation Engine</h4>
-                          <p className="text-xs text-stone-500">3 active pilots running</p>
-                       </div>
-                    </div>
-                    <Link href="/settings" className="text-xs font-bold text-brand-600 hover:underline">Manage</Link>
-                 </Card>
-               ) : (
-                 <Card className="p-5 flex items-center justify-between opacity-75">
-                    <div className="flex items-center gap-4">
-                       <div className="h-12 w-12 bg-stone-100 text-stone-400 rounded-xl flex items-center justify-center">
-                          <Lock className="h-5 w-5" />
-                       </div>
-                       <div>
-                          <h4 className="text-sm font-bold text-stone-900">Automation Pilots</h4>
-                          <p className="text-xs uppercase font-bold text-stone-400">Locked under Pro</p>
-                       </div>
-                    </div>
-                    <span className="text-xs font-bold text-stone-400">Locked</span>
-                 </Card>
-               )}
-               <Card className="p-5 flex items-center justify-between">
+              <Card className="p-5">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
-                     <div className="h-12 w-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
-                        <UsersRound className="h-6 w-6" />
-                     </div>
-                     <div>
-                        <h4 className="text-sm font-bold text-stone-900">Smart Segments</h4>
-                        <p className="text-xs text-stone-500">New VIP insights available</p>
-                     </div>
+                    <div className="h-12 w-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+                      <Target className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-stone-900">Campaign ROI</h4>
+                      <p className="text-xs text-stone-500">Last 30 days</p>
+                    </div>
                   </div>
-                  <Link href="/customers?is_vip=true" className="text-xs font-bold text-brand-600 hover:underline">View All</Link>
-               </Card>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-xs text-stone-400 font-bold">CONVERSION</p>
+                    <p className="text-lg font-extrabold text-stone-900">{stats.campaignRoi.conversion_rate.toFixed(1)}%</p>
+                    <p className="text-xs text-stone-500">{stats.campaignRoi.converted_messages}/{stats.campaignRoi.total_messages} visits</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-400 font-bold">REVENUE</p>
+                    <p className="text-lg font-extrabold text-emerald-600">${stats.campaignRoi.revenue_generated.toFixed(2)}</p>
+                    <p className="text-xs text-stone-500">attributed</p>
+                  </div>
+                </div>
+              </Card>
+              {hasFeatureAccess('automation') ? (
+                <Card className="p-5 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
+                      <Rocket className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-stone-900">Automation Engine</h4>
+                      <p className="text-xs text-stone-500">3 active pilots running</p>
+                    </div>
+                  </div>
+                  <Link href="/settings" className="text-xs font-bold text-brand-600 hover:underline">Manage</Link>
+                </Card>
+              ) : (
+                <Card className="p-5 flex items-center justify-between opacity-75">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 bg-stone-100 text-stone-400 rounded-xl flex items-center justify-center">
+                      <Lock className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-stone-900">Automation Pilots</h4>
+                      <p className="text-xs uppercase font-bold text-stone-400">Locked under Pro</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-stone-400">Locked</span>
+                </Card>
+              )}
+              <Card className="p-5 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
+                    <UsersRound className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-stone-900">Smart Segments</h4>
+                    <p className="text-xs text-stone-500">New VIP insights available</p>
+                  </div>
+                </div>
+                <Link href="/customers?is_vip=true" className="text-xs font-bold text-brand-600 hover:underline">View All</Link>
+              </Card>
             </div>
           </div>
         ) : (
@@ -621,104 +628,104 @@ export default function Dashboard() {
 
             {/* Summaries & Impact */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {/* Latest Summary */}
-               <Card className="p-5">
-                  <h4 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-2">
-                     <Target className="h-4 w-4 text-brand-600" /> Latest Business Summary
-                  </h4>
-                  {growthData?.latest_summary ? (
-                     <div className="space-y-2">
-                        <p className="text-sm font-medium text-stone-700">
-                           Period: {growthData.latest_summary.period_type} (Ended {new Date(growthData.latest_summary.created_at).toLocaleDateString()})
-                        </p>
-                        <ul className="space-y-1">
-                           {growthData.latest_summary.highlights?.map((h: string, i: number) => (
-                              <li key={i} className="text-xs text-stone-600 flex items-start gap-1">
-                                 <span className="text-brand-600">•</span> {h}
-                              </li>
-                           ))}
-                        </ul>
-                     </div>
-                  ) : (
-                     <p className="text-xs text-stone-400">No summary generated yet.</p>
-                  )}
-               </Card>
-
-               {/* Loyalty Impact */}
-               <Card className="p-5">
-                  <h4 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-2">
-                     <Trophy className="h-4 w-4 text-brand-600" /> Loyalty Impact
-                  </h4>
-                  <div className="grid grid-cols-2 gap-2">
-                     <div>
-                        <p className="text-xs text-stone-400 font-bold">INFLUENCED REVENUE</p>
-                        <p className="text-lg font-extrabold text-stone-900">${growthData?.loyalty_impact?.reward_influenced_revenue || 0}</p>
-                     </div>
-                     <div>
-                        <p className="text-xs text-stone-400 font-bold">AVG REVISIT RATE</p>
-                        <p className="text-lg font-extrabold text-emerald-600">{growthData?.loyalty_impact?.avg_revisit_rate || 0}%</p>
-                     </div>
+              {/* Latest Summary */}
+              <Card className="p-5">
+                <h4 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-2">
+                  <Target className="h-4 w-4 text-brand-600" /> Latest Business Summary
+                </h4>
+                {growthData?.latest_summary ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-stone-700">
+                      Period: {growthData.latest_summary.period_type} (Ended {new Date(growthData.latest_summary.created_at).toLocaleDateString()})
+                    </p>
+                    <ul className="space-y-1">
+                      {growthData.latest_summary.highlights?.map((h: string, i: number) => (
+                        <li key={i} className="text-xs text-stone-600 flex items-start gap-1">
+                          <span className="text-brand-600">•</span> {h}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-               </Card>
+                ) : (
+                  <p className="text-xs text-stone-400">No summary generated yet.</p>
+                )}
+              </Card>
+
+              {/* Loyalty Impact */}
+              <Card className="p-5">
+                <h4 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-brand-600" /> Loyalty Impact
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-xs text-stone-400 font-bold">INFLUENCED REVENUE</p>
+                    <p className="text-lg font-extrabold text-stone-900">${growthData?.loyalty_impact?.reward_influenced_revenue || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-400 font-bold">AVG REVISIT RATE</p>
+                    <p className="text-lg font-extrabold text-emerald-600">{growthData?.loyalty_impact?.avg_revisit_rate || 0}%</p>
+                  </div>
+                </div>
+              </Card>
             </div>
 
             {/* Analytics Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {/* Campaign ROI List */}
-               <Card className="p-5">
-                  <h4 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-2">
-                     <Megaphone className="h-4 w-4 text-brand-600" /> Campaign Performance
-                  </h4>
-                  {campaignRoi.length > 0 ? (
-                     <div className="space-y-3 max-h-60 overflow-y-auto">
-                        {campaignRoi.map((camp, i) => (
-                           <div key={i} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg cursor-pointer hover:bg-stone-100 transition-colors" onClick={() => openCustomDrilldown('customers', camp.campaign_name, { is_campaign: true, campaign_id: camp.campaign_id })}>
-                              <div>
-                                 <p className="text-xs font-bold text-stone-900">{camp.campaign_name}</p>
-                                 <p className="text-xs text-stone-500">{camp.total_sent} sent • {camp.total_converted} converted</p>
-                              </div>
-                              <div className="text-right flex items-center gap-2">
-                                 <div>
-                                    <p className="text-xs font-bold text-emerald-600">${camp.revenue_attributed}</p>
-                                    <p className="text-xs text-stone-400">{camp.conversion_rate}% rate</p>
-                                 </div>
-                                 <ChevronRight className="h-4 w-4 text-stone-300" />
-                              </div>
-                           </div>
-                        ))}
-                     </div>
-                  ) : (
-                     <p className="text-xs text-stone-400">No campaign data available.</p>
-                  )}
-               </Card>
+              {/* Campaign ROI List */}
+              <Card className="p-5">
+                <h4 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-2">
+                  <Megaphone className="h-4 w-4 text-brand-600" /> Campaign Performance
+                </h4>
+                {campaignRoi.length > 0 ? (
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {campaignRoi.map((camp, i) => (
+                      <div key={i} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg cursor-pointer hover:bg-stone-100 transition-colors" onClick={() => openCustomDrilldown('customers', camp.campaign_name, { is_campaign: true, campaign_id: camp.campaign_id })}>
+                        <div>
+                          <p className="text-xs font-bold text-stone-900">{camp.campaign_name}</p>
+                          <p className="text-xs text-stone-500">{camp.total_sent} sent • {camp.total_converted} converted</p>
+                        </div>
+                        <div className="text-right flex items-center gap-2">
+                          <div>
+                            <p className="text-xs font-bold text-emerald-600">${camp.revenue_attributed}</p>
+                            <p className="text-xs text-stone-400">{camp.conversion_rate}% rate</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-stone-300" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-stone-400">No campaign data available.</p>
+                )}
+              </Card>
 
-               {/* Reward Effectiveness List */}
-               <Card className="p-5">
-                  <h4 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-2">
-                     <Gift className="h-4 w-4 text-brand-600" /> Reward Effectiveness
-                  </h4>
-                  {rewardEffectiveness.length > 0 ? (
-                     <div className="space-y-3 max-h-60 overflow-y-auto">
-                        {rewardEffectiveness.map((rew, i) => (
-                           <div key={i} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg cursor-pointer hover:bg-stone-100 transition-colors" onClick={() => openCustomDrilldown('customers', rew.reward_name, { is_reward: true, reward_id: rew.reward_id })}>
-                              <div>
-                                 <p className="text-xs font-bold text-stone-900">{rew.reward_name}</p>
-                                 <p className="text-xs text-stone-500">{rew.total_redeemed} redeemed</p>
-                              </div>
-                              <div className="text-right flex items-center gap-2">
-                                 <div>
-                                    <p className="text-xs font-bold text-emerald-600">${rew.reward_influenced_revenue}</p>
-                                    <p className="text-xs text-stone-400">{rew.post_reward_revisit_rate}% revisit</p>
-                                 </div>
-                                 <ChevronRight className="h-4 w-4 text-stone-300" />
-                              </div>
-                           </div>
-                        ))}
-                     </div>
-                  ) : (
-                     <p className="text-xs text-stone-400">No reward data available.</p>
-                  )}
-               </Card>
+              {/* Reward Effectiveness List */}
+              <Card className="p-5">
+                <h4 className="text-sm font-bold text-stone-900 mb-3 flex items-center gap-2">
+                  <Gift className="h-4 w-4 text-brand-600" /> Reward Effectiveness
+                </h4>
+                {rewardEffectiveness.length > 0 ? (
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {rewardEffectiveness.map((rew, i) => (
+                      <div key={i} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg cursor-pointer hover:bg-stone-100 transition-colors" onClick={() => openCustomDrilldown('customers', rew.reward_name, { is_reward: true, reward_id: rew.reward_id })}>
+                        <div>
+                          <p className="text-xs font-bold text-stone-900">{rew.reward_name}</p>
+                          <p className="text-xs text-stone-500">{rew.total_redeemed} redeemed</p>
+                        </div>
+                        <div className="text-right flex items-center gap-2">
+                          <div>
+                            <p className="text-xs font-bold text-emerald-600">${rew.reward_influenced_revenue}</p>
+                            <p className="text-xs text-stone-400">{rew.post_reward_revisit_rate}% revisit</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-stone-300" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-stone-400">No reward data available.</p>
+                )}
+              </Card>
             </div>
           </div>
         ) : (
@@ -770,7 +777,7 @@ export default function Dashboard() {
               ))}
             </div>
           )}
-          
+
           {!isDrilldownLoading && drilldownHasMore && (
             <div ref={drilldownLoaderRef} className="py-6 flex justify-center">
               <RefreshCw className="h-6 w-6 animate-spin text-brand-400" />
