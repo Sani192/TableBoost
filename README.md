@@ -383,7 +383,7 @@ Configure the backend API proxy URL (defaults to `http://localhost:8000` in dev)
 ```bash
 # In production, set this environment variable in your deployment platform (e.g. Render)
 # so Next.js redirects frontend API traffic to your hosted backend service:
-NEXT_PUBLIC_API_URL=https://your-backend-api-url.onrender.com
+BACKEND_API_URL=https://your-backend-api-url.onrender.com
 ```
 
 Run the development server:

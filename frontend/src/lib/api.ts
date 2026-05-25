@@ -82,7 +82,7 @@ export interface GetVisitsParams {
 }
 
 const api = axios.create({
-  baseURL: 'https://tableboost-backend.onrender.com',
+  baseURL: '',
   timeout: 8000,
   withCredentials: true,
 });
