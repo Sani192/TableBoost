@@ -64,7 +64,6 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const activeTab = (searchParams.get('tab') as 'ops' | 'revenue' | 'growth') || 'ops';
-  const [isRestaurantReady, setIsRestaurantReady] = useState(false);
 
   const [drilldownOpen, setDrilldownOpen] = useState(false);
   const [drilldownTitle, setDrilldownTitle] = useState('');
@@ -215,17 +214,8 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    const restaurantId = window.localStorage.getItem('tableboost.currentRestaurantId');
-    if (restaurantId) {
-      setIsRestaurantReady(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isRestaurantReady) return;
-
     fetchDashboard();
-  }, [isRestaurantReady, fetchDashboard]);
+  }, [fetchDashboard]);
 
   const drilldownLoadingRef = useRef(false);
   drilldownLoadingRef.current = isDrilldownLoading || isLoadingMore;

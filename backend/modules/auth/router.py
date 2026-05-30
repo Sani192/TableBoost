@@ -101,7 +101,7 @@ def login(login_data: LoginRequest, response: Response, request: Request, db: Se
         httponly=True,
         max_age=1440 * 60, # 24 hours
         expires=1440 * 60,
-        samesite="none",
+        samesite="lax",
         secure=is_production, # True in production with HTTPS
         path="/",
     )
