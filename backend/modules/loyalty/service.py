@@ -241,6 +241,11 @@ def get_redemption_history(db: Session, restaurant_id_or_customer_id: int, custo
         restaurant_id = restaurant_id_or_customer_id
         real_customer_id = customer_id
 
+    # Verify customer ownership
+    customer = db.query(Customer).filter(Customer.id == real_customer_id, Customer.restaurant_id == restaurant_id).first()
+    if not customer:
+        return None
+
     return db.query(RewardRedemption)\
         .filter(RewardRedemption.customer_id == real_customer_id, RewardRedemption.restaurant_id == restaurant_id)\
         .order_by(RewardRedemption.redeemed_at.desc())\

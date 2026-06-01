@@ -246,3 +246,22 @@ Thumbs.db
 
 # Backups
 backups/
+
+# SQLite Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Postman
+.postman/
+postman/
+
+# Playwright Test Outputs
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+*-snapshots/

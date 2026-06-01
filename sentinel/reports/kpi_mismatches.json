@@ -1,0 +1,16 @@
+[
+  {
+    "timestamp": "2026-05-24T17:29:56.822Z",
+    "kpi_name": "Total Visits",
+    "ui_value": "2",
+    "db_truth": "3",
+    "query_executed": "SELECT COUNT(id) AS count FROM visits WHERE restaurant_id = 1"
+  },
+  {
+    "timestamp": "2026-05-24T17:53:35.167Z",
+    "kpi_name": "Total Visits",
+    "ui_value": "1",
+    "db_truth": "2",
+    "query_executed": "SELECT COUNT(id) AS count FROM visits WHERE restaurant_id = 1"
+  }
+]

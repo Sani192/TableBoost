@@ -96,7 +96,7 @@ export default function CampaignsPage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setCampaignError(err.response?.data?.detail || 'Failed to send campaign. Please try again.');
+      setCampaignError(err.message || err.response?.data?.detail || 'Failed to send campaign. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -20,7 +20,7 @@ import ActivityList from '@/components/ActivityList';
 import CustomerHealthBadge from '@/components/intelligence/CustomerHealthBadge';
 import CLVBadge from '@/components/intelligence/CLVBadge';
 import StatCard from '@/components/StatCard';
-import { Utensils, DollarSign, RefreshCw, Trophy, History, Gift, CheckCircle2, Loader2, Lock, ChevronRight, Cake, Heart, Edit2, Calendar, ArrowLeft, Receipt, AlertCircle } from 'lucide-react';
+import { Utensils, DollarSign, RefreshCw, Trophy, History, Gift, CheckCircle2, Loader2, Lock, ChevronRight, Cake, Heart, Edit2, Calendar, ArrowLeft, Receipt, AlertCircle, Activity } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Modal from '@/components/ui/Modal';
@@ -43,6 +43,7 @@ export default function CustomerDetailPage() {
   const [hasMore, setHasMore] = useState(true);
   const [skip, setSkip] = useState(0);
   const [intelError, setIntelError] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   
   const [redeemingId, setRedeemingId] = useState<number | null>(null);
   const [redeemSuccess, setRedeemSuccess] = useState(false);
@@ -83,8 +84,10 @@ export default function CustomerDetailPage() {
       setRedemptions(historyData);
       setIntelligence(intelData);
       setHasMore(visitsData.length === PAGE_SIZE);
+      setError(null);
     } catch (err) {
       console.error(err);
+      setError('Customer not found');
     } finally {
       setLoading(false);
     }
@@ -166,6 +169,23 @@ export default function CustomerDetailPage() {
       }
     }
   };
+
+  if (error) {
+    return (
+      <div className="py-12 text-center bg-white rounded-3xl border border-stone-200/60 shadow-card p-6 flex flex-col items-center justify-center gap-4 max-w-2xl mx-auto mt-10">
+        <div className="h-14 w-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center border border-red-200/60 shadow-sm">
+          <AlertCircle className="h-6 w-6" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-stone-900">{error}</h3>
+          <p className="text-sm text-stone-500 mt-1">The customer you are looking for does not exist or you do not have permission to view them.</p>
+        </div>
+        <Button onClick={() => router.push('/customers')} className="mt-2">
+          Back to Customers
+        </Button>
+      </div>
+    );
+  }
 
   if (loading || !customer) return <div className="animate-pulse h-40 bg-stone-100 rounded-xl max-w-4xl mx-auto mt-10"></div>;
 
@@ -559,24 +579,4 @@ export default function CustomerDetailPage() {
       </Modal>
     </div>
   );
-}
-
-// Helper icon
-function Activity(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-    </svg>
-  )
 }

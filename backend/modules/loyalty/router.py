@@ -81,7 +81,10 @@ def get_status(
     tenant_context = Depends(get_current_tenant),
     db: Session = Depends(get_db)
 ):
-    return service.get_loyalty_status(db, tenant_context["restaurant_id"], customer_id)
+    res = service.get_loyalty_status(db, tenant_context["restaurant_id"], customer_id)
+    if res is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return res
 
 @router.post("/redeem/{customer_id}/{reward_id}", response_model=schemas.RewardRedemptionResponse)
 def redeem_reward(
@@ -141,4 +144,7 @@ def get_history(
     tenant_context = Depends(get_current_tenant),
     db: Session = Depends(get_db)
 ):
-    return service.get_redemption_history(db, tenant_context["restaurant_id"], customer_id, skip=skip, limit=limit)
+    res = service.get_redemption_history(db, tenant_context["restaurant_id"], customer_id, skip=skip, limit=limit)
+    if res is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return res

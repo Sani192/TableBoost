@@ -1,0 +1,571 @@
+[
+  {
+    "path": "/api/visits",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "list_visits",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/visits",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "create_visit",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/dashboard",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_dashboard",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/settings",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_settings",
+    "summary": "",
+    "role_access": [
+      "OWNER"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/settings",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "update_settings",
+    "summary": "",
+    "role_access": [
+      "OWNER"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/customers",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "list_customers",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/customers/{customer_id}",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_customer",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/customers/{customer_id}/visits",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_customer_visits",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/customers/{customer_id}",
+    "methods": [
+      "PATCH"
+    ],
+    "endpoint": "update_customer",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/messages/campaign/audience-count",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_campaign_audience_count",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "campaigns"
+  },
+  {
+    "path": "/api/messages",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_message_logs",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "campaigns"
+  },
+  {
+    "path": "/api/messages/campaign",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "create_campaign",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "campaigns"
+  },
+  {
+    "path": "/api/loyalty/rewards",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_rewards",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": "loyalty"
+  },
+  {
+    "path": "/api/loyalty/rewards",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "create_reward",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "loyalty"
+  },
+  {
+    "path": "/api/loyalty/rewards/{reward_id}",
+    "methods": [
+      "PATCH"
+    ],
+    "endpoint": "update_reward",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "loyalty"
+  },
+  {
+    "path": "/api/loyalty/status/{customer_id}",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_status",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": "loyalty"
+  },
+  {
+    "path": "/api/loyalty/redeem/{customer_id}/{reward_id}",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "redeem_reward",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": "loyalty"
+  },
+  {
+    "path": "/api/loyalty/history/{customer_id}",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_history",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": "loyalty"
+  },
+  {
+    "path": "/api/automation",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "list_automations",
+    "summary": "",
+    "role_access": [
+      "OWNER"
+    ],
+    "gated_feature": "automation"
+  },
+  {
+    "path": "/api/automation",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "update_automation",
+    "summary": "",
+    "role_access": [
+      "OWNER"
+    ],
+    "gated_feature": "automation"
+  },
+  {
+    "path": "/api/intelligence/growth",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_growth_dashboard",
+    "summary": "Growth tab dashboard data.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "intelligence"
+  },
+  {
+    "path": "/api/intelligence/customer/{customer_id}",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_customer_intelligence",
+    "summary": "Per-customer CLV + health detail.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "intelligence"
+  },
+  {
+    "path": "/api/intelligence/campaigns",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_campaign_roi",
+    "summary": "Per-campaign ROI list.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "intelligence"
+  },
+  {
+    "path": "/api/intelligence/campaigns/{campaign_id}/customers",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_campaign_customers",
+    "summary": "List customers targeted by a campaign with conversion status.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "intelligence"
+  },
+  {
+    "path": "/api/intelligence/rewards",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_reward_effectiveness",
+    "summary": "Per-reward effectiveness.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "intelligence"
+  },
+  {
+    "path": "/api/intelligence/rewards/customers",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_all_reward_customers",
+    "summary": "List customers who redeemed ANY reward.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "intelligence"
+  },
+  {
+    "path": "/api/intelligence/rewards/{reward_id}/customers",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_reward_customers",
+    "summary": "List customers who redeemed a reward.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "intelligence"
+  },
+  {
+    "path": "/api/intelligence/automations",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_automation_effectiveness",
+    "summary": "Per-automation effectiveness.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "intelligence"
+  },
+  {
+    "path": "/api/intelligence/summaries",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_summaries",
+    "summary": "Business summaries list.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "intelligence"
+  },
+  {
+    "path": "/api/intelligence/recommendations",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_recommendations",
+    "summary": "Active recommendations.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "intelligence"
+  },
+  {
+    "path": "/api/intelligence/customers",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_intelligence_customers",
+    "summary": "List customers with intelligence filters.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "intelligence"
+  },
+  {
+    "path": "/api/intelligence/recommendations/{rec_id}/dismiss",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "dismiss_recommendation",
+    "summary": "Dismiss a recommendation.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "intelligence"
+  },
+  {
+    "path": "/api/auth/login",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "login",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/auth/logout",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "logout",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/auth/me",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_me",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/auth/profile",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_profile",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/auth/profile",
+    "methods": [
+      "PUT"
+    ],
+    "endpoint": "update_profile",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/auth/change-password",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "change_password",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/auth/subscription",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "update_subscription",
+    "summary": "",
+    "role_access": [
+      "OWNER"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/auth/reset-rate-limit",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "reset_rate_limit",
+    "summary": "",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": null
+  },
+  {
+    "path": "/api/governance/audit",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_audit_logs",
+    "summary": "Retrieve user activity audit logs. Only accessible to OWNER role with PRO subscription.",
+    "role_access": [
+      "OWNER"
+    ],
+    "gated_feature": "governance"
+  },
+  {
+    "path": "/api/governance/operational",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "get_operational_logs",
+    "summary": "Retrieve system & background operational logs. Accessible to OWNER and MANAGER roles with PRO subscription.",
+    "role_access": [
+      "MANAGER",
+      "OWNER"
+    ],
+    "gated_feature": "governance"
+  },
+  {
+    "path": "/api/health",
+    "methods": [
+      "GET"
+    ],
+    "endpoint": "health_check",
+    "summary": "Deep health check for operational visibility.",
+    "role_access": [
+      "MANAGER",
+      "OWNER",
+      "STAFF"
+    ],
+    "gated_feature": null
+  }
+]

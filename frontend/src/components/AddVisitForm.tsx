@@ -75,7 +75,7 @@ export default function AddVisitForm({ onSuccess, onCancel, customerId }: AddVis
     try {
       const trimmedName = name.trim();
       const numericAmount = Number(amount);
-      
+
       await addVisit({
         phone_number: phoneNumber,
         name: trimmedName || undefined,
@@ -89,7 +89,7 @@ export default function AddVisitForm({ onSuccess, onCancel, customerId }: AddVis
         type: 'success',
         text: sendSms ? 'Visit saved — Review SMS queued!' : 'Visit saved successfully!',
       });
-      
+
       // Reset form
       setPhoneNumber('');
       setName('');
@@ -97,7 +97,7 @@ export default function AddVisitForm({ onSuccess, onCancel, customerId }: AddVis
       setSendSms(true);
       setBirthday('');
       setAnniversary('');
-      
+
       if (onSuccess) {
         setTimeout(onSuccess, 1500); // Close after success message
       }
@@ -197,11 +197,10 @@ export default function AddVisitForm({ onSuccess, onCancel, customerId }: AddVis
       {feedback && (
         <div
           role="status"
-          className={`animate-slide-up flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${
-            feedback.type === 'success'
+          className={`animate-slide-up flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${feedback.type === 'success'
               ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
               : 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-          }`}
+            }`}
         >
           {feedback.type === 'success' && (
             <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />

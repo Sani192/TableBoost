@@ -1,0 +1,232 @@
+<testsuites id="" name="" tests="52" failures="0" skipped="0" errors="0" time="775.8284649999999">
+<testsuite name="kpi/integrity.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="desktop-chrome" tests="1" failures="0" skipped="0" time="16.299" errors="0">
+<testcase name="KPI Integrity Dashboard Audits › UI KPI StatCards match database aggregates" classname="kpi/integrity.spec.ts" time="16.299">
+</testcase>
+</testsuite>
+<testsuite name="matrix/rbac.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="desktop-chrome" tests="3" failures="0" skipped="0" time="93.051" errors="0">
+<testcase name="RBAC Verification Matrix › STAFF role restrictions and redirects" classname="matrix/rbac.spec.ts" time="25.774">
+</testcase>
+<testcase name="RBAC Verification Matrix › MANAGER role restrictions and redirects" classname="matrix/rbac.spec.ts" time="38.334">
+</testcase>
+<testcase name="RBAC Verification Matrix › OWNER role full access permissions" classname="matrix/rbac.spec.ts" time="28.943">
+</testcase>
+</testsuite>
+<testsuite name="matrix/subscription.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="desktop-chrome" tests="3" failures="0" skipped="0" time="73.753" errors="0">
+<testcase name="Subscription Feature Gating Matrix › STARTER Plan gates premium features" classname="matrix/subscription.spec.ts" time="26.716">
+</testcase>
+<testcase name="Subscription Feature Gating Matrix › GROWTH Plan unlocks Loyalty &amp; Campaigns, but gates Pro features" classname="matrix/subscription.spec.ts" time="24.761">
+</testcase>
+<testcase name="Subscription Feature Gating Matrix › PRO Plan unlocks all capabilities" classname="matrix/subscription.spec.ts" time="22.276">
+</testcase>
+</testsuite>
+<testsuite name="security/api_protection.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="desktop-chrome" tests="2" failures="0" skipped="0" time="2.766" errors="0">
+<testcase name="API Security &amp; Abuse Protection Audits › Brute-force protection: Login rate limits after 5 failures" classname="security/api_protection.spec.ts" time="2.206">
+</testcase>
+<testcase name="API Security &amp; Abuse Protection Audits › Input bounds validation: Reject invalid visits payloads" classname="security/api_protection.spec.ts" time="0.56">
+</testcase>
+</testsuite>
+<testsuite name="tenant/isolation.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="desktop-chrome" tests="3" failures="0" skipped="0" time="33.297" errors="0">
+<testcase name="Tenant Isolation Verification Matrix › Cross-tenant API request header manipulation is BLOCKED" classname="tenant/isolation.spec.ts" time="7.622">
+</testcase>
+<testcase name="Tenant Isolation Verification Matrix › Direct URL ID parameter manipulation is BLOCKED" classname="tenant/isolation.spec.ts" time="14.472">
+</testcase>
+<testcase name="Tenant Isolation Verification Matrix › Search filtering prevents cross-tenant data leakage" classname="tenant/isolation.spec.ts" time="11.203">
+</testcase>
+</testsuite>
+<testsuite name="ux/heuristics.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="desktop-chrome" tests="3" failures="0" skipped="0" time="30.87" errors="0">
+<testcase name="UX Operational &amp; Heuristic Audits › Usability: Loading Skeletons render during navigation transition" classname="ux/heuristics.spec.ts" time="9.024">
+</testcase>
+<testcase name="UX Operational &amp; Heuristic Audits › Usability: Double-click submission protection is enforced" classname="ux/heuristics.spec.ts" time="10.798">
+</testcase>
+<testcase name="UX Operational &amp; Heuristic Audits › Usability: Error messages are clean, sanitized, and contain correlation IDs" classname="ux/heuristics.spec.ts" time="11.048">
+</testcase>
+</testsuite>
+<testsuite name="visual/regression.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="desktop-chrome" tests="8" failures="0" skipped="0" time="92.54" errors="0">
+<testcase name="Visual Regression Matrix › Capture and verify login page visual state" classname="visual/regression.spec.ts" time="4.354">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: dashboard" classname="visual/regression.spec.ts" time="12.931">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: customers" classname="visual/regression.spec.ts" time="11.709">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: customer-detail" classname="visual/regression.spec.ts" time="12.744">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: visits" classname="visual/regression.spec.ts" time="12.432">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: loyalty" classname="visual/regression.spec.ts" time="13.033">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: automations" classname="visual/regression.spec.ts" time="12.668">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: governance" classname="visual/regression.spec.ts" time="12.669">
+</testcase>
+</testsuite>
+<testsuite name="workflows/campaigns.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="desktop-chrome" tests="1" failures="0" skipped="0" time="23.034" errors="0">
+<testcase name="Campaign Management &amp; ROI Workflow › E2E Campaign Dispatch, Duplicate Protection, and ROI Computation" classname="workflows/campaigns.spec.ts" time="23.034">
+<system-err>
+<![CDATA[2026-05-31 15:58:14,392 - [-] - main - INFO - Syncing scheduler with database configurations...
+2026-05-31 15:58:14,392 - [-] - modules.automation.service - INFO - Starting sync_scheduler
+2026-05-31 15:58:14,394 - [-] - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-31 15:58:14,402 - [-] - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-31 15:58:14,402 - [-] - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-31 15:58:14,403 - [-] - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-31 15:58:14,403 - [-] - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-31 15:58:14,495 - [-] - modules.automation.service - INFO - Completed sync_scheduler
+2026-05-31 15:58:14,495 - [-] - main - INFO - Starting background scheduler...
+2026-05-31 15:58:14,496 - [-] - apscheduler.scheduler - INFO - Added job "sync_scheduler.<locals>.<lambda>" to job store "default"
+2026-05-31 15:58:14,496 - [-] - apscheduler.scheduler - INFO - Added job "sync_scheduler.<locals>.<lambda>" to job store "default"
+2026-05-31 15:58:14,497 - [-] - apscheduler.scheduler - INFO - Added job "sync_scheduler.<locals>.<lambda>" to job store "default"
+2026-05-31 15:58:14,497 - [-] - apscheduler.scheduler - INFO - Added job "sync_scheduler.<locals>.<lambda>" to job store "default"
+2026-05-31 15:58:14,497 - [-] - apscheduler.scheduler - INFO - Added job "sync_scheduler.<locals>.<lambda>" to job store "default"
+2026-05-31 15:58:14,498 - [-] - apscheduler.scheduler - INFO - Scheduler started
+2026-05-31 15:58:14,500 - [-] - main - INFO - === Scheduled Jobs ===
+2026-05-31 15:58:14,500 - [-] - main - INFO - - Job ID: sys_campaign_job, Trigger: interval[1:00:00]
+2026-05-31 15:58:14,500 - [-] - main - INFO - - Job ID: sys_daily_intelligence, Trigger: cron[hour='2', minute='0']
+2026-05-31 15:58:14,500 - [-] - main - INFO - - Job ID: sys_daily_recommendations, Trigger: cron[hour='3', minute='0']
+2026-05-31 15:58:14,501 - [-] - main - INFO - - Job ID: sys_weekly_summary, Trigger: cron[day_of_week='mon', hour='4', minute='0']
+2026-05-31 15:58:14,501 - [-] - main - INFO - - Job ID: sys_monthly_summary, Trigger: cron[day='1', hour='5', minute='0']
+2026-05-31 15:58:14,501 - [-] - main - INFO - =======================
+2026-05-31 15:58:14,502 - [-] - core.decorators - INFO - Starting job: Run System Job
+2026-05-31 15:58:14,521 - [-] - modules.intelligence.service - INFO - Starting daily intelligence computation
+2026-05-31 15:58:14,545 - [-] - modules.intelligence.service - INFO - Daily intelligence: updated 2 customers
+2026-05-31 15:58:14,545 - [-] - modules.intelligence.service - INFO - Computing campaign summaries
+2026-05-31 15:58:14,570 - [-] - modules.intelligence.service - INFO - Campaign summaries: updated 1
+2026-05-31 15:58:14,570 - [-] - modules.intelligence.service - INFO - Computing reward effectiveness
+2026-05-31 15:58:14,614 - [-] - modules.intelligence.service - INFO - Reward effectiveness: updated 3
+2026-05-31 15:58:14,614 - [-] - modules.intelligence.service - INFO - Computing automation effectiveness
+2026-05-31 15:58:14,635 - [-] - modules.intelligence.service - INFO - Automation effectiveness: updated 1
+2026-05-31 15:58:14,637 - [-] - modules.intelligence.service - INFO - Starting daily intelligence computation
+2026-05-31 15:58:14,654 - [-] - modules.intelligence.service - INFO - Daily intelligence: updated 1 customers
+2026-05-31 15:58:14,654 - [-] - modules.intelligence.service - INFO - Computing campaign summaries
+2026-05-31 15:58:14,656 - [-] - modules.intelligence.service - INFO - Campaign summaries: updated 0
+2026-05-31 15:58:14,656 - [-] - modules.intelligence.service - INFO - Computing reward effectiveness
+2026-05-31 15:58:14,657 - [-] - modules.intelligence.service - INFO - Reward effectiveness: updated 0
+2026-05-31 15:58:14,657 - [-] - modules.intelligence.service - INFO - Computing automation effectiveness
+2026-05-31 15:58:14,658 - [-] - modules.intelligence.service - INFO - Automation effectiveness: updated 0
+2026-05-31 15:58:14,664 - [-] - core.decorators - INFO - Completed job: Run System Job successfully
+]]>
+</system-err>
+</testcase>
+</testsuite>
+<testsuite name="workflows/loyalty.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="desktop-chrome" tests="1" failures="0" skipped="0" time="21.268" errors="0">
+<testcase name="Loyalty Progression &amp; Reward Redemption Workflow › E2E Reward Unlock and Redemption" classname="workflows/loyalty.spec.ts" time="21.268">
+</testcase>
+</testsuite>
+<testsuite name="workflows/visits.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="desktop-chrome" tests="1" failures="0" skipped="0" time="13.92" errors="0">
+<testcase name="Visits Capture E2E Workflow › Fast Visit Capture E2E and Double-Click Idempotency" classname="workflows/visits.spec.ts" time="13.92">
+</testcase>
+</testsuite>
+<testsuite name="kpi/integrity.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="mobile-chrome" tests="1" failures="0" skipped="0" time="10.826" errors="0">
+<testcase name="KPI Integrity Dashboard Audits › UI KPI StatCards match database aggregates" classname="kpi/integrity.spec.ts" time="10.826">
+</testcase>
+</testsuite>
+<testsuite name="matrix/rbac.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="mobile-chrome" tests="3" failures="0" skipped="0" time="87.655" errors="0">
+<testcase name="RBAC Verification Matrix › STAFF role restrictions and redirects" classname="matrix/rbac.spec.ts" time="25.121">
+</testcase>
+<testcase name="RBAC Verification Matrix › MANAGER role restrictions and redirects" classname="matrix/rbac.spec.ts" time="35.448">
+</testcase>
+<testcase name="RBAC Verification Matrix › OWNER role full access permissions" classname="matrix/rbac.spec.ts" time="27.086">
+</testcase>
+</testsuite>
+<testsuite name="matrix/subscription.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="mobile-chrome" tests="3" failures="0" skipped="0" time="72.468" errors="0">
+<testcase name="Subscription Feature Gating Matrix › STARTER Plan gates premium features" classname="matrix/subscription.spec.ts" time="26.577">
+</testcase>
+<testcase name="Subscription Feature Gating Matrix › GROWTH Plan unlocks Loyalty &amp; Campaigns, but gates Pro features" classname="matrix/subscription.spec.ts" time="23.256">
+</testcase>
+<testcase name="Subscription Feature Gating Matrix › PRO Plan unlocks all capabilities" classname="matrix/subscription.spec.ts" time="22.635">
+</testcase>
+</testsuite>
+<testsuite name="security/api_protection.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="mobile-chrome" tests="2" failures="0" skipped="0" time="2.868" errors="0">
+<testcase name="API Security &amp; Abuse Protection Audits › Brute-force protection: Login rate limits after 5 failures" classname="security/api_protection.spec.ts" time="2.301">
+</testcase>
+<testcase name="API Security &amp; Abuse Protection Audits › Input bounds validation: Reject invalid visits payloads" classname="security/api_protection.spec.ts" time="0.567">
+</testcase>
+</testsuite>
+<testsuite name="tenant/isolation.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="mobile-chrome" tests="3" failures="0" skipped="0" time="29.515" errors="0">
+<testcase name="Tenant Isolation Verification Matrix › Cross-tenant API request header manipulation is BLOCKED" classname="tenant/isolation.spec.ts" time="7.667">
+</testcase>
+<testcase name="Tenant Isolation Verification Matrix › Direct URL ID parameter manipulation is BLOCKED" classname="tenant/isolation.spec.ts" time="11.593">
+</testcase>
+<testcase name="Tenant Isolation Verification Matrix › Search filtering prevents cross-tenant data leakage" classname="tenant/isolation.spec.ts" time="10.255">
+</testcase>
+</testsuite>
+<testsuite name="ux/heuristics.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="mobile-chrome" tests="3" failures="0" skipped="0" time="29.479" errors="0">
+<testcase name="UX Operational &amp; Heuristic Audits › Usability: Loading Skeletons render during navigation transition" classname="ux/heuristics.spec.ts" time="9.125">
+</testcase>
+<testcase name="UX Operational &amp; Heuristic Audits › Usability: Double-click submission protection is enforced" classname="ux/heuristics.spec.ts" time="10.032">
+</testcase>
+<testcase name="UX Operational &amp; Heuristic Audits › Usability: Error messages are clean, sanitized, and contain correlation IDs" classname="ux/heuristics.spec.ts" time="10.322">
+</testcase>
+</testsuite>
+<testsuite name="visual/regression.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="mobile-chrome" tests="8" failures="0" skipped="0" time="82.365" errors="0">
+<testcase name="Visual Regression Matrix › Capture and verify login page visual state" classname="visual/regression.spec.ts" time="3.682">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: dashboard" classname="visual/regression.spec.ts" time="11.429">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: customers" classname="visual/regression.spec.ts" time="10.468">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: customer-detail" classname="visual/regression.spec.ts" time="11.813">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: visits" classname="visual/regression.spec.ts" time="10.773">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: loyalty" classname="visual/regression.spec.ts" time="11.03">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: automations" classname="visual/regression.spec.ts" time="10.922">
+</testcase>
+<testcase name="Visual Regression Matrix › Authenticated viewports layouts check › Verify visual layout for: governance" classname="visual/regression.spec.ts" time="12.248">
+</testcase>
+</testsuite>
+<testsuite name="workflows/campaigns.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="mobile-chrome" tests="1" failures="0" skipped="0" time="18.439" errors="0">
+<testcase name="Campaign Management &amp; ROI Workflow › E2E Campaign Dispatch, Duplicate Protection, and ROI Computation" classname="workflows/campaigns.spec.ts" time="18.439">
+<system-err>
+<![CDATA[2026-05-31 16:04:27,210 - [-] - main - INFO - Syncing scheduler with database configurations...
+2026-05-31 16:04:27,210 - [-] - modules.automation.service - INFO - Starting sync_scheduler
+2026-05-31 16:04:27,211 - [-] - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-31 16:04:27,214 - [-] - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-31 16:04:27,215 - [-] - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-31 16:04:27,215 - [-] - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-31 16:04:27,215 - [-] - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-31 16:04:27,279 - [-] - modules.automation.service - INFO - Completed sync_scheduler
+2026-05-31 16:04:27,280 - [-] - main - INFO - Starting background scheduler...
+2026-05-31 16:04:27,280 - [-] - apscheduler.scheduler - INFO - Added job "sync_scheduler.<locals>.<lambda>" to job store "default"
+2026-05-31 16:04:27,280 - [-] - apscheduler.scheduler - INFO - Added job "sync_scheduler.<locals>.<lambda>" to job store "default"
+2026-05-31 16:04:27,281 - [-] - apscheduler.scheduler - INFO - Added job "sync_scheduler.<locals>.<lambda>" to job store "default"
+2026-05-31 16:04:27,281 - [-] - apscheduler.scheduler - INFO - Added job "sync_scheduler.<locals>.<lambda>" to job store "default"
+2026-05-31 16:04:27,281 - [-] - apscheduler.scheduler - INFO - Added job "sync_scheduler.<locals>.<lambda>" to job store "default"
+2026-05-31 16:04:27,281 - [-] - apscheduler.scheduler - INFO - Scheduler started
+2026-05-31 16:04:27,281 - [-] - main - INFO - === Scheduled Jobs ===
+2026-05-31 16:04:27,282 - [-] - main - INFO - - Job ID: sys_campaign_job, Trigger: interval[1:00:00]
+2026-05-31 16:04:27,282 - [-] - main - INFO - - Job ID: sys_daily_intelligence, Trigger: cron[hour='2', minute='0']
+2026-05-31 16:04:27,282 - [-] - main - INFO - - Job ID: sys_daily_recommendations, Trigger: cron[hour='3', minute='0']
+2026-05-31 16:04:27,282 - [-] - main - INFO - - Job ID: sys_weekly_summary, Trigger: cron[day_of_week='mon', hour='4', minute='0']
+2026-05-31 16:04:27,282 - [-] - main - INFO - - Job ID: sys_monthly_summary, Trigger: cron[day='1', hour='5', minute='0']
+2026-05-31 16:04:27,282 - [-] - main - INFO - =======================
+2026-05-31 16:04:27,283 - [-] - core.decorators - INFO - Starting job: Run System Job
+2026-05-31 16:04:27,298 - [-] - modules.intelligence.service - INFO - Starting daily intelligence computation
+2026-05-31 16:04:27,329 - [-] - modules.intelligence.service - INFO - Daily intelligence: updated 4 customers
+2026-05-31 16:04:27,329 - [-] - modules.intelligence.service - INFO - Computing campaign summaries
+2026-05-31 16:04:27,350 - [-] - modules.intelligence.service - INFO - Campaign summaries: updated 1
+2026-05-31 16:04:27,350 - [-] - modules.intelligence.service - INFO - Computing reward effectiveness
+2026-05-31 16:04:27,386 - [-] - modules.intelligence.service - INFO - Reward effectiveness: updated 3
+2026-05-31 16:04:27,386 - [-] - modules.intelligence.service - INFO - Computing automation effectiveness
+2026-05-31 16:04:27,401 - [-] - modules.intelligence.service - INFO - Automation effectiveness: updated 1
+2026-05-31 16:04:27,404 - [-] - modules.intelligence.service - INFO - Starting daily intelligence computation
+2026-05-31 16:04:27,414 - [-] - modules.intelligence.service - INFO - Daily intelligence: updated 1 customers
+2026-05-31 16:04:27,414 - [-] - modules.intelligence.service - INFO - Computing campaign summaries
+2026-05-31 16:04:27,415 - [-] - modules.intelligence.service - INFO - Campaign summaries: updated 0
+2026-05-31 16:04:27,415 - [-] - modules.intelligence.service - INFO - Computing reward effectiveness
+2026-05-31 16:04:27,416 - [-] - modules.intelligence.service - INFO - Reward effectiveness: updated 0
+2026-05-31 16:04:27,417 - [-] - modules.intelligence.service - INFO - Computing automation effectiveness
+2026-05-31 16:04:27,418 - [-] - modules.intelligence.service - INFO - Automation effectiveness: updated 0
+2026-05-31 16:04:27,429 - [-] - core.decorators - INFO - Completed job: Run System Job successfully
+]]>
+</system-err>
+</testcase>
+</testsuite>
+<testsuite name="workflows/loyalty.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="mobile-chrome" tests="1" failures="0" skipped="0" time="20.863" errors="0">
+<testcase name="Loyalty Progression &amp; Reward Redemption Workflow › E2E Reward Unlock and Redemption" classname="workflows/loyalty.spec.ts" time="20.863">
+</testcase>
+</testsuite>
+<testsuite name="workflows/visits.spec.ts" timestamp="2026-05-31T10:22:08.437Z" hostname="mobile-chrome" tests="1" failures="0" skipped="0" time="13.023" errors="0">
+<testcase name="Visits Capture E2E Workflow › Fast Visit Capture E2E and Double-Click Idempotency" classname="workflows/visits.spec.ts" time="13.023">
+</testcase>
+</testsuite>
+</testsuites>
