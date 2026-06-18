@@ -27,6 +27,18 @@
     "gated_feature": null
   },
   {
+    "path": "/api/visits/{visit_id}/refund",
+    "methods": [
+      "POST"
+    ],
+    "endpoint": "refund_visit",
+    "summary": "",
+    "role_access": [
+      "OWNER"
+    ],
+    "gated_feature": null
+  },
+  {
     "path": "/api/dashboard",
     "methods": [
       "GET"

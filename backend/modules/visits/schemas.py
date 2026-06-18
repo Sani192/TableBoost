@@ -33,6 +33,7 @@ class VisitResponse(BaseModel):
     id: int
     customer_id: int
     amount: Optional[Decimal] = None
+    status: str = "active"
     visited_at: datetime
     sms_status: Optional[str] = None
 
@@ -45,6 +46,7 @@ class VisitDetail(BaseModel):
     customer_name: Optional[str] = None
     phone_number: str
     amount: Optional[Decimal] = None
+    status: str = "active"
     visited_at: datetime
     sms_status: Optional[str] = None
     health_status: Optional[str] = None

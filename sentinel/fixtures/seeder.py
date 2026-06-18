@@ -175,7 +175,7 @@ def reset_and_seed():
         # 8. Create customers & visits
         print("Seeding customers & visits...")
         # Tenant 1 customer with visits
-        cust1 = Customer(restaurant_id=1, name="Alice Spender", phone_number="5550101")
+        cust1 = Customer(restaurant_id=1, name="Alice Spender", phone_number="5550101000")
         db.add(cust1)
         db.flush()
         
@@ -197,7 +197,7 @@ def reset_and_seed():
         db.add(prog1)
         
         # Tenant 2 customer (Bob Leaker)
-        cust2 = Customer(restaurant_id=2, name="Bob Leaker", phone_number="5550202")
+        cust2 = Customer(restaurant_id=2, name="Bob Leaker", phone_number="5550202000")
         db.add(cust2)
         db.flush()
         

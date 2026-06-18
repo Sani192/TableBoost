@@ -1,4 +1,5 @@
 'use client';
+import subscriptionRules from '../../../sentinel/registry/subscription_rules.json';
 
 interface PlanInfo {
   name: string;
@@ -17,38 +18,19 @@ interface PlanDetailsModalProps {
 const planDetails: Record<string, { desc: string; list: string[] }> = {
   STARTER: {
     desc: 'Best for new venues starting to build their customer records.',
-    list: [
-      '⚡ Quick Add Visit (record in under 5 seconds)',
-      '📊 Basic Customer Log & activity list',
-      '👤 Individual Customer Profiles (view contact & visit counts)',
-    ],
+    list: subscriptionRules.plans.STARTER.features.map((f: string) => `⚡ ${subscriptionRules.features[f].name}`),
   },
   GROWTH: {
     desc: 'For growing venues focused on guest loyalty & basic segment marketing.',
-    list: [
-      '🎁 Loyalty Rewards System (custom milestone rewards & automated tracking)',
-      '🏷️ Smart Segment Tagging (New, Healthy, VIP tags on customer lists)',
-      '💬 Scheduled SMS Marketing (broadcast text message campaigns)',
-      '⚡ Quick Add Visit & Basic Customer Logs',
-    ],
+    list: subscriptionRules.plans.GROWTH.features.map((f: string) => `🎁 ${subscriptionRules.features[f].name}`),
   },
   PRO: {
     desc: 'Advanced predictive insights, churn detection, and AI recommendations.',
-    list: [
-      '🔮 Predictive Churn Risk Scoring (identify guest drop-offs early)',
-      '🤖 AI Automated Growth Recommendations & insight cards',
-      '📈 Intelligence tab dashboard KPIs & analytics',
-      '🎁 All Growth & Starter features included',
-    ],
+    list: subscriptionRules.plans.PRO.features.map((f: string) => `🔮 ${subscriptionRules.features[f].name}`),
   },
   ENTERPRISE_READY: {
     desc: 'Enterprise multi-location workspace support and advanced workspace controls.',
-    list: [
-      '🏢 Multi-tenant brand & venue location workspaces',
-      '🔑 Fine-grained access control & custom user roles',
-      '📞 Priority support & custom service level agreements (SLAs)',
-      '🔮 All Pro feature sets included',
-    ],
+    list: subscriptionRules.plans.ENTERPRISE_READY.features.map((f: string) => `🏢 ${subscriptionRules.features[f].name}`),
   },
 };
 

@@ -41,16 +41,19 @@ def test_daily_trends_gap_filling(client):
         assert "revenue" in day
         assert "visits" in day
 
-def test_vip_logic_top_10_percent(client):
-    """Verify VIP logic follows top 10% rule."""
+def test_vip_logic_top_20_percent(client, db):
+    """Verify VIP logic follows top 20% rule."""
     # Add 10 customers, 1 spender
     for i in range(10):
         phone = f"555000{i:04d}"
         amount = 1000.0 if i == 0 else 10.0
         client.post("/api/visits/", json={"phone_number": phone, "amount": amount, "name": f"User {i}", "send_sms": False})
         
+    from modules.intelligence.service import compute_daily_intelligence
+    compute_daily_intelligence(db)
+
     response = client.get("/api/dashboard/")
     data = response.json()
     
-    # Top 10% of 10 is 1
-    assert data["segments"]["vips_count"] == 1
+    # Top 20% of 10 is 2
+    assert data["segments"]["vips_count"] == 2

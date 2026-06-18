@@ -65,6 +65,7 @@ export interface VisitDetail {
   customer_name?: string;
   phone_number: string;
   amount?: number;
+  status?: string;
   visited_at: string;
   sms_status?: string | null;
 }
@@ -138,6 +139,11 @@ api.interceptors.response.use(
 
 export const addVisit = async (payload: AddVisitPayload): Promise<AddVisitResponse> => {
   const response = await api.post<AddVisitResponse>('/api/visits', payload);
+  return response.data;
+};
+
+export const refundVisit = async (visitId: number): Promise<AddVisitResponse> => {
+  const response = await api.post<AddVisitResponse>(`/api/visits/${visitId}/refund`);
   return response.data;
 };
 

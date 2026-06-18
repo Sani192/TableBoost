@@ -10,6 +10,7 @@ import {
   getRedemptionHistory,
   updateCustomer,
   getCustomerIntelligence,
+  refundVisit,
   CustomerDetailResponse, 
   VisitDetail,
   LoyaltyStatusResponse,
@@ -31,7 +32,7 @@ const PAGE_SIZE = 20;
 export default function CustomerDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { hasFeatureAccess } = useAuth();
+  const { hasFeatureAccess, user } = useAuth();
   const [customer, setCustomer] = useState<CustomerDetailResponse | null>(null);
   const [visits, setVisits] = useState<VisitDetail[]>([]);
   const [loyalty, setLoyalty] = useState<LoyaltyStatusResponse | null>(null);
@@ -54,6 +55,8 @@ export default function CustomerDetailPage() {
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [redeemError, setRedeemError] = useState<string | null>(null);
+  const [refundingId, setRefundingId] = useState<number | null>(null);
+  const [refundError, setRefundError] = useState<string | null>(null);
   const isUnchanged = customer ? (
     editData.name.trim() === (customer.name || '').trim() &&
     (editData.birthday || '') === (customer.birthday || '') &&
@@ -167,6 +170,22 @@ export default function CustomerDetailPage() {
       if (!redeemError) {
         setPendingRedeem(null);
       }
+    }
+  };
+
+  const handleRefundClick = async (visitId: number) => {
+    if (!window.confirm('Are you sure you want to refund this visit?')) return;
+    setRefundingId(visitId);
+    setRefundError(null);
+    try {
+      await refundVisit(visitId);
+      await fetchData();
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail || err.message || 'Failed to refund visit. Please try again.';
+      setRefundError(errorMsg);
+      alert(errorMsg);
+    } finally {
+      setRefundingId(null);
     }
   };
 
@@ -418,19 +437,37 @@ export default function CustomerDetailPage() {
                       <Receipt className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="font-bold text-stone-900 text-sm">Visit</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-stone-900 text-sm">Visit</p>
+                        {v.status === 'refunded' && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-705 border border-red-200/50">
+                            Refunded
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-stone-400 uppercase font-bold tracking-tight">
                         {v.visited_at ? new Date(v.visited_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-stone-900">
-                      {v.amount !== null && v.amount !== undefined ? `$${Number(v.amount).toFixed(2)}` : '—'}
-                    </p>
-                    <p className="text-xs font-bold text-stone-500">
-                      {v.visited_at ? new Date(v.visited_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-                    </p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className={`text-sm font-bold ${v.status === 'refunded' ? 'text-stone-400 line-through' : 'text-stone-900'}`}>
+                        {v.amount !== null && v.amount !== undefined ? `$${Number(v.amount).toFixed(2)}` : '—'}
+                      </p>
+                      <p className="text-xs font-bold text-stone-500">
+                        {v.visited_at ? new Date(v.visited_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                      </p>
+                    </div>
+                    {user?.role === 'OWNER' && v.status !== 'refunded' && (
+                      <button
+                        onClick={() => handleRefundClick(v.id)}
+                        disabled={refundingId === v.id}
+                        className="text-xs font-bold text-red-600 hover:text-red-750 bg-red-50 hover:bg-red-100 border border-red-200/55 rounded-lg px-2.5 py-1.5 transition-all active:scale-95 disabled:opacity-50 disabled:scale-100"
+                      >
+                        {refundingId === v.id ? 'Refunding...' : 'Refund'}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

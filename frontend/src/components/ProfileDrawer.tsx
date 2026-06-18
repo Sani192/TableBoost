@@ -172,6 +172,20 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
             </button>
           </form>
 
+          {/* Sign Out Button */}
+          <div className="border-t border-stone-100 dark:border-stone-700 pt-6">
+            <button
+              onClick={() => {
+                onClose();
+                logout();
+              }}
+              type="button"
+              className="w-full flex items-center justify-center gap-2 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 py-2.5 rounded-xl font-bold border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-950/40 transition-colors active:scale-95 text-sm"
+            >
+              <LogOut className="h-4 w-4" /> Sign Out
+            </button>
+          </div>
+
 
         </div>
       </Drawer>

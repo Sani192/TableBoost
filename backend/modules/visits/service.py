@@ -153,9 +153,9 @@ def get_visits(
     
     visits = []
     for visit, customer, intel in results:
-        total_visits = db.query(func.count(Visit.id)).filter(Visit.customer_id == customer.id).scalar() or 0
-        total_spent = db.query(func.sum(Visit.amount)).filter(Visit.customer_id == customer.id).scalar() or 0
-        last_visit = db.query(func.max(Visit.visited_at)).filter(Visit.customer_id == customer.id).scalar()
+        total_visits = db.query(func.count(Visit.id)).filter(Visit.customer_id == customer.id, Visit.status == "active").scalar() or 0
+        total_spent = db.query(func.sum(Visit.amount)).filter(Visit.customer_id == customer.id, Visit.status == "active").scalar() or 0
+        last_visit = db.query(func.max(Visit.visited_at)).filter(Visit.customer_id == customer.id, Visit.status == "active").scalar()
         
         visits.append({
             "id": visit.id,
@@ -163,6 +163,7 @@ def get_visits(
             "customer_name": customer.name,
             "phone_number": customer.phone_number,
             "amount": visit.amount,
+            "status": visit.status,
             "visited_at": visit.visited_at,
             "sms_status": getattr(visit, 'sms_status', None),
             "health_status": (intel.health_status if intel else None) if has_intel else None,
@@ -174,3 +175,21 @@ def get_visits(
         })
         
     return visits
+
+def refund_visit(db: Session, restaurant_id: int, visit_id: int) -> Visit:
+    visit = db.query(Visit).filter(Visit.id == visit_id, Visit.restaurant_id == restaurant_id).first()
+    if not visit:
+        raise ValueError("Visit not found")
+    if visit.status == "refunded":
+        raise ValueError("Visit is already refunded")
+    
+    visit.status = "refunded"
+    db.add(visit)
+    db.flush()
+    
+    # Sync guest loyalty progress
+    loyalty_service.update_loyalty_progress(db, restaurant_id, visit.customer_id)
+    
+    db.commit()
+    db.refresh(visit)
+    return visit

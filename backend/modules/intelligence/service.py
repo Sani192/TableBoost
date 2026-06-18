@@ -36,10 +36,12 @@ def compute_daily_intelligence(db: Session, restaurant_id: Optional[int] = None)
         func.sum(Visit.amount).label("total_spent"),
         func.max(Visit.visited_at).label("last_visit"),
         func.min(Visit.visited_at).label("first_visit"),
-    ).outerjoin(Visit).filter(Customer.restaurant_id == restaurant_id).group_by(Customer.id).all()
+    ).outerjoin(Visit, and_(Visit.customer_id == Customer.id, Visit.status == 'active'))\
+     .filter(Customer.restaurant_id == restaurant_id).group_by(Customer.id).all()
 
     updated = 0
     all_scores = []
+    intel_map = {}
 
     for cust in customers:
         try:
@@ -84,7 +86,10 @@ def compute_daily_intelligence(db: Session, restaurant_id: Optional[int] = None)
             health_status = "new"
             health_score_val = 50
 
-            if visit_count < 3:
+            if last_visit and (now - last_visit).total_seconds() / 86400 >= 90:
+                health_status = "lost"
+                health_score_val = 0
+            elif visit_count < 3:
                 health_status = "new"
                 health_score_val = 50
             elif avg_gap and last_visit:
@@ -108,10 +113,10 @@ def compute_daily_intelligence(db: Session, restaurant_id: Optional[int] = None)
             if visit_count >= 4 and last_visit:
                 mid = first_visit + (last_visit - first_visit) / 2 if first_visit else now
                 early = float(db.query(func.avg(Visit.amount)).filter(
-                    Visit.customer_id == cid, Visit.visited_at < mid
+                    Visit.customer_id == cid, Visit.status == 'active', Visit.visited_at < mid
                 ).scalar() or 0)
                 late = float(db.query(func.avg(Visit.amount)).filter(
-                    Visit.customer_id == cid, Visit.visited_at >= mid
+                    Visit.customer_id == cid, Visit.status == 'active', Visit.visited_at >= mid
                 ).scalar() or 0)
                 if late > early * 1.15:
                     spend_trend = "growing"
@@ -136,6 +141,7 @@ def compute_daily_intelligence(db: Session, restaurant_id: Optional[int] = None)
             intel.health_score = health_score_val
             intel.spend_trend = spend_trend
             intel.computed_at = now
+            intel_map[cid] = intel
             updated += 1
         except Exception as e:
             logger.error(f"Failed to compute intelligence for customer {cust[0]}: {str(e)}", exc_info=True)
@@ -147,20 +153,16 @@ def compute_daily_intelligence(db: Session, restaurant_id: Optional[int] = None)
     top20 = max(1, int(total * 0.2))
     top60 = max(2, int(total * 0.6))
 
-    tier_map = {}
     for i, (cid, _) in enumerate(all_scores):
+        tier = "low"
         if i < top20:
-            tier_map[cid] = "high"
+            tier = "high"
         elif i < top60:
-            tier_map[cid] = "medium"
-        else:
-            tier_map[cid] = "low"
-
-    for cid, tier in tier_map.items():
-        db.query(CustomerIntelligence).filter(
-            CustomerIntelligence.customer_id == cid,
-            CustomerIntelligence.restaurant_id == restaurant_id
-        ).update({"clv_tier": tier})
+            tier = "medium"
+        
+        intel = intel_map.get(cid)
+        if intel:
+            intel.clv_tier = tier
 
     db.commit()
     logger.info(f"Daily intelligence: updated {updated} customers")
@@ -192,6 +194,8 @@ def compute_campaign_summaries(db: Session, restaurant_id: int):
             for msg in msgs:
                 visit = db.query(Visit).filter(
                     Visit.customer_id == msg.customer_id,
+                    Visit.restaurant_id == restaurant_id,
+                    Visit.status == 'active',
                     Visit.visited_at >= msg.sent_at,
                     Visit.visited_at <= msg.sent_at + timedelta(days=7),
                 ).first()
@@ -253,6 +257,8 @@ def compute_reward_effectiveness(db: Session, restaurant_id: int):
             for red in redeemed:
                 post_visit = db.query(Visit).filter(
                     Visit.customer_id == red.customer_id,
+                    Visit.restaurant_id == restaurant_id,
+                    Visit.status == 'active',
                     Visit.visited_at > red.redeemed_at,
                     Visit.visited_at <= red.redeemed_at + timedelta(days=30),
                 ).first()
@@ -324,6 +330,7 @@ def compute_automation_effectiveness(db: Session, restaurant_id: int):
                 visit = db.query(Visit).filter(
                     Visit.customer_id == msg.customer_id,
                     Visit.restaurant_id == restaurant_id,
+                    Visit.status == 'active',
                     Visit.visited_at >= msg.sent_at,
                     Visit.visited_at <= msg.sent_at + timedelta(days=7),
                 ).first()
@@ -382,10 +389,12 @@ def generate_summary(db: Session, period_type: str, restaurant_id: int):
     # Current period metrics
     total_visits = db.query(func.count(Visit.id)).filter(
         Visit.restaurant_id == restaurant_id,
+        Visit.status == 'active',
         Visit.visited_at >= period_start, Visit.visited_at < period_end
     ).scalar() or 0
     total_revenue = float(db.query(func.sum(Visit.amount)).filter(
         Visit.restaurant_id == restaurant_id,
+        Visit.status == 'active',
         Visit.visited_at >= period_start, Visit.visited_at < period_end
     ).scalar() or 0)
     new_customers = db.query(func.count(Customer.id)).filter(
@@ -394,6 +403,7 @@ def generate_summary(db: Session, period_type: str, restaurant_id: int):
     ).scalar() or 0
     avg_ticket = float(db.query(func.avg(Visit.amount)).filter(
         Visit.restaurant_id == restaurant_id,
+        Visit.status == 'active',
         Visit.visited_at >= period_start, Visit.visited_at < period_end
     ).scalar() or 0)
     rewards_redeemed = db.query(func.count(RewardRedemption.id)).filter(
@@ -423,10 +433,12 @@ def generate_summary(db: Session, period_type: str, restaurant_id: int):
     # Previous period for trends
     prev_visits = db.query(func.count(Visit.id)).filter(
         Visit.restaurant_id == restaurant_id,
+        Visit.status == 'active',
         Visit.visited_at >= prev_start, Visit.visited_at < prev_end
     ).scalar() or 0
     prev_revenue = float(db.query(func.sum(Visit.amount)).filter(
         Visit.restaurant_id == restaurant_id,
+        Visit.status == 'active',
         Visit.visited_at >= prev_start, Visit.visited_at < prev_end
     ).scalar() or 0)
     prev_new = db.query(func.count(Customer.id)).filter(
@@ -764,6 +776,8 @@ def get_campaign_customers(db: Session, campaign_id: int, restaurant_id: int, sk
         # Check if converted
         visit = db.query(Visit).filter(
             Visit.customer_id == cust.id,
+            Visit.restaurant_id == restaurant_id,
+            Visit.status == 'active',
             Visit.visited_at >= msg.sent_at,
             Visit.visited_at <= msg.sent_at + timedelta(days=7),
         ).first()
@@ -805,13 +819,14 @@ def get_reward_customers(db: Session, restaurant_id: int, reward_id: int = None,
         visit = db.query(Visit).filter(
             Visit.restaurant_id == restaurant_id,
             Visit.customer_id == cust.id,
+            Visit.status == 'active',
             Visit.visited_at >= red.redeemed_at - timedelta(hours=2),
             Visit.visited_at <= red.redeemed_at + timedelta(hours=2),
         ).first()
         
         intel = db.query(CustomerIntelligence).filter(CustomerIntelligence.customer_id == cust.id, CustomerIntelligence.restaurant_id == restaurant_id).first()
-        cust_total_visits = db.query(func.count(Visit.id)).filter(Visit.restaurant_id == restaurant_id, Visit.customer_id == cust.id).scalar() or 0
-        total_spent = db.query(func.sum(Visit.amount)).filter(Visit.restaurant_id == restaurant_id, Visit.customer_id == cust.id).scalar() or 0
+        cust_total_visits = db.query(func.count(Visit.id)).filter(Visit.restaurant_id == restaurant_id, Visit.customer_id == cust.id, Visit.status == 'active').scalar() or 0
+        total_spent = db.query(func.sum(Visit.amount)).filter(Visit.restaurant_id == restaurant_id, Visit.customer_id == cust.id, Visit.status == 'active').scalar() or 0
         
         results.append({
             "id": cust.id,

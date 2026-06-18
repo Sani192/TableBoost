@@ -15,10 +15,13 @@ def test_get_customers_is_vip(db: Session):
     db.add_all([c1, c2, c3])
     db.commit()
 
-    # Create visits so c1 is top spender (10% of 3 is 1)
+    # Create visits so c1 is top spender
     db.add(Visit(customer_id=c1.id, amount=1000.0, visited_at=datetime.now(timezone.utc)))
     db.add(Visit(customer_id=c2.id, amount=10.0, visited_at=datetime.now(timezone.utc)))
     db.commit()
+
+    from modules.intelligence.service import compute_daily_intelligence
+    compute_daily_intelligence(db)
 
     results = get_customers(db, is_vip=True)
     assert len(results) == 1

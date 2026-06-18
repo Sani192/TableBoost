@@ -97,17 +97,20 @@ def get_customers(
         )).filter(or_(CustomerIntelligence.health_status == 'churn_risk', CustomerIntelligence.health_status.is_(None)))
 
     if is_vip:
-        # Top 10% by total spent
-        total_customers = db.query(Customer).filter(Customer.restaurant_id == restaurant_id).count()
-        vip_limit = max(1, int(total_customers * 0.1))
-        
-        # Subquery for top spender IDs
-        vip_ids_sub = db.query(Customer.id).filter(Customer.restaurant_id == restaurant_id).outerjoin(Visit)\
-                        .group_by(Customer.id)\
-                        .order_by(desc(func.sum(Visit.amount)))\
-                        .limit(vip_limit).subquery()
-        
-        query = query.filter(Customer.id.in_(vip_ids_sub))
+        if has_intel:
+            query = query.filter(CustomerIntelligence.clv_tier == 'high')
+        else:
+            # Top 10% by total spent
+            total_customers = db.query(Customer).filter(Customer.restaurant_id == restaurant_id).count()
+            vip_limit = max(1, int(total_customers * 0.1))
+            
+            # Subquery for top spender IDs
+            vip_ids_sub = db.query(Customer.id).filter(Customer.restaurant_id == restaurant_id).outerjoin(Visit)\
+                            .group_by(Customer.id)\
+                            .order_by(desc(func.sum(Visit.amount)))\
+                            .limit(vip_limit).subquery()
+            
+            query = query.filter(Customer.id.in_(vip_ids_sub))
 
     if is_reward_near and has_loyalty:
         # Customers within 2 visits of any active milestone reward (including boundary)

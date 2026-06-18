@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-06-18T11:32:41.326Z",
+  "status": "SUCCESS",
+  "contracts": [
+    {
+      "name": "VIP Spenders CLV Tier",
+      "ui": 1,
+      "db": 1,
+      "matched": true
+    },
+    {
+      "name": "At Risk Health Segment",
+      "ui": 1,
+      "db": 1,
+      "matched": true
+    },
+    {
+      "name": "Near Milestone Reward Tracker",
+      "ui": 7,
+      "db": 7,
+      "matched": true
+    },
+    {
+      "name": "Lost Customers Segment",
+      "ui": 1,
+      "db": 1,
+      "matched": true
+    },
+    {
+      "name": "New Blood Healthy Segment",
+      "ui": 4,
+      "db": 4,
+      "matched": true
+    }
+  ]
+}

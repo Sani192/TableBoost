@@ -34,7 +34,7 @@ test.describe('Loyalty Progression & Reward Redemption Workflow', () => {
     // 2. Add a 3rd visit via the UI to unlock the reward
     await page.goto('/add-visit');
     await page.waitForLoadState('networkidle');
-    await page.fill('#phone', '5550101'); // Alice's phone number
+    await page.fill('#phone', '5550101000'); // Alice's phone number
     await page.waitForTimeout(500);
     await page.fill('#amount', '15.00');
     await page.click('button[type="submit"]');

@@ -3,12 +3,37 @@ import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import PlanDetailsModal from '@/components/PlanDetailsModal';
 import { X, CheckCircle2 } from 'lucide-react';
+import subscriptionRules from '../../../sentinel/registry/subscription_rules.json';
 
 const PLAN_TIERS = [
-  { name: 'STARTER', price: '$49/mo', desc: 'Core visit entry & tracking', features: ['Quick visit entry', 'Customer logs'], tier: 1 },
-  { name: 'GROWTH', price: '$99 - $149/mo', desc: 'Loyalty programs & messaging campaigns', features: ['Loyalty Rewards', 'Smart Segments', 'SMS Campaigns'], tier: 2 },
-  { name: 'PRO', price: '$249 - $299/mo', desc: 'Predictive churn intelligence & automation', features: ['AI Recommendations', 'Churn Risk Scoring', 'Automation pilots'], tier: 3 },
-  { name: 'ENTERPRISE_READY', price: 'Custom', desc: 'Multi-location, fine-grained access control', features: ['Enterprise multitenancy', 'Priority support'], tier: 4 },
+  { 
+    name: 'STARTER', 
+    price: '$49/mo', 
+    desc: 'Core visit entry & tracking', 
+    features: subscriptionRules.plans.STARTER.features.map((f: string) => subscriptionRules.features[f].name), 
+    tier: 1 
+  },
+  { 
+    name: 'GROWTH', 
+    price: '$99 - $149/mo', 
+    desc: 'Loyalty programs & messaging campaigns', 
+    features: subscriptionRules.plans.GROWTH.features.map((f: string) => subscriptionRules.features[f].name), 
+    tier: 2 
+  },
+  { 
+    name: 'PRO', 
+    price: '$249 - $299/mo', 
+    desc: 'Predictive churn intelligence & automation', 
+    features: subscriptionRules.plans.PRO.features.map((f: string) => subscriptionRules.features[f].name), 
+    tier: 3 
+  },
+  { 
+    name: 'ENTERPRISE_READY', 
+    price: 'Custom', 
+    desc: 'Multi-location, fine-grained access control', 
+    features: subscriptionRules.plans.ENTERPRISE_READY.features.map((f: string) => subscriptionRules.features[f].name), 
+    tier: 4 
+  },
 ];
 
 interface SubscriptionPlansModalProps {

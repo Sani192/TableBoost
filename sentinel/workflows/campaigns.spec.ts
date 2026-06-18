@@ -33,7 +33,8 @@ test.describe('Campaign Management & ROI Workflow', () => {
     await page.goto('/campaigns');
     await page.waitForLoadState('networkidle');
 
-    const campaignMsg = 'Promo: Special 20% off tonight at Sentinel Diner! Code: SENTINEL20';
+    const uniqueId = Math.random().toString(36).substring(7);
+    const campaignMsg = `Promo: Special 20% off tonight at Sentinel Diner! Code: SENTINEL20_${uniqueId}`;
     
     // Fill text area
     await page.fill('textarea', campaignMsg);
@@ -61,7 +62,7 @@ test.describe('Campaign Management & ROI Workflow', () => {
     await expect(page.locator('text=Duplicate campaign request detected')).toBeVisible();
 
     // 3. Verify in database that messages are created
-    // Customer Alice Spender (phone 5550101) is in Restaurant 1. 
+    // Customer Alice Spender (phone 5550101000) is in Restaurant 1. 
     // She should have received a message with the campaign text.
     const messages = await db.query('SELECT * FROM messages WHERE message_text LIKE ?', [`%SENTINEL20%`]);
     expect(messages.length).toBeGreaterThan(0);
@@ -72,7 +73,7 @@ test.describe('Campaign Management & ROI Workflow', () => {
     // Alice visits and spends $50.00
     await page.goto('/add-visit');
     await page.waitForLoadState('networkidle');
-    await page.fill('#phone', '5550101');
+    await page.fill('#phone', '5550101000');
     await page.waitForTimeout(500);
     await page.fill('#amount', '50.00');
     await page.click('button[type="submit"]');

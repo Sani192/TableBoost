@@ -10,6 +10,7 @@ import ThemeToggle from '@/components/ui/ThemeToggle';
 import SubscriptionPlansModal from '@/components/SubscriptionPlansModal';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/ui/Button';
+import subscriptionRules from '../../../sentinel/registry/subscription_rules.json';
 
 export default function Navigation({ children }: { children?: React.ReactNode }) {
   const pathname = usePathname();
@@ -73,6 +74,11 @@ export default function Navigation({ children }: { children?: React.ReactNode })
     const isLocked = item.feature && !hasFeatureAccess(item.feature);
     const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
     
+    // Resolve the minimum required plan tier from central truth JSON
+    const minPlan = item.feature && subscriptionRules.features[item.feature]
+      ? subscriptionRules.features[item.feature].min_plan
+      : 'PRO';
+    
     // Premium styling constants
     const activeStyles = 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 font-bold shadow-sm';
     const inactiveStyles = 'text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-white/5 hover:text-stone-900 dark:hover:text-stone-200 font-medium';
@@ -102,7 +108,7 @@ export default function Navigation({ children }: { children?: React.ReactNode })
             {isLocked && (
               <div className="shrink-0 flex items-center justify-center bg-stone-100 dark:bg-stone-800 rounded-lg px-2 py-0.5 border border-stone-200 dark:border-stone-700 shadow-sm">
                 <Lock className="h-3 w-3 text-stone-500 dark:text-stone-400 mr-1" />
-                <span className="text-[10px] font-extrabold text-stone-600 dark:text-stone-400 tracking-wider">PRO</span>
+                <span className="text-[10px] font-extrabold text-stone-600 dark:text-stone-400 tracking-wider">{minPlan}</span>
               </div>
             )}
           </>
@@ -317,6 +323,28 @@ export default function Navigation({ children }: { children?: React.ReactNode })
             </div>
             <ThemeToggle />
           </div>
+
+          {/* Sign Out for Mobile */}
+          {user && (
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                logout();
+              }}
+              className="w-full flex items-center justify-between p-4 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-2xl border border-red-100 dark:border-red-900/30 active:scale-[0.98] transition-transform cursor-pointer"
+            >
+              <div className="flex items-center gap-4 text-left">
+                <div className="h-12 w-12 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center font-bold shrink-0">
+                  <LogOut className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">Sign Out</h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">Log out of your session</p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-red-400" />
+            </button>
+          )}
 
           <div className="space-y-6">
             {domains.map((domain, idx) => {

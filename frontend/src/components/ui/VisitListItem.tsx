@@ -117,6 +117,8 @@ export default function VisitListItem({ visit, showTags = true, isCard = false, 
                 ? 'bg-emerald-100 text-emerald-700'
                 : visit.status === 'sent'
                 ? 'bg-blue-100 text-blue-700'
+                : visit.status === 'refunded'
+                ? 'bg-red-100 text-red-700'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
             }`}>
               {visit.status}
@@ -132,7 +134,7 @@ export default function VisitListItem({ visit, showTags = true, isCard = false, 
         : "shrink-0 text-right ml-2"
       }>
         <div className={isCard ? "text-left sm:text-right" : isTable ? "w-32 text-right shrink-0" : ""}>
-          <p className="text-sm font-bold text-stone-900 dark:text-stone-100">
+          <p className={`text-sm font-bold ${visit.status === 'refunded' ? 'text-stone-400 line-through' : 'text-stone-900 dark:text-stone-100'}`}>
             {visit.amount !== null && visit.amount !== undefined ? `$${Number(visit.amount).toFixed(2)}` : '—'}
           </p>
           {visit.visited_at ? (

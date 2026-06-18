@@ -116,3 +116,43 @@ def create_visit(
         )
         db.rollback()
         raise HTTPException(status_code=500, detail="An unexpected error occurred while saving the visit.")
+
+@router.post("/{visit_id}/refund", response_model=VisitResponse)
+def refund_visit(
+    visit_id: int,
+    tenant_context = Depends(check_role(["OWNER"])),
+    db: Session = Depends(get_db)
+):
+    current_user = tenant_context["user"]
+    restaurant_id = tenant_context["restaurant_id"]
+    try:
+        visit = service.refund_visit(db, restaurant_id, visit_id)
+        log_audit_event(
+            db,
+            restaurant_id=restaurant_id,
+            actor_id=current_user.id,
+            actor_username=current_user.username,
+            action="REFUND_VISIT",
+            entity_type="Visit",
+            entity_id=str(visit.id),
+            status="SUCCESS",
+            metadata_json={"visit_id": visit_id, "amount": float(visit.amount or 0)}
+        )
+        return visit
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to refund visit: {e}", exc_info=True)
+        log_audit_event(
+            db,
+            restaurant_id=restaurant_id,
+            actor_id=current_user.id,
+            actor_username=current_user.username,
+            action="REFUND_VISIT",
+            entity_type="Visit",
+            entity_id=str(visit_id),
+            status="FAILED",
+            metadata_json={"visit_id": visit_id, "error": str(e)}
+        )
+        db.rollback()
+        raise HTTPException(status_code=500, detail="An unexpected error occurred while refunding the visit.")

@@ -50,8 +50,8 @@ export default function AddVisitForm({ onSuccess, onCancel, customerId }: AddVis
     }
   }, [phoneNumber, name]);
 
-  const isPhoneValid = phoneNumber.length === 10;
-  const isAmountValid = amount.trim() !== '' && !isNaN(Number(amount)) && Number(amount) > 0;
+  const isPhoneValid = phoneNumber.length >= 7 && phoneNumber.length <= 10;
+  const isAmountValid = amount.trim() !== '' && !isNaN(Number(amount));
   const isFormValid = isPhoneValid && isAmountValid;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,7 +60,7 @@ export default function AddVisitForm({ onSuccess, onCancel, customerId }: AddVis
     if (isSubmitting) return;
 
     if (!isPhoneValid) {
-      setFeedback({ type: 'error', text: 'Enter a 10-digit phone number.' });
+      setFeedback({ type: 'error', text: 'Please enter a valid phone number (7 to 10 digits).' });
       return;
     }
 

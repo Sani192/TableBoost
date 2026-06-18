@@ -59,10 +59,10 @@ test.describe('Tenant Isolation Verification Matrix', () => {
     await page.goto('/customers');
     await page.waitForLoadState('networkidle');
 
-    // Search for Bob Leaker's phone number (5550202) which belongs to Restaurant 2
+    // Search for Bob Leaker's phone number (5550202000) which belongs to Restaurant 2
     const searchInput = page.locator('input[placeholder*="search" i]');
     await expect(searchInput).toBeVisible();
-    await searchInput.fill('5550202');
+    await searchInput.fill('5550202000');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(500);
 

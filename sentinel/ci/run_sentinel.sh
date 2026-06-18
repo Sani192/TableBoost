@@ -42,7 +42,7 @@ echo "Booting TableBoost Backend Service..."
 cd "$WORKSPACE_ROOT/backend"
 # Run uvicorn in background, redirect logs to sentinel reports
 mkdir -p "$SENTINEL_DIR/reports"
-"$WORKSPACE_ROOT/backend/.venv/bin/uvicorn" main:app --port 8000 --reload > "$SENTINEL_DIR/reports/backend_server.log" 2>&1 &
+"$WORKSPACE_ROOT/backend/.venv/bin/uvicorn" main:app --port 8000 > "$SENTINEL_DIR/reports/backend_server.log" 2>&1 &
 BACKEND_PID=$!
 
 # Wait for backend health check
@@ -97,7 +97,8 @@ fi
 
 # Run the test suite
 TEST_EXIT_CODE=0
-npx playwright test --config=config/playwright.config.ts --update-snapshots || TEST_EXIT_CODE=$?
+SPEC_PATH=${1:-""}
+npx playwright test $SPEC_PATH --config=config/playwright.config.ts --update-snapshots || TEST_EXIT_CODE=$?
 
 # 8. Teardown background servers
 echo "Shutting down TableBoost services..."

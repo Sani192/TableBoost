@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, ReactNode } from 'react';
+import { useEffect, useRef, useState, ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 type DrawerSize = 'narrow' | 'default' | 'wide';
@@ -24,6 +24,25 @@ export default function Drawer({ isOpen, onClose, title, subtitle, children, foo
   const drawerRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
+  const [shouldRender, setShouldRender] = useState(isOpen);
+  const [animate, setAnimate] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      const frame = requestAnimationFrame(() => {
+        setAnimate(true);
+      });
+      return () => cancelAnimationFrame(frame);
+    } else {
+      setAnimate(false);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+      }, 300); // 300ms transition duration
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -32,7 +51,6 @@ export default function Drawer({ isOpen, onClose, title, subtitle, children, foo
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       window.addEventListener('keydown', handleKeyDown);
-      // Focus the close button when drawer opens for a11y
       setTimeout(() => closeButtonRef.current?.focus(), 100);
     }
 
@@ -42,13 +60,15 @@ export default function Drawer({ isOpen, onClose, title, subtitle, children, foo
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-stone-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" 
+        className={`absolute inset-0 bg-stone-900/40 dark:bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
+          animate ? 'opacity-100' : 'opacity-0'
+        }`}
         onClick={onClose}
       />
       
@@ -56,7 +76,9 @@ export default function Drawer({ isOpen, onClose, title, subtitle, children, foo
       <div className="absolute inset-y-0 right-0 max-w-full flex">
         <div 
           ref={drawerRef}
-          className={`relative w-screen ${sizeClasses[size]} bg-white dark:bg-stone-900 shadow-2xl dark:shadow-dark-card flex flex-col animate-in slide-in-from-right duration-300`}
+          className={`relative w-screen ${sizeClasses[size]} bg-white dark:bg-stone-900 shadow-2xl dark:shadow-dark-card flex flex-col transition-transform duration-300 ease-in-out ${
+            animate ? 'translate-x-0' : 'translate-x-full'
+          }`}
           role="dialog"
           aria-modal="true"
         >

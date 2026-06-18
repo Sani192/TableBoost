@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface User {
@@ -32,6 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentRestaurantId, setCurrentRestaurantIdState] = useState<number | null>(null);
+  const [initialized, setInitialized] = useState(false);
+  const skipNextCheckAuth = useRef(false);
   const router = useRouter();
 
   // Load active restaurant ID from local storage on mount
@@ -42,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCurrentRestaurantIdState(parseInt(storedId, 10));
       }
     }
+    setInitialized(true);
   }, []);
 
   const setCurrentRestaurantId = (id: number | null) => {
@@ -72,7 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json();
         
         // Update currentRestaurantId if it was changed or set by the backend
-        if (data.restaurant_id) {
+        if (data.restaurant_id && data.restaurant_id !== currentRestaurantId) {
+          skipNextCheckAuth.current = true;
           setCurrentRestaurantId(data.restaurant_id);
         }
 
@@ -103,8 +107,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    checkAuth();
-  }, [currentRestaurantId]);
+    if (initialized) {
+      if (skipNextCheckAuth.current) {
+        skipNextCheckAuth.current = false;
+        return;
+      }
+      checkAuth();
+    }
+  }, [currentRestaurantId, initialized]);
 
   const login = async (username: string, password: string) => {
     try {

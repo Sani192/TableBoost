@@ -1,0 +1,62 @@
+{
+  "plans": {
+    "STARTER": {
+      "tier": 1,
+      "features": ["visits", "customers", "review_sms"]
+    },
+    "GROWTH": {
+      "tier": 2,
+      "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments"]
+    },
+    "PRO": {
+      "tier": 3,
+      "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments", "intelligence", "automation", "advanced_analytics", "governance"]
+    },
+    "ENTERPRISE_READY": {
+      "tier": 4,
+      "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments", "intelligence", "automation", "advanced_analytics", "governance"]
+    }
+  },
+  "features": {
+    "visits": {
+      "name": "Visits Tracking",
+      "min_plan": "STARTER"
+    },
+    "customers": {
+      "name": "Customer Management",
+      "min_plan": "STARTER"
+    },
+    "review_sms": {
+      "name": "Review SMS",
+      "min_plan": "STARTER"
+    },
+    "loyalty": {
+      "name": "Loyalty Programs",
+      "min_plan": "GROWTH"
+    },
+    "campaigns": {
+      "name": "SMS Campaigns",
+      "min_plan": "GROWTH"
+    },
+    "smart_segments": {
+      "name": "Smart Customer Segmentation",
+      "min_plan": "GROWTH"
+    },
+    "intelligence": {
+      "name": "Business Intelligence & Insights",
+      "min_plan": "PRO"
+    },
+    "automation": {
+      "name": "Marketing & Operational Automation",
+      "min_plan": "PRO"
+    },
+    "advanced_analytics": {
+      "name": "Advanced Analytics Reports",
+      "min_plan": "PRO"
+    },
+    "governance": {
+      "name": "Audit Logging & Operational Governance",
+      "min_plan": "PRO"
+    }
+  }
+}

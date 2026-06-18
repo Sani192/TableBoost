@@ -1,37 +1,50 @@
 from sqlalchemy.orm import Session
 from .models import Plan, Feature, PlanFeature
 
-ALL_FEATURES = {
-    "visits": "Visits Tracking",
-    "customers": "Customer Management",
-    "review_sms": "Review SMS",
-    "loyalty": "Loyalty Programs",
-    "campaigns": "Marketing Campaigns",
-    "smart_segments": "Smart Customer Segmentation",
-    "intelligence": "Business Intelligence & Insights",
-    "automation": "Marketing & Operational Automation",
-    "advanced_analytics": "Advanced Analytics Reports",
-    "governance": "Audit Logging & Operational Governance"
-}
+import os
+import json
 
-DEFAULT_PLANS = {
-    "STARTER": {
-        "tier": 1,
-        "features": ["visits", "customers", "review_sms"]
-    },
-    "GROWTH": {
-        "tier": 2,
-        "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments"]
-    },
-    "PRO": {
-        "tier": 3,
-        "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments", "intelligence", "automation", "advanced_analytics", "governance"]
-    },
-    "ENTERPRISE_READY": {
-        "tier": 4,
-        "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments", "intelligence", "automation", "advanced_analytics", "governance"]
+base_dir = os.path.dirname(os.path.abspath(__file__))
+json_path = os.path.abspath(os.path.join(base_dir, "../../../sentinel/registry/subscription_rules.json"))
+
+try:
+    with open(json_path, "r") as f:
+        _rules = json.load(f)
+    ALL_FEATURES = {k: v["name"] for k, v in _rules["features"].items()}
+    DEFAULT_PLANS = _rules["plans"]
+except Exception as _e:
+    print(f"WARNING: Could not load centralized rules from {json_path}: {_e}")
+    ALL_FEATURES = {
+        "visits": "Visits Tracking",
+        "customers": "Customer Management",
+        "review_sms": "Review SMS",
+        "loyalty": "Loyalty Programs",
+        "campaigns": "Marketing Campaigns",
+        "smart_segments": "Smart Customer Segmentation",
+        "intelligence": "Business Intelligence & Insights",
+        "automation": "Marketing & Operational Automation",
+        "advanced_analytics": "Advanced Analytics Reports",
+        "governance": "Audit Logging & Operational Governance"
     }
-}
+    DEFAULT_PLANS = {
+        "STARTER": {
+            "tier": 1,
+            "features": ["visits", "customers", "review_sms"]
+        },
+        "GROWTH": {
+            "tier": 2,
+            "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments"]
+        },
+        "PRO": {
+            "tier": 3,
+            "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments", "intelligence", "automation", "advanced_analytics", "governance"]
+        },
+        "ENTERPRISE_READY": {
+            "tier": 4,
+            "features": ["visits", "customers", "review_sms", "loyalty", "campaigns", "smart_segments", "intelligence", "automation", "advanced_analytics", "governance"]
+        }
+    }
+
 
 def seed_plans(db: Session):
     """

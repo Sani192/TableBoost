@@ -152,6 +152,14 @@ app.add_middleware(
 )
 
 @app.middleware("http")
+async def normalize_trailing_slash(request: Request, call_next):
+    path = request.url.path
+    if path != "/" and path.endswith("/"):
+        # Modify the scope path internally to prevent 307 redirects
+        request.scope["path"] = path.rstrip("/")
+    return await call_next(request)
+
+@app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
