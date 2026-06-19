@@ -299,7 +299,8 @@ TableBoost/
 │   │   ├── users/            # User models and schemas
 │   │   └── visits/           # Visit capture and history
 │   ├── tests/                # Backend unit and integration tests
-│   ├── init_tables.py        # Table creation and default automation seeding
+│   ├── prestart.py           # Database migrations and seeding
+│   ├── start.sh              # Render.com start command script
 │   └── main.py               # FastAPI app setup
 ├── docs/                     # Product and phase architecture documents
 ├── frontend/
@@ -358,7 +359,8 @@ SUPER_ADMIN_PASSWORD=my_secure_password
 Initialize database tables, seed plans, and bootstrap the platform operator:
 
 ```bash
-python backend/init_tables.py
+cd backend
+python prestart.py
 ```
 
 Run the API server:

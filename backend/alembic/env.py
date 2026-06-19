@@ -5,57 +5,39 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
-config = context.config
-
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
-
-# add your model's MetaData object here
-# for 'autogenerate' support
 import sys
 import os
 
+# Ensure the backend directory is on the Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from core.config import settings
 from core.database import Base
-# Import all models so metadata knows about them
-from modules.customers.models import Customer, CustomerProfile
-from modules.visits.models import Visit
-from modules.messaging.models import Message, Campaign
-from modules.loyalty.models import LoyaltyReward, LoyaltyProgress, RewardRedemption
-from modules.automation.models import AutomationConfig, AutomationHistory
-from modules.intelligence.models import CustomerIntelligence, CampaignSummary, RewardSummary, AutomationSummary, BusinessSummary, Recommendation
-from modules.users.models import User
-from modules.governance.models import AuditLog, OperationalLog
-from modules.subscriptions.models import Subscription, Feature, Plan, PlanFeature
-from modules.restaurants.models import Restaurant, RestaurantUser
-from modules.settings.models import Setting
 
-target_metadata = Base.metadata
+# ── Import ALL models so Base.metadata registers every table ─────────
+from core.database import import_all_models
+import_all_models()
+# ─────────────────────────────────────────────────────────────────────
+
+# Alembic Config object
+config = context.config
+
+# Setup Python logging from the ini file
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+# Override the sqlalchemy.url with the application's DATABASE_URL
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+# Point Alembic at our models' metadata for autogenerate support
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
+    Configures the context with just a URL and not an Engine.
+    Calls to context.execute() emit the given string to the script output.
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -63,6 +45,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        compare_type=True,
     )
 
     with context.begin_transaction():
@@ -72,9 +55,7 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
+    Creates an Engine and associates a connection with the context.
     """
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
@@ -84,7 +65,9 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
         )
 
         with context.begin_transaction():

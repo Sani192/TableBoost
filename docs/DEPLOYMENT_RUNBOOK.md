@@ -16,8 +16,12 @@ If `ENVIRONMENT=production` is set, the FastAPI server will proactively crash on
 
 1. **Pull Latest Changes**: `git pull origin main`
 2. **Backup the Database**: Run `./scripts/backup.sh` to take a snapshot of the current state before migrations.
-3. **Run Migrations**: Navigate to the `backend/` directory and execute `alembic upgrade head`.
-4. **Deploy Backend**: Restart the FastAPI application server. Wait for the `Database connection established successfully` and `Starting background scheduler...` logs.
+3. **Run Migrations and Seeding**: Execute the prestart sequence. In local or manual VPS environments, run:
+   ```bash
+   cd backend && python prestart.py
+   ```
+   For Render.com, setting the start command to `cd backend && bash start.sh` handles this step automatically upon deployment.
+4. **Deploy Backend**: The start script will automatically check migrations, seed default plans/users, and launch the Uvicorn application server.
 5. **Deploy Frontend**: Run `npm run build` followed by a restart of the Node.js server.
 6. **Verify Health**: Visit `https://your-api-domain.com/api/health` to confirm `status: ok` and that `database` and `scheduler_running` both report `ok`.
 
